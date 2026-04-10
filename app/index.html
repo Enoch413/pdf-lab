@@ -107,7 +107,7 @@
             <p class="file-name" id="logoFileName">기본 CODE 로고 사용 중</p>
           </div>
 
-          <label class="field-row">
+          <label class="field-row layout-fixed-field" hidden>
             <span class="field-label">한 단 최대 문제 수</span>
             <select class="select-input" id="maxPerColumnInput">
               <option value="1">1문제</option>
@@ -115,35 +115,35 @@
             </select>
           </label>
 
-          <label class="field-row">
-            <span class="field-label">페이지 여백 <span class="field-note" id="pagePaddingValue">12mm</span></span>
+          <label class="field-row layout-fixed-field" hidden>
+            <span class="field-label">페이지 여백 <span class="field-note" id="pagePaddingValue">8mm</span></span>
             <div class="range-stack">
-              <input class="range-input" id="pagePaddingInput" type="range" min="8" max="18" step="1" value="12">
-              <span class="range-value" id="pagePaddingValueMirror">12mm</span>
+              <input class="range-input" id="pagePaddingInput" type="range" min="8" max="18" step="1" value="8">
+              <span class="range-value" id="pagePaddingValueMirror">8mm</span>
             </div>
           </label>
 
-          <label class="field-row">
-            <span class="field-label">단 사이 간격 <span class="field-note" id="columnGapValue">7mm</span></span>
+          <label class="field-row layout-fixed-field" hidden>
+            <span class="field-label">단 사이 간격 <span class="field-note" id="columnGapValue">4mm</span></span>
             <div class="range-stack">
-              <input class="range-input" id="columnGapInput" type="range" min="4" max="12" step="1" value="7">
-              <span class="range-value" id="columnGapValueMirror">7mm</span>
+              <input class="range-input" id="columnGapInput" type="range" min="4" max="12" step="1" value="4">
+              <span class="range-value" id="columnGapValueMirror">4mm</span>
             </div>
           </label>
 
-          <label class="field-row">
-            <span class="field-label">카드 간격 <span class="field-note" id="cardGapValue">6mm</span></span>
+          <label class="field-row layout-fixed-field" hidden>
+            <span class="field-label">카드 간격 <span class="field-note" id="cardGapValue">3mm</span></span>
             <div class="range-stack">
-              <input class="range-input" id="cardGapInput" type="range" min="3" max="10" step="1" value="6">
-              <span class="range-value" id="cardGapValueMirror">6mm</span>
+              <input class="range-input" id="cardGapInput" type="range" min="3" max="10" step="1" value="3">
+              <span class="range-value" id="cardGapValueMirror">3mm</span>
             </div>
           </label>
 
-          <label class="field-row">
-            <span class="field-label">화면 미리보기 배율 <span class="field-note" id="previewZoomValue">90%</span></span>
+          <label class="field-row layout-fixed-field" hidden>
+            <span class="field-label">화면 미리보기 배율 <span class="field-note" id="previewZoomValue">100%</span></span>
             <div class="range-stack">
-              <input class="range-input" id="previewZoomInput" type="range" min="65" max="100" step="1" value="90">
-              <span class="range-value" id="previewZoomValueMirror">90%</span>
+              <input class="range-input" id="previewZoomInput" type="range" min="65" max="100" step="1" value="100">
+              <span class="range-value" id="previewZoomValueMirror">100%</span>
             </div>
           </label>
 
@@ -506,6 +506,13 @@
     ]);
     const DEFAULT_LOGO_SRC = "./assets/code-logo.png";
     const DEFAULT_LOGO_LABEL = "기본 CODE 로고 사용 중";
+    const FIXED_LAYOUT_SETTINGS = Object.freeze({
+      maxPerColumn: 2,
+      pagePadding: 8,
+      columnGap: 4,
+      cardGap: 3,
+      previewZoom: 1
+    });
 
     const state = {
       fileName: "",
@@ -1099,16 +1106,19 @@
       };
     }
 
+    function applyFixedLayoutSettingsToInputs() {
+      elements.maxPerColumnInput.value = String(FIXED_LAYOUT_SETTINGS.maxPerColumn);
+      elements.pagePaddingInput.value = String(FIXED_LAYOUT_SETTINGS.pagePadding);
+      elements.columnGapInput.value = String(FIXED_LAYOUT_SETTINGS.columnGap);
+      elements.cardGapInput.value = String(FIXED_LAYOUT_SETTINGS.cardGap);
+      elements.previewZoomInput.value = String(Math.round(FIXED_LAYOUT_SETTINGS.previewZoom * 100));
+    }
+
     function applySharedLayoutSettingsSnapshot(snapshot = {}) {
       elements.kickerInput.value = snapshot.kicker || "";
       elements.titleInput.value = snapshot.title || "변형문제 정리본";
       elements.subtitleInput.value = snapshot.subtitle || "";
-      elements.maxPerColumnInput.value = String(snapshot.maxPerColumn || 2);
-      elements.pagePaddingInput.value = String(snapshot.pagePadding || 12);
-      elements.columnGapInput.value = String(snapshot.columnGap || 7);
-      elements.cardGapInput.value = String(snapshot.cardGap || 6);
-      const previewZoom = Number(snapshot.previewZoom);
-      elements.previewZoomInput.value = String(Number.isFinite(previewZoom) && previewZoom > 0 ? previewZoom : 90);
+      applyFixedLayoutSettingsToInputs();
       const accent = normalizeHex(snapshot.accent) || "#186b63";
       elements.accentInput.value = accent;
       elements.accentTextInput.value = accent;
@@ -2157,14 +2167,40 @@
     }
 
     function getCssTextForStandaloneDocument() {
+      if (window.location.protocol === "file:") {
+        return "";
+      }
       const styleSheet = Array.from(document.styleSheets)
         .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
-      return styleSheet ? Array.from(styleSheet.cssRules).map((rule) => rule.cssText).join("\n") : "";
+      if (!styleSheet) {
+        return "";
+      }
+      try {
+        return Array.from(styleSheet.cssRules).map((rule) => rule.cssText).join("\n");
+      } catch (error) {
+        console.warn("Failed to read stylesheet rules for standalone export", error);
+        return "";
+      }
+    }
+
+    function getStandaloneStylesheetHref() {
+      const stylesheetLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .find((node) => (node.getAttribute("href") || "").endsWith("pdf_problem_template_repacker.css"));
+      if (!stylesheetLink) {
+        return "";
+      }
+      try {
+        return new URL(stylesheetLink.getAttribute("href"), window.location.href).toString();
+      } catch (error) {
+        console.warn("Failed to resolve standalone stylesheet href", error);
+        return "";
+      }
     }
 
     function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
       const cssText = getCssTextForStandaloneDocument();
-      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(titleText)}</title><style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
+      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
     }
 
     function buildExamPreviewDocument(urlBucket = "exportUrls") {
@@ -2908,16 +2944,17 @@
     }
 
     function readSettings() {
+      applyFixedLayoutSettingsToInputs();
       return {
         kicker: elements.kickerInput.value.trim(),
         title: elements.titleInput.value.trim() || "변형문제 정리본",
         subtitle: elements.subtitleInput.value.trim(),
         logoSrc: state.logoSrc,
-        maxPerColumn: Number(elements.maxPerColumnInput.value) || 2,
-        pagePadding: Number(elements.pagePaddingInput.value) || 12,
-        columnGap: Number(elements.columnGapInput.value) || 7,
-        cardGap: Number(elements.cardGapInput.value) || 6,
-        previewZoom: (Number(elements.previewZoomInput.value) || 90) / 100,
+        maxPerColumn: FIXED_LAYOUT_SETTINGS.maxPerColumn,
+        pagePadding: FIXED_LAYOUT_SETTINGS.pagePadding,
+        columnGap: FIXED_LAYOUT_SETTINGS.columnGap,
+        cardGap: FIXED_LAYOUT_SETTINGS.cardGap,
+        previewZoom: FIXED_LAYOUT_SETTINGS.previewZoom,
         accent: normalizeHex(elements.accentTextInput.value) || elements.accentInput.value
       };
     }
@@ -3891,6 +3928,39 @@
       });
     }
 
+    async function imageElementToDataUrl(image) {
+      const src = image?.getAttribute("src") || "";
+      if (!src) {
+        return "";
+      }
+      if (src.startsWith("data:")) {
+        return src;
+      }
+      await waitForPreviewImage(image);
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      if (width && height) {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (context) {
+          context.drawImage(image, 0, 0, width, height);
+          try {
+            return canvas.toDataURL("image/png");
+          } catch (error) {
+            console.warn("Canvas export fallback failed, retrying via fetch", error);
+          }
+        }
+      }
+      try {
+        return await blobUrlToDataUrl(new URL(src, window.location.href).toString());
+      } catch (error) {
+        console.warn("Failed to inline image for standalone export", error);
+        throw error;
+      }
+    }
+
     function readLocalFileAsDataUrl(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -3971,15 +4041,46 @@
       const settings = readSettings();
       const clone = elements.previewRoot.cloneNode(true);
       clone.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
+      const sourceImages = Array.from(elements.previewRoot.querySelectorAll("img"));
       const exportImages = Array.from(clone.querySelectorAll("img"));
-      for (const image of exportImages) {
-        image.setAttribute("src", await blobUrlToDataUrl(image.getAttribute("src")));
+      for (const [index, image] of exportImages.entries()) {
+        const sourceImage = sourceImages[index];
+        if (!sourceImage) {
+          continue;
+        }
+        if (sourceImage.classList.contains("sheet-logo-image")) {
+          const sourceSrc = sourceImage.getAttribute("src") || "";
+          if (sourceSrc && !sourceSrc.startsWith("data:") && !sourceSrc.startsWith("blob:")) {
+            try {
+              image.setAttribute("src", new URL(sourceSrc, window.location.href).toString());
+              continue;
+            } catch (resolveError) {
+              const brand = image.closest(".sheet-brand");
+              image.remove();
+              if (brand) {
+                brand.classList.add("is-empty");
+              }
+              console.warn("Failed to resolve logo path for standalone export", resolveError);
+              continue;
+            }
+          }
+        }
+        try {
+          image.setAttribute("src", await imageElementToDataUrl(sourceImage));
+        } catch (error) {
+          if (sourceImage.classList.contains("sheet-logo-image")) {
+            const brand = image.closest(".sheet-brand");
+            image.remove();
+            if (brand) {
+              brand.classList.add("is-empty");
+            }
+            continue;
+          }
+          throw error;
+        }
       }
       const previewMarkup = clone.innerHTML;
-      const styleText = Array.from(document.styleSheets)
-        .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
-      const cssText = styleText ? Array.from(styleText.cssRules).map((rule) => rule.cssText).join("\n") : "";
-      const exportHtml = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(settings.title)}</title><style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}@media print{.preview-panel{padding:0}.preview-root{display:block}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      const exportHtml = buildStandaloneHtmlDocument(previewMarkup, settings.title);
       const blob = new Blob([exportHtml], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -3988,7 +4089,7 @@
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       setBusy(false);
       const optimizedLabel = state.renderScale < DEFAULT_RENDER_SCALE ? " · 대용량 최적화 적용" : "";
       setStatus(`페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount()}개를 감지했습니다${optimizedLabel}.`, "idle", `${getQuestionCount()}문항`);

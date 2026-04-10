@@ -1335,7 +1335,7 @@ body {
 
 .app-tab-shell {
   position: absolute;
-  top: 88px;
+  top: 72px;
   left: max(20px, calc(50% - 760px));
   z-index: 20;
   width: max-content;
@@ -1349,7 +1349,9 @@ body {
   align-items: center;
   width: max-content;
   max-width: none;
-  padding: 8px;
+  height: 58px;
+  min-height: 58px;
+  padding: 6px;
   gap: 8px;
   border-radius: 18px;
   background: rgba(247, 244, 238, 0.84);
@@ -1361,7 +1363,11 @@ body {
 
 .app-tab-button {
   flex: 0 0 auto;
-  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  min-height: 44px;
   border-radius: 14px;
   border: 1px solid transparent;
   background: transparent;
@@ -1370,6 +1376,7 @@ body {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1664,7 +1671,7 @@ body {
   }
 
   .app-tab-shell {
-    top: 80px;
+    top: 64px;
     left: 12px;
     max-width: calc(100% - 24px);
   }
