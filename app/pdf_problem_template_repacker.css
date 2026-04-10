@@ -1227,6 +1227,10 @@ button:disabled {
     padding: 0;
   }
 
+  .exam-preview-panel {
+    margin-top: 0 !important;
+  }
+
   .preview-root {
     display: block;
     padding: 0;
@@ -1441,6 +1445,10 @@ body {
   padding: 0;
   display: grid;
   gap: 16px;
+}
+
+.exam-preview-panel {
+  margin-top: 74px;
 }
 
 .hero-card {
@@ -1664,6 +1672,10 @@ body {
     position: relative;
     top: auto;
     max-height: none;
+  }
+
+  .exam-preview-panel {
+    margin-top: 0;
   }
 }
 
