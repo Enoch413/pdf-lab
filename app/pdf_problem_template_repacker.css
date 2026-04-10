@@ -1173,19 +1173,12 @@ button:disabled {
     height: 296.8mm;
     transform: none;
     margin: 0;
+    gap: 0;
     box-shadow: none;
     border: none;
     overflow: hidden;
-    break-after: auto;
-    page-break-after: auto;
-  }
-
-  .sheet + .sheet {
-    break-before: page;
-    page-break-before: always;
-  }
-
-  .sheet:last-child {
+    break-inside: avoid;
+    page-break-inside: avoid;
     break-after: auto;
     page-break-after: auto;
   }
@@ -1212,6 +1205,7 @@ button:disabled {
   .app-shell {
     display: block;
     min-height: 0;
+    margin: 0 !important;
   }
 
   .app-tab-shell {
@@ -1224,6 +1218,10 @@ button:disabled {
     min-height: 0;
   }
 
+  .exam-shell {
+    margin: 0 !important;
+  }
+
   .preview-panel {
     width: 100%;
     padding: 0;
@@ -1232,6 +1230,10 @@ button:disabled {
   .preview-root {
     display: block;
     padding: 0;
+  }
+
+  .sheet-column {
+    min-height: calc(var(--column-height, 245mm) - 0.4mm);
   }
 
   .sheet {
@@ -1335,7 +1337,7 @@ body {
 
 .app-tab-shell {
   position: absolute;
-  top: 72px;
+  top: 96px;
   left: max(20px, calc(50% - 760px));
   z-index: 20;
   width: max-content;
@@ -1390,7 +1392,7 @@ body {
 .app-shell,
 .exam-shell {
   width: min(1520px, calc(100% - 40px));
-  margin: 0 auto 28px;
+  margin: 24px auto 28px;
   display: grid;
   gap: 22px;
   align-items: start;
@@ -1671,7 +1673,7 @@ body {
   }
 
   .app-tab-shell {
-    top: 64px;
+    top: 86px;
     left: 12px;
     max-width: calc(100% - 24px);
   }
