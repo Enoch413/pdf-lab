@@ -1298,7 +1298,9 @@ body {
   font-size: 1.9rem;
   line-height: 1.05;
   letter-spacing: -0.03em;
+  font-weight: 700;
   color: #163f42;
+  text-shadow: none;
 }
 
 .app-topbar-badge {
