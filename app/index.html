@@ -3547,14 +3547,24 @@
       return null;
     }
 
-    function buildLayoutPages(settings, problems) {
+    function buildLayoutPages(settings, problems, options = {}) {
+      const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
       const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
       const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
-      const columnHeightMm = innerHeightMm - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM;
+      const firstSheetColumnHeightMm = innerHeightMm - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM;
+      const continuationSheetColumnHeightMm = innerHeightMm - FOOTER_HEIGHT_MM;
       const columnWidthMm = (innerWidthMm - settings.columnGap) / 2;
       const createColumn = () => ({ items: [], usedHeightMm: 0 });
-      const createSheet = () => ({ columns: [createColumn(), createColumn()] });
-      const sheets = [createSheet()];
+      const createSheet = (index) => {
+        const hasHeader = repeatHeaderEveryPage || index === 0;
+        return {
+          hasHeader,
+          headerHeightMm: hasHeader ? HEADER_HEIGHT_MM : 0,
+          columnHeightMm: hasHeader ? firstSheetColumnHeightMm : continuationSheetColumnHeightMm,
+          columns: [createColumn(), createColumn()]
+        };
+      };
+      const sheets = [createSheet(0)];
       let sheetIndex = 0;
       let columnIndex = 0;
 
@@ -3563,7 +3573,7 @@
           columnIndex = 1;
           return;
         }
-        sheets.push(createSheet());
+        sheets.push(createSheet(sheets.length));
         sheetIndex += 1;
         columnIndex = 0;
       }
@@ -3575,6 +3585,7 @@
         while (!placed) {
           const currentSheet = sheets[sheetIndex];
           const currentColumn = currentSheet.columns[columnIndex];
+          const columnHeightMm = currentSheet.columnHeightMm;
           const gapBefore = currentColumn.items.length ? settings.cardGap : 0;
           const fullHeightMm = estimateHeightMm(metrics, 1);
           const remainingMm = columnHeightMm - currentColumn.usedHeightMm - gapBefore;
@@ -3613,7 +3624,13 @@
           advanceSlot();
         }
       }
-      return { sheets, columnHeightMm };
+      return {
+        sheets,
+        columnWidthMm,
+        firstSheetColumnHeightMm,
+        continuationSheetColumnHeightMm,
+        repeatHeaderEveryPage
+      };
     }
 
     function getInitialSheetTarget(totalSheets) {
@@ -3746,8 +3763,8 @@
         ? `<img class="sheet-logo-image" src="${escapeHtml(settings.logoSrc)}" alt="학원 로고">`
         : "";
       const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
-      return `
-        <section class="sheet" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${layoutMeta.columnHeightMm}mm;--sheet-header-height:${HEADER_HEIGHT_MM}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
+      const headerMarkup = sheet.hasHeader
+        ? `
           <header class="sheet-header">
             <div class="sheet-header-main">
               ${kickerMarkup}
@@ -3758,6 +3775,11 @@
               ${logoMarkup}
             </div>
           </header>
+        `
+        : "";
+      return `
+        <section class="sheet${sheet.hasHeader ? " has-sheet-header" : " is-continuation-sheet"}" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${sheet.columnHeightMm}mm;--sheet-header-height:${sheet.headerHeightMm}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
+          ${headerMarkup}
           <div class="sheet-columns">${columnsMarkup}</div>
         </section>
       `;
@@ -3823,7 +3845,7 @@
         elements.previewActionRow.hidden = true;
         return;
       }
-      const layoutMeta = buildLayoutPages(settings, visibleProblems);
+      const layoutMeta = buildLayoutPages(settings, visibleProblems, { repeatHeaderEveryPage: false });
       state.layoutPages = layoutMeta.sheets;
       recomputeRenderedSheetIndices();
       elements.previewRoot.innerHTML = state.layoutPages.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
