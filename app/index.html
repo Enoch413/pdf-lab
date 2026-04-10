@@ -398,10 +398,10 @@
     </section>
   </div>
 
-  <script type="module">
-    import * as pdfjsLib from "./vendor/pdfjs/pdf.min.mjs";
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs/pdf.worker.min.mjs", window.location.href).toString();
+  <script src="./vendor/pdfjs/pdf.min.js"></script>
+  <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs/pdf.worker.min.js", window.location.href).toString();
 
     const DEFAULT_RENDER_SCALE = 2.1;
     const LARGE_RENDER_SCALE = 1.65;
