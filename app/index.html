@@ -1,0 +1,4234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF LAB</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
+</head>
+<body>
+  <div class="app-page-shell">
+    <header class="app-topbar">
+      <div class="app-topbar-copy">
+        <p class="app-topbar-eyebrow">CODE LAB</p>
+        <h1 class="app-topbar-title">PDF LAB</h1>
+      </div>
+      <div class="app-tab-row" role="tablist" aria-label="작업 영역">
+        <button class="app-tab-button is-active" type="button" id="repackTabButton" data-tab-target="repack" aria-selected="true">PDF LAB</button>
+        <button class="app-tab-button" type="button" id="examBuilderTabButton" data-tab-target="exam" aria-selected="false">파이널테스트 제작</button>
+      </div>
+    </header>
+
+    <section class="tab-panel is-active" id="repackTabPanel" data-tab-panel="repack">
+  <div class="app-shell">
+    <aside class="controls-panel">
+      <section class="hero-card">
+        <p class="eyebrow">CODE LAB</p>
+        <h1 class="hero-title">PDF LAB</h1>
+      </section>
+
+      <section class="panel-card">
+        <h2 class="panel-title">1. PDF 불러오기</h2>
+        <div class="field-grid compact-field-grid">
+          <div class="field-row">
+            <span class="field-label">교재 등록 방식</span>
+            <div class="choice-chip-row">
+              <label class="choice-chip">
+                <input class="choice-chip-input" type="radio" name="textbookMode" id="textbookModeNew" value="new" checked>
+                <span class="choice-chip-label">새 교재 등록</span>
+              </label>
+              <label class="choice-chip">
+                <input class="choice-chip-input" type="radio" name="textbookMode" id="textbookModeExisting" value="existing">
+                <span class="choice-chip-label">기존 교재에 추가</span>
+              </label>
+            </div>
+          </div>
+          <label class="field-row" id="newTextbookRow">
+            <span class="field-label">새 교재 이름</span>
+            <input class="text-input" id="newTextbookInput" type="text" placeholder="예: 공통영어1 YBM(박)">
+          </label>
+          <label class="field-row" id="existingTextbookRow" hidden>
+            <span class="field-label">기존 교재 선택</span>
+            <select class="select-input" id="existingTextbookSelect">
+              <option value="">등록된 교재를 선택하세요</option>
+            </select>
+          </label>
+          <p class="small-note" id="textbookSummary">PDF를 분석하기 전에 새 교재명을 입력하거나 기존 교재를 선택해주세요.</p>
+        </div>
+        <div class="upload-box" id="dropZone">
+          <p class="upload-title">드래그하거나 파일 선택</p>
+          <p class="upload-copy">
+            현재 버전은 샘플처럼 <span class="mono">4.</span>, <span class="mono">5.</span> 형식의 문항 번호를 기준으로 가장 안정적으로 동작합니다.
+          </p>
+          <div class="upload-actions">
+            <button class="solid-button" type="button" id="choosePdfButton">PDF 선택</button>
+            <button class="ghost-button" type="button" id="clearButton" disabled>초기화</button>
+          </div>
+          <input class="visually-hidden" type="file" id="pdfInput" accept="application/pdf">
+          <p class="file-name" id="fileName">아직 불러온 PDF가 없습니다.</p>
+        </div>
+        <p class="small-note">
+          팁: 원본 서식을 최대한 보존하려고, 텍스트를 다시 조판하는 대신 문제 영역을 잘라서 카드로 재배치합니다.
+        </p>
+      </section>
+
+      <section class="panel-card">
+        <h2 class="panel-title">2. 템플릿 설정</h2>
+        <div class="field-grid">
+          <label class="field-row">
+            <span class="field-label">좌측 작은 제목</span>
+            <input class="text-input" id="kickerInput" type="text" value="AUTO REPACKED WORKSHEET" placeholder="예: CODE ENGLISH WORKSHEET">
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">자료 제목</span>
+            <input class="text-input" id="titleInput" type="text" value="변형문제 정리본" placeholder="예: 수특 변형문제 정리본">
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">부제 / 메모</span>
+            <textarea class="textarea-input" id="subtitleInput" placeholder="예: 고3 4월 보강용&#10;한 단 최대 1~2문제 자동 정리"></textarea>
+          </label>
+
+          <div class="field-row">
+            <span class="field-label">우측 로고</span>
+            <div class="action-row compact-action-row">
+              <button class="ghost-button" type="button" id="chooseLogoButton">로고 선택</button>
+              <button class="ghost-button" type="button" id="clearLogoButton">로고 숨기기</button>
+            </div>
+            <input class="visually-hidden" type="file" id="logoImageInput" accept="image/*">
+            <p class="file-name" id="logoFileName">기본 CODE 로고 사용 중</p>
+          </div>
+
+          <label class="field-row">
+            <span class="field-label">한 단 최대 문제 수</span>
+            <select class="select-input" id="maxPerColumnInput">
+              <option value="1">1문제</option>
+              <option value="2" selected>2문제</option>
+            </select>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">페이지 여백 <span class="field-note" id="pagePaddingValue">12mm</span></span>
+            <div class="range-stack">
+              <input class="range-input" id="pagePaddingInput" type="range" min="8" max="18" step="1" value="12">
+              <span class="range-value" id="pagePaddingValueMirror">12mm</span>
+            </div>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">단 사이 간격 <span class="field-note" id="columnGapValue">7mm</span></span>
+            <div class="range-stack">
+              <input class="range-input" id="columnGapInput" type="range" min="4" max="12" step="1" value="7">
+              <span class="range-value" id="columnGapValueMirror">7mm</span>
+            </div>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">카드 간격 <span class="field-note" id="cardGapValue">6mm</span></span>
+            <div class="range-stack">
+              <input class="range-input" id="cardGapInput" type="range" min="3" max="10" step="1" value="6">
+              <span class="range-value" id="cardGapValueMirror">6mm</span>
+            </div>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">화면 미리보기 배율 <span class="field-note" id="previewZoomValue">90%</span></span>
+            <div class="range-stack">
+              <input class="range-input" id="previewZoomInput" type="range" min="65" max="100" step="1" value="90">
+              <span class="range-value" id="previewZoomValueMirror">90%</span>
+            </div>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">강조 색상</span>
+            <div class="color-wrap">
+              <input class="color-input" id="accentInput" type="color" value="#186b63">
+              <input class="text-input" id="accentTextInput" type="text" value="#186b63" placeholder="#186b63">
+            </div>
+          </label>
+
+          <label class="field-row">
+            <span class="field-label">출력 문항 선택</span>
+            <input class="text-input" id="questionFilterInput" type="text" placeholder="예: 1, 3, 5-8, 20-21">
+          </label>
+          <label class="field-row">
+            <span class="field-label">출력 유형 선택</span>
+            <input class="text-input" id="typeFilterInput" type="text" list="problemTypeOptions" placeholder="예: 빈칸, 삽입, 제목">
+            <datalist id="problemTypeOptions">
+              <option value="주제"></option>
+              <option value="제목"></option>
+              <option value="주장"></option>
+              <option value="요지"></option>
+              <option value="목적"></option>
+              <option value="요약"></option>
+              <option value="내용일치"></option>
+              <option value="함축의미"></option>
+              <option value="지칭"></option>
+              <option value="심경"></option>
+              <option value="빈칸"></option>
+              <option value="빈칸(주관식)"></option>
+              <option value="연결사"></option>
+              <option value="연결사(주관식)"></option>
+              <option value="꼬리문제"></option>
+              <option value="주관식"></option>
+              <option value="영작"></option>
+              <option value="요약(주관식)"></option>
+              <option value="어법"></option>
+              <option value="어법(주관식)"></option>
+              <option value="어휘"></option>
+              <option value="배열"></option>
+              <option value="기타주관식"></option>
+              <option value="무관"></option>
+              <option value="무관문"></option>
+              <option value="순서"></option>
+              <option value="삽입"></option>
+              <option value="밑줄어법"></option>
+              <option value="밑줄어휘"></option>
+              <option value="선택어휘"></option>
+              <option value="선택어법"></option>
+              <option value="기타"></option>
+            </datalist>
+            <p class="small-note">쉼표로 여러 유형을 함께 고를 수 있습니다.</p>
+          </label>
+          <p class="small-note" id="questionFilterSummary">비워두면 전체 문항을 출력합니다.</p>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <h2 class="panel-title">3. 결과 내보내기</h2>
+        <div class="action-row">
+          <button class="solid-button" type="button" id="printButton" disabled>인쇄 / PDF 저장</button>
+          <button class="ghost-button" type="button" id="exportHtmlButton" disabled>결과 HTML 저장</button>
+        </div>
+        <div class="single-action-row">
+          <button class="ghost-button" type="button" id="saveLibraryButton" disabled>문제 라이브러리에 저장</button>
+        </div>
+        <p class="small-note" id="librarySaveSummary">추출한 문제 이미지와 유형 정보를 저장해 다음 탭에서 시험지 제작에 재사용합니다.</p>
+        <p class="small-note">
+          `결과 HTML 저장`은 현재 미리보기 그대로를 독립 HTML로 저장합니다. 저장된 파일은 원본 PDF 없이도 열립니다.
+        </p>
+      </section>
+
+      <section class="panel-card">
+        <h2 class="panel-title">작업 저장</h2>
+        <div class="field-grid">
+          <label class="field-row">
+            <span class="field-label">작업 이름</span>
+            <input class="text-input" id="repackWorkNameInput" type="text" placeholder="예: 공통영어1 YBM(박) 1과 정리본">
+          </label>
+          <div class="single-action-row">
+            <button class="ghost-button" type="button" id="saveRepackWorkButton">현재 작업 저장</button>
+          </div>
+          <p class="small-note" id="repackWorkSummary">문항 추출 결과와 레이아웃 설정을 저장해 나중에 다시 열어 수정할 수 있습니다.</p>
+        </div>
+        <div class="saved-work-empty" id="repackWorkEmptyState">
+          <h3>저장된 정리 작업이 없습니다</h3>
+          <p>문제 추출이 끝난 뒤 저장하면 여기서 다시 불러와 이어서 편집할 수 있습니다.</p>
+        </div>
+        <div class="saved-work-list" id="repackWorkList"></div>
+      </section>
+
+    </aside>
+
+    <main class="preview-panel">
+      <div class="status-bar" id="statusBar" data-tone="idle">
+        <p class="status-copy" id="statusCopy">PDF를 불러오면 문제를 자동으로 잘라서 새 템플릿에 재배치합니다.</p>
+        <span class="stats-pill" id="statsPill">준비됨</span>
+      </div>
+      <div class="preview-action-row" id="previewActionRow" hidden>
+        <button class="ghost-button" type="button" id="loadMoreButton">다음 미리보기 더 만들기</button>
+        <button class="solid-button" type="button" id="renderAllButton">전체 미리보기 생성</button>
+      </div>
+
+      <div class="preview-root" id="previewRoot">
+        <section class="empty-state">
+          <div>
+            <h2>문항 카드 미리보기가 여기에 생성됩니다</h2>
+            <p>
+              샘플처럼 원래 PDF에서 문제 5가 다음 단으로 넘어가고, 문제 7이 다음 페이지로 찢어져 있어도 이 도구는 각 문항을 다시 이어붙여서 A4 두 단 템플릿에 정돈해 줍니다.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+    </section>
+
+    <section class="tab-panel" id="examBuilderTabPanel" data-tab-panel="exam" hidden>
+      <div class="exam-shell">
+        <aside class="exam-sidebar">
+          <section class="panel-card">
+            <h2 class="panel-title">라이브러리 현황</h2>
+            <div class="library-stat-grid">
+              <article class="library-stat-card">
+                <span class="library-stat-label">교재</span>
+                <strong class="library-stat-value" id="libraryTextbookCount">0</strong>
+              </article>
+              <article class="library-stat-card">
+                <span class="library-stat-label">지문</span>
+                <strong class="library-stat-value" id="libraryPassageCount">0</strong>
+              </article>
+              <article class="library-stat-card">
+                <span class="library-stat-label">문항</span>
+                <strong class="library-stat-value" id="libraryProblemCount">0</strong>
+              </article>
+              <article class="library-stat-card">
+                <span class="library-stat-label">등록 PDF</span>
+                <strong class="library-stat-value" id="libraryImportCount">0</strong>
+              </article>
+            </div>
+            <p class="small-note" id="librarySummaryNote">아직 저장된 문제 라이브러리가 없습니다.</p>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">시험지 슬롯 만들기</h2>
+            <div class="field-grid">
+              <label class="field-row">
+                <span class="field-label">객관식 문제 수</span>
+                <input class="text-input" id="examObjectiveCountInput" type="number" min="0" max="60" step="1" value="20">
+              </label>
+              <label class="field-row">
+                <span class="field-label">주관식 문제 수</span>
+                <input class="text-input" id="examSubjectiveCountInput" type="number" min="0" max="20" step="1" value="4">
+              </label>
+              <label class="field-row">
+                <span class="field-label">꼬리문제 지문 수</span>
+                <input class="text-input" id="examTailCountInput" type="number" min="0" max="20" step="1" value="0">
+              </label>
+              <div class="action-row">
+                <button class="solid-button" type="button" id="createExamSlotsButton">슬롯 만들기</button>
+                <button class="ghost-button" type="button" id="clearExamSlotsButton">슬롯 비우기</button>
+              </div>
+            </div>
+          <p class="small-note" id="examBuilderSummary">먼저 PDF LAB 탭에서 문제를 라이브러리에 저장해주세요.</p>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">시험지 출력</h2>
+            <div class="field-grid">
+              <label class="field-row">
+                <span class="field-label">시험지 상단 작은 제목</span>
+                <input class="text-input" id="examKickerInput" type="text" value="FINAL TEST WORKSHEET" placeholder="예: FINAL TEST">
+              </label>
+              <label class="field-row">
+                <span class="field-label">시험지 제목</span>
+                <input class="text-input" id="examTitleInput" type="text" value="파이널 테스트" placeholder="예: 2강서A 2차 테스트">
+              </label>
+              <label class="field-row">
+                <span class="field-label">시험지 부제 / 메모</span>
+                <textarea class="textarea-input" id="examSubtitleInput" placeholder="예: 객관식 20문항 · 주관식 4문항"></textarea>
+              </label>
+              <div class="action-row">
+                <button class="ghost-button" type="button" id="previewExamButton">시험지 HTML 미리보기</button>
+                <button class="solid-button" type="button" id="printExamButton">시험지 PDF 저장 / 인쇄</button>
+              </div>
+              <button class="ghost-button" type="button" id="commitExamButton">시험지 확정 저장 + PDF 출력</button>
+            </div>
+            <p class="small-note" id="examExportSummary">슬롯을 채우면 선택된 문항들로 바로 시험지 PDF를 만들 수 있습니다.</p>
+            <p class="small-note" id="examHistorySummary">확정 저장을 하면 같은 문제와 같은 지문 유형이 이후 시험지 제작에서 자동으로 막힙니다.</p>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">작업 저장</h2>
+            <div class="field-grid">
+              <label class="field-row">
+                <span class="field-label">작업 이름</span>
+                <input class="text-input" id="examWorkNameInput" type="text" placeholder="예: 2강서A 2차 테스트 편집본">
+              </label>
+              <div class="single-action-row">
+                <button class="ghost-button" type="button" id="saveExamWorkButton">현재 작업 저장</button>
+              </div>
+              <p class="small-note" id="examWorkSummary">슬롯 구성과 현재 선택된 문항을 저장해 나중에 다시 열어 제목 수정이나 문항 교체를 이어갈 수 있습니다.</p>
+            </div>
+            <div class="saved-work-empty" id="examWorkEmptyState">
+              <h3>저장된 시험지 작업이 없습니다</h3>
+              <p>슬롯을 만든 뒤 저장하면 여기서 다시 불러와 수정할 수 있습니다.</p>
+            </div>
+            <div class="saved-work-list" id="examWorkList"></div>
+          </section>
+        </aside>
+
+        <main class="exam-preview-panel">
+          <section class="panel-card">
+            <h2 class="panel-title">교재 라이브러리</h2>
+            <div class="exam-library-list" id="examLibraryList">
+              <div class="exam-empty-state">
+                <h3>저장된 교재가 없습니다</h3>
+                    <p>PDF LAB 탭에서 교재를 등록하고 라이브러리에 저장하면 여기서 지문과 유형을 바로 고를 수 있습니다.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">시험지 슬롯</h2>
+            <div class="exam-slot-empty" id="examSlotEmptyState">
+              <h3>아직 만든 슬롯이 없습니다</h3>
+              <p>객관식/주관식 개수를 입력하고 슬롯 만들기를 누르면, 교재·지문·유형을 선택하는 편집 칸이 생성됩니다.</p>
+            </div>
+            <div class="exam-slot-list" id="examSlotList"></div>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">시험지 미니 미리보기</h2>
+            <div class="exam-mini-preview-empty" id="examMiniPreviewEmptyState">
+              <h3>미리볼 문항이 아직 없습니다</h3>
+              <p>슬롯을 채우면 이곳에 시험지 조판 결과가 작게 미리 표시됩니다.</p>
+            </div>
+            <div class="exam-mini-preview-root" id="examMiniPreviewRoot"></div>
+          </section>
+
+          <section class="panel-card">
+            <h2 class="panel-title">확정 저장된 시험지</h2>
+            <div class="exam-history-empty" id="examHistoryEmptyState">
+              <h3>저장된 시험지 이력이 없습니다</h3>
+              <p>시험지 확정 저장 + PDF 출력을 누르면 여기에 기록됩니다.</p>
+            </div>
+            <div class="exam-history-list" id="examHistoryList"></div>
+          </section>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import * as pdfjsLib from "./vendor/pdfjs/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs/pdf.worker.min.mjs", window.location.href).toString();
+
+    const DEFAULT_RENDER_SCALE = 2.1;
+    const LARGE_RENDER_SCALE = 1.65;
+    const XL_RENDER_SCALE = 1.4;
+    const HEADER_CUTOFF = 38;
+    const FOOTER_CUTOFF = 28;
+    const COLUMN_COUNT = 2;
+    const FIRST_SEGMENT_TOP_PAD = 8;
+    const NEXT_START_GAP = 10;
+    const SHARED_MARKER_TOP_PAD = 6;
+    const MARKER_HEIGHT_SLACK = 0.75;
+    const MARKER_LINE_TOLERANCE = 3.5;
+    const MARKER_LINE_START_TOLERANCE = 12;
+    const SHEET_WIDTH_MM = 210;
+    const SHEET_HEIGHT_MM = 297;
+    const HEADER_HEIGHT_MM = 24;
+    const FOOTER_HEIGHT_MM = 0;
+    const BINDING_MARGIN_MM = 5;
+    const CARD_FIXED_HEIGHT_MM = 10.2;
+    const SEGMENT_GAP_MM = 1.8;
+    const MIN_FIT_SCALE = 0.66;
+    const AUTO_BALANCED_MAX_SQUASH = 10;
+    const AUTO_SQUASH_VALUE = "auto";
+    const QUESTION_MARKER_PATTERN = /^\d+\.$/;
+    const RANGE_MARKER_PATTERN = /^\[(\d+)-(\d+)\]$/;
+    const WORKSHEET_REF_PATTERN = /\[(?=[^\]]*\d)[^\]]+\]/;
+    const ANSWER_PAGE_PATTERN = /정답지/;
+    const PROBLEM_TYPE_OTHER = "기타";
+    const PROBLEM_TYPE_TAIL = "꼬리문제";
+    const PROBLEM_TYPE_SUBJECTIVE = "주관식";
+    const PROBLEM_TYPE_GRAMMAR = "어법";
+    const PROBLEM_TYPE_VOCAB = "어휘";
+    const PROBLEM_TYPE_ODD_SENTENCE = "무관문";
+    const SUBJECTIVE_TYPE_WRITING = "영작";
+    const SUBJECTIVE_TYPE_SUMMARY = "요약(주관식)";
+    const SUBJECTIVE_TYPE_GRAMMAR = "어법(주관식)";
+    const SUBJECTIVE_TYPE_BLANK = "빈칸(주관식)";
+    const SUBJECTIVE_TYPE_CONNECTION = "연결사(주관식)";
+    const SUBJECTIVE_TYPE_ARRANGEMENT = "배열";
+    const SUBJECTIVE_TYPE_OTHER = "기타주관식";
+    const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
+    const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
+    const LIBRARY_DB_VERSION = 3;
+    const LIBRARY_IMPORT_STORE = "imports";
+    const LIBRARY_PROBLEM_STORE = "problems";
+    const LIBRARY_EXAM_STORE = "examSets";
+    const LIBRARY_EXAM_ITEM_STORE = "examItems";
+    const LIBRARY_WORK_STORE = "savedWorks";
+    const PROBLEM_TYPE_RULES = [
+      { type: "연결사", phrases: ["다음 글의 빈칸 (A), (B)에", "다음 글의 빈칸(A), (B)에", "다음 글의 빈칸 (A),(B)에", "다음 글의 빈칸(A),(B)에", "윗글의 빈칸 (B)에 들어갈", "윗글의 빈칸(B)에 들어갈", "(A), 다음 빈칸에 들어갈", "(A) 다음 빈칸에 들어갈"] },
+      { type: "선택어법", phrases: ["어법에 맞는 표현으로"] },
+      { type: "선택어휘", phrases: ["문맥에 맞는 낱말로", "문맥에 맡는 낱말로"] },
+      { type: "밑줄어법", phrases: ["어법상", "문법적 쓰임"] },
+      { type: "밑줄어휘", phrases: ["문맥상 낱말", "밑줄 친 부분 중 흐름상 어색한 것은", "밑줄 친 부분 중 문맥상 어색한 것은", "밑줄 친 부분 중 어색한 것은"] },
+      { type: "순서", phrases: ["이어질 글의 순서", "주어진 글 다음에 이어질 글의 순서", "글의 순서로 가장 적절한 것은", "이어질 순서로 가장 적절한 것은", "이어진 순서로 가장 적절한 것은"] },
+      { type: "삽입", phrases: ["주어진 문장이 들어가기에", "다음 문장이 들어갈 위치로", "문장이 들어갈 위치로 가장 적절한 곳은", "들어갈 위치로 가장 적절한 곳은"] },
+      { type: "무관", phrases: ["전체 흐름과", "글의 흐름으로 보아, 문맥상 적절하지 않은 것은", "글의 흐름으로 보아 문맥상 적절하지 않은 것은", "문맥상 적절하지 않은 것은", "글의 흐름으로 보아, 문맥상 적절하지 않은 문장은", "글의 흐름으로 보아 문맥상 적절하지 않은 문장은", "문맥상 적절하지 않은 문장은", "문맥상 적절하지 않은 문장"] },
+      { type: "요약", phrases: ["한 문장으로 요약"] },
+      { type: "빈칸", phrases: ["빈칸에 들어갈"] },
+      { type: "내용일치", phrases: ["내용과 일치", "내용과 일치하지 않는", "내용으로 일치하지 않는", "내용으로 일치하는", "대답할 수 없는 질문", "답할 수 없는 질문"] },
+      { type: "함축의미", phrases: ["의미하는", "함축적 의미"] },
+      { type: "지칭", phrases: ["밑줄 친 부분이 가리키는 대상이", "가리키는 대상이", "지칭하는 대상이"] },
+      { type: "심경", phrases: ["심경", "어조로 가장 적절한", "필자의 어조"] },
+      { type: "주제", phrases: ["주제"] },
+      { type: "제목", phrases: ["제목"] },
+      { type: "주장", phrases: ["주장"] },
+      { type: "요지", phrases: ["요지"] },
+      { type: "목적", phrases: ["목적"] }
+    ].map((rule) => ({
+      ...rule,
+      matchers: rule.phrases.map((phrase) => normalizeProblemTypeToken(phrase))
+    }));
+    const PROBLEM_TYPE_OPTIONS = [...new Set([
+      ...PROBLEM_TYPE_RULES.map((rule) => rule.type),
+      PROBLEM_TYPE_GRAMMAR,
+      PROBLEM_TYPE_VOCAB,
+      PROBLEM_TYPE_ODD_SENTENCE,
+      PROBLEM_TYPE_TAIL,
+      PROBLEM_TYPE_SUBJECTIVE,
+      SUBJECTIVE_TYPE_WRITING,
+      SUBJECTIVE_TYPE_SUMMARY,
+      SUBJECTIVE_TYPE_GRAMMAR,
+      SUBJECTIVE_TYPE_BLANK,
+      SUBJECTIVE_TYPE_CONNECTION,
+      SUBJECTIVE_TYPE_ARRANGEMENT,
+      SUBJECTIVE_TYPE_OTHER,
+      PROBLEM_TYPE_OTHER
+    ])];
+    const PROBLEM_TYPE_FILTER_MAP = new Map([
+      ...PROBLEM_TYPE_OPTIONS.map((type) => [normalizeProblemTypeToken(type), type]),
+      ["내용과일치", "내용일치"],
+      ["답할수없는질문", "내용일치"],
+      ["한문장요약", "요약"],
+      ["서술형", PROBLEM_TYPE_SUBJECTIVE],
+      ["영작문", SUBJECTIVE_TYPE_WRITING],
+      ["요약주관식", SUBJECTIVE_TYPE_SUMMARY],
+      ["어법", PROBLEM_TYPE_GRAMMAR],
+      ["어휘", PROBLEM_TYPE_VOCAB],
+      ["무관문", PROBLEM_TYPE_ODD_SENTENCE],
+      ["무관", PROBLEM_TYPE_ODD_SENTENCE],
+      ["어조", "심경"],
+      ["필자의어조", "심경"],
+      ["문법적쓰임", "밑줄어법"],
+      ["함축", "함축의미"],
+      ["배열", SUBJECTIVE_TYPE_ARRANGEMENT],
+      ["기타주관식", SUBJECTIVE_TYPE_OTHER]
+    ]);
+    const DEFAULT_LOGO_SRC = "./assets/code-logo.png";
+    const DEFAULT_LOGO_LABEL = "기본 CODE 로고 사용 중";
+
+    const state = {
+      fileName: "",
+      pdfDoc: null,
+      problems: [],
+      pages: [],
+      layoutPages: [],
+      stats: null,
+      lastExportName: "repacked-problems",
+      imageUrls: [],
+      visibleProblems: null,
+      selectionInfo: null,
+      logoSrc: DEFAULT_LOGO_SRC,
+      logoLabel: DEFAULT_LOGO_LABEL,
+      storedTextbooks: readStoredTextbooks(),
+      selectedTextbookName: "",
+      activeTab: "repack",
+      libraryCache: {
+        imports: [],
+        problemRecords: [],
+        examSets: [],
+        examItems: [],
+        savedWorks: []
+      },
+      loadedRepackWorkId: "",
+      examBuilder: {
+        slots: [],
+        previewUrls: [],
+        exportUrls: [],
+        loadedExamId: "",
+        loadedWorkId: ""
+      },
+      renderScale: DEFAULT_RENDER_SCALE,
+      renderedSheetIndices: new Set(),
+      isBusy: false
+    };
+
+    const PROBLEM_SQUASH_OPTIONS = Array.from({ length: 21 }, (_, value) => value);
+
+    const elements = {
+      root: document.documentElement,
+      repackTabButton: document.getElementById("repackTabButton"),
+      examBuilderTabButton: document.getElementById("examBuilderTabButton"),
+      repackTabPanel: document.getElementById("repackTabPanel"),
+      examBuilderTabPanel: document.getElementById("examBuilderTabPanel"),
+      previewRoot: document.getElementById("previewRoot"),
+      statusBar: document.getElementById("statusBar"),
+      statusCopy: document.getElementById("statusCopy"),
+      statsPill: document.getElementById("statsPill"),
+      previewActionRow: document.getElementById("previewActionRow"),
+      loadMoreButton: document.getElementById("loadMoreButton"),
+      renderAllButton: document.getElementById("renderAllButton"),
+      pdfInput: document.getElementById("pdfInput"),
+      choosePdfButton: document.getElementById("choosePdfButton"),
+      clearButton: document.getElementById("clearButton"),
+      textbookModeNew: document.getElementById("textbookModeNew"),
+      textbookModeExisting: document.getElementById("textbookModeExisting"),
+      newTextbookRow: document.getElementById("newTextbookRow"),
+      existingTextbookRow: document.getElementById("existingTextbookRow"),
+      newTextbookInput: document.getElementById("newTextbookInput"),
+      existingTextbookSelect: document.getElementById("existingTextbookSelect"),
+      textbookSummary: document.getElementById("textbookSummary"),
+      printButton: document.getElementById("printButton"),
+      exportHtmlButton: document.getElementById("exportHtmlButton"),
+      saveLibraryButton: document.getElementById("saveLibraryButton"),
+      librarySaveSummary: document.getElementById("librarySaveSummary"),
+      repackWorkNameInput: document.getElementById("repackWorkNameInput"),
+      saveRepackWorkButton: document.getElementById("saveRepackWorkButton"),
+      repackWorkSummary: document.getElementById("repackWorkSummary"),
+      repackWorkEmptyState: document.getElementById("repackWorkEmptyState"),
+      repackWorkList: document.getElementById("repackWorkList"),
+      dropZone: document.getElementById("dropZone"),
+      fileName: document.getElementById("fileName"),
+      questionFilterInput: document.getElementById("questionFilterInput"),
+      typeFilterInput: document.getElementById("typeFilterInput"),
+      questionFilterSummary: document.getElementById("questionFilterSummary"),
+      kickerInput: document.getElementById("kickerInput"),
+      titleInput: document.getElementById("titleInput"),
+      subtitleInput: document.getElementById("subtitleInput"),
+      chooseLogoButton: document.getElementById("chooseLogoButton"),
+      clearLogoButton: document.getElementById("clearLogoButton"),
+      logoImageInput: document.getElementById("logoImageInput"),
+      logoFileName: document.getElementById("logoFileName"),
+      maxPerColumnInput: document.getElementById("maxPerColumnInput"),
+      pagePaddingInput: document.getElementById("pagePaddingInput"),
+      pagePaddingValue: document.getElementById("pagePaddingValue"),
+      pagePaddingValueMirror: document.getElementById("pagePaddingValueMirror"),
+      columnGapInput: document.getElementById("columnGapInput"),
+      columnGapValue: document.getElementById("columnGapValue"),
+      columnGapValueMirror: document.getElementById("columnGapValueMirror"),
+      cardGapInput: document.getElementById("cardGapInput"),
+      cardGapValue: document.getElementById("cardGapValue"),
+      cardGapValueMirror: document.getElementById("cardGapValueMirror"),
+      previewZoomInput: document.getElementById("previewZoomInput"),
+      previewZoomValue: document.getElementById("previewZoomValue"),
+      previewZoomValueMirror: document.getElementById("previewZoomValueMirror"),
+      accentInput: document.getElementById("accentInput"),
+      accentTextInput: document.getElementById("accentTextInput"),
+      libraryTextbookCount: document.getElementById("libraryTextbookCount"),
+      libraryPassageCount: document.getElementById("libraryPassageCount"),
+      libraryProblemCount: document.getElementById("libraryProblemCount"),
+      libraryImportCount: document.getElementById("libraryImportCount"),
+      librarySummaryNote: document.getElementById("librarySummaryNote"),
+      examObjectiveCountInput: document.getElementById("examObjectiveCountInput"),
+      examSubjectiveCountInput: document.getElementById("examSubjectiveCountInput"),
+      examTailCountInput: document.getElementById("examTailCountInput"),
+      createExamSlotsButton: document.getElementById("createExamSlotsButton"),
+      clearExamSlotsButton: document.getElementById("clearExamSlotsButton"),
+      examBuilderSummary: document.getElementById("examBuilderSummary"),
+      examKickerInput: document.getElementById("examKickerInput"),
+      examTitleInput: document.getElementById("examTitleInput"),
+      examSubtitleInput: document.getElementById("examSubtitleInput"),
+      previewExamButton: document.getElementById("previewExamButton"),
+      printExamButton: document.getElementById("printExamButton"),
+      commitExamButton: document.getElementById("commitExamButton"),
+      examExportSummary: document.getElementById("examExportSummary"),
+      examHistorySummary: document.getElementById("examHistorySummary"),
+      examWorkNameInput: document.getElementById("examWorkNameInput"),
+      saveExamWorkButton: document.getElementById("saveExamWorkButton"),
+      examWorkSummary: document.getElementById("examWorkSummary"),
+      examWorkEmptyState: document.getElementById("examWorkEmptyState"),
+      examWorkList: document.getElementById("examWorkList"),
+      examLibraryList: document.getElementById("examLibraryList"),
+      examSlotEmptyState: document.getElementById("examSlotEmptyState"),
+      examSlotList: document.getElementById("examSlotList"),
+      examMiniPreviewEmptyState: document.getElementById("examMiniPreviewEmptyState"),
+      examMiniPreviewRoot: document.getElementById("examMiniPreviewRoot"),
+      examHistoryEmptyState: document.getElementById("examHistoryEmptyState"),
+      examHistoryList: document.getElementById("examHistoryList")
+    };
+
+    function normalizeHex(value) {
+      const raw = (value || "").trim();
+      if (!raw) {
+        return "";
+      }
+      const normalized = raw.startsWith("#") ? raw : `#${raw}`;
+      return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toLowerCase() : "";
+    }
+
+    function hexToRgba(hex, alpha) {
+      const safe = normalizeHex(hex) || "#186b63";
+      const match = safe.match(/^#(..)(..)(..)$/);
+      if (!match) {
+        return `rgba(24, 107, 99, ${alpha})`;
+      }
+      const [, r, g, b] = match;
+      return `rgba(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)}, ${alpha})`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function clampSquashPercent(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return 0;
+      }
+      return Math.max(0, Math.min(20, Math.round(numeric)));
+    }
+
+    function normalizeProblemText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function normalizeProblemTypeToken(value) {
+      return normalizeProblemText(value).replace(/\s+/g, "");
+    }
+
+    function normalizeTextbookName(value) {
+      return normalizeProblemText(value);
+    }
+
+    function readStoredTextbooks() {
+      try {
+        const raw = window.localStorage.getItem(TEXTBOOK_LIBRARY_STORAGE_KEY);
+        if (!raw) {
+          return [];
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return [...new Set(parsed.map((value) => normalizeTextbookName(value)).filter(Boolean))].sort((left, right) => left.localeCompare(right, "ko"));
+      } catch (error) {
+        console.warn("Failed to read stored textbooks", error);
+        return [];
+      }
+    }
+
+    function writeStoredTextbooks(values) {
+      const normalized = [...new Set((values || []).map((value) => normalizeTextbookName(value)).filter(Boolean))].sort((left, right) => left.localeCompare(right, "ko"));
+      state.storedTextbooks = normalized;
+      try {
+        window.localStorage.setItem(TEXTBOOK_LIBRARY_STORAGE_KEY, JSON.stringify(normalized));
+      } catch (error) {
+        console.warn("Failed to write stored textbooks", error);
+      }
+    }
+
+    function populateStoredTextbookOptions() {
+      const previousValue = elements.existingTextbookSelect.value;
+      elements.existingTextbookSelect.innerHTML = [
+        '<option value="">등록된 교재를 선택하세요</option>',
+        ...state.storedTextbooks.map((textbookName) => `<option value="${escapeHtml(textbookName)}">${escapeHtml(textbookName)}</option>`)
+      ].join("");
+      if (state.storedTextbooks.includes(previousValue)) {
+        elements.existingTextbookSelect.value = previousValue;
+      }
+    }
+
+    function getSelectedTextbookName() {
+      const rawValue = elements.textbookModeExisting.checked
+        ? elements.existingTextbookSelect.value
+        : elements.newTextbookInput.value;
+      return normalizeTextbookName(rawValue);
+    }
+
+    function updateTextbookSummary() {
+      const selected = getSelectedTextbookName();
+      if (selected) {
+        elements.textbookSummary.textContent = `현재 선택 교재: ${selected}`;
+        return;
+      }
+      if (elements.textbookModeExisting.checked && !state.storedTextbooks.length) {
+        elements.textbookSummary.textContent = "아직 등록된 교재가 없습니다. 먼저 새 교재를 한 번 등록해주세요.";
+        return;
+      }
+      elements.textbookSummary.textContent = "PDF를 분석하기 전에 새 교재명을 입력하거나 기존 교재를 선택해주세요.";
+    }
+
+    function syncTextbookModeUi() {
+      const useExisting = elements.textbookModeExisting.checked;
+      elements.newTextbookRow.hidden = useExisting;
+      elements.existingTextbookRow.hidden = !useExisting;
+      elements.newTextbookInput.disabled = useExisting;
+      elements.existingTextbookSelect.disabled = !useExisting;
+      updateTextbookSummary();
+    }
+
+    function registerTextbookName(textbookName) {
+      const normalized = normalizeTextbookName(textbookName);
+      if (!normalized) {
+        return "";
+      }
+      if (!state.storedTextbooks.includes(normalized)) {
+        writeStoredTextbooks([...state.storedTextbooks, normalized]);
+        populateStoredTextbookOptions();
+      }
+      return normalized;
+    }
+
+    let libraryDbPromise = null;
+
+    function createLibrarySourceId(textbookName, fileName) {
+      const normalizedTextbook = normalizeTextbookName(textbookName) || "untitled-textbook";
+      const normalizedFile = normalizeProblemText(fileName).toLowerCase() || "untitled-pdf";
+      return `${normalizedTextbook}::${normalizedFile}`;
+    }
+
+    function getPassageReferenceLabel(source) {
+      const worksheetRef = normalizeWorksheetRef(source?.worksheetRef || "");
+      if (worksheetRef) {
+        return worksheetRef;
+      }
+      const groupLabel = normalizeProblemText(source?.groupLabel || "");
+      if (groupLabel) {
+        return `${groupLabel} 묶음`;
+      }
+      return "미분류 지문";
+    }
+
+    function getPassageReferenceKey(source) {
+      const textbookName = normalizeTextbookName(source?.worksheetFamily || source?.textbookName || state.selectedTextbookName || "");
+      const rawReference = normalizeProblemText(source?.worksheetRef || source?.groupLabel || source?.pageSignature || source?.id || "unassigned");
+      return `${textbookName}::${normalizeProblemTypeToken(rawReference || "unassigned")}`;
+    }
+
+    function getSelectableTypeLabel(problem) {
+      if (!problem) {
+        return PROBLEM_TYPE_OTHER;
+      }
+      if (problem.isSubjective) {
+        return problem.subjectiveType || SUBJECTIVE_TYPE_OTHER;
+      }
+      if (problem.problemType === "밑줄어법" || problem.problemType === "선택어법") {
+        return PROBLEM_TYPE_GRAMMAR;
+      }
+      if (problem.problemType === "밑줄어휘" || problem.problemType === "선택어휘") {
+        return PROBLEM_TYPE_VOCAB;
+      }
+      if (problem.problemType === "무관") {
+        return PROBLEM_TYPE_ODD_SENTENCE;
+      }
+      return problem.problemType || PROBLEM_TYPE_OTHER;
+    }
+
+    function truncateText(value, maxLength = 110) {
+      const normalized = normalizeProblemText(value);
+      if (normalized.length <= maxLength) {
+        return normalized;
+      }
+      return `${normalized.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
+    }
+
+    function formatTimestamp(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return "";
+      }
+      return new Date(numeric).toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function idbRequestToPromise(request) {
+      return new Promise((resolve, reject) => {
+        request.addEventListener("success", () => resolve(request.result));
+        request.addEventListener("error", () => reject(request.error || new Error("IndexedDB request failed.")));
+      });
+    }
+
+    function idbTransactionDone(transaction) {
+      return new Promise((resolve, reject) => {
+        transaction.addEventListener("complete", () => resolve());
+        transaction.addEventListener("error", () => reject(transaction.error || new Error("IndexedDB transaction failed.")));
+        transaction.addEventListener("abort", () => reject(transaction.error || new Error("IndexedDB transaction aborted.")));
+      });
+    }
+
+    function openLibraryDb() {
+      if (libraryDbPromise) {
+        return libraryDbPromise;
+      }
+      libraryDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(LIBRARY_DB_NAME, LIBRARY_DB_VERSION);
+        request.addEventListener("upgradeneeded", () => {
+          const db = request.result;
+          const importStore = db.objectStoreNames.contains(LIBRARY_IMPORT_STORE)
+            ? request.transaction.objectStore(LIBRARY_IMPORT_STORE)
+            : db.createObjectStore(LIBRARY_IMPORT_STORE, { keyPath: "sourceId" });
+          if (!importStore.indexNames.contains("textbookName")) {
+            importStore.createIndex("textbookName", "textbookName", { unique: false });
+          }
+
+          const problemStore = db.objectStoreNames.contains(LIBRARY_PROBLEM_STORE)
+            ? request.transaction.objectStore(LIBRARY_PROBLEM_STORE)
+            : db.createObjectStore(LIBRARY_PROBLEM_STORE, { keyPath: "recordId" });
+          if (!problemStore.indexNames.contains("sourceId")) {
+            problemStore.createIndex("sourceId", "sourceId", { unique: false });
+          }
+          if (!problemStore.indexNames.contains("textbookName")) {
+            problemStore.createIndex("textbookName", "textbookName", { unique: false });
+          }
+          if (!problemStore.indexNames.contains("passageKey")) {
+            problemStore.createIndex("passageKey", "passageKey", { unique: false });
+          }
+
+          const examStore = db.objectStoreNames.contains(LIBRARY_EXAM_STORE)
+            ? request.transaction.objectStore(LIBRARY_EXAM_STORE)
+            : db.createObjectStore(LIBRARY_EXAM_STORE, { keyPath: "examId" });
+          if (!examStore.indexNames.contains("createdAt")) {
+            examStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!examStore.indexNames.contains("signature")) {
+            examStore.createIndex("signature", "signature", { unique: false });
+          }
+
+          const examItemStore = db.objectStoreNames.contains(LIBRARY_EXAM_ITEM_STORE)
+            ? request.transaction.objectStore(LIBRARY_EXAM_ITEM_STORE)
+            : db.createObjectStore(LIBRARY_EXAM_ITEM_STORE, { keyPath: "entryId" });
+          if (!examItemStore.indexNames.contains("examId")) {
+            examItemStore.createIndex("examId", "examId", { unique: false });
+          }
+          if (!examItemStore.indexNames.contains("problemRecordId")) {
+            examItemStore.createIndex("problemRecordId", "problemRecordId", { unique: false });
+          }
+          if (!examItemStore.indexNames.contains("passageTypeKey")) {
+            examItemStore.createIndex("passageTypeKey", "passageTypeKey", { unique: false });
+          }
+
+          const workStore = db.objectStoreNames.contains(LIBRARY_WORK_STORE)
+            ? request.transaction.objectStore(LIBRARY_WORK_STORE)
+            : db.createObjectStore(LIBRARY_WORK_STORE, { keyPath: "workId" });
+          if (!workStore.indexNames.contains("kind")) {
+            workStore.createIndex("kind", "kind", { unique: false });
+          }
+          if (!workStore.indexNames.contains("updatedAt")) {
+            workStore.createIndex("updatedAt", "updatedAt", { unique: false });
+          }
+        });
+        request.addEventListener("success", () => resolve(request.result));
+        request.addEventListener("error", () => reject(request.error || new Error("문제 라이브러리 데이터베이스를 열지 못했습니다.")));
+      });
+      return libraryDbPromise;
+    }
+
+    async function loadAllRecordsFromStore(storeName) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(storeName, "readonly");
+      const store = transaction.objectStore(storeName);
+      const records = await idbRequestToPromise(store.getAll());
+      await idbTransactionDone(transaction);
+      return Array.isArray(records) ? records : [];
+    }
+
+    async function deleteRecordFromStore(storeName, key) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(storeName, "readwrite");
+      const store = transaction.objectStore(storeName);
+      store.delete(key);
+      await idbTransactionDone(transaction);
+    }
+
+    function createSavedWorkId(kind) {
+      return `${kind}-work-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    async function deleteProblemsForSourceId(sourceId) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_PROBLEM_STORE, "readwrite");
+      const problemStore = transaction.objectStore(LIBRARY_PROBLEM_STORE);
+      const index = problemStore.index("sourceId");
+      await new Promise((resolve, reject) => {
+        const request = index.openCursor(IDBKeyRange.only(sourceId));
+        request.addEventListener("success", () => {
+          const cursor = request.result;
+          if (!cursor) {
+            resolve();
+            return;
+          }
+          cursor.delete();
+          cursor.continue();
+        });
+        request.addEventListener("error", () => reject(request.error || new Error("기존 문제 라이브러리를 정리하지 못했습니다.")));
+      });
+      await idbTransactionDone(transaction);
+    }
+
+    async function ensureAllProblemSegmentsReadyForLibrary() {
+      if (!state.pdfDoc || !state.problems.length) {
+        return;
+      }
+      const pendingProblems = state.problems.filter((problem) => problem.segmentImages.some((image) => !image));
+      if (!pendingProblems.length) {
+        return;
+      }
+      await generateSegmentImages(state.pdfDoc, pendingProblems, state.renderScale);
+      recomputeRenderedSheetIndices();
+      renderPreview();
+    }
+
+    async function serializeProblemForLibrary(problem, sourceRecord) {
+      const segmentBlobs = await Promise.all(
+        problem.segmentImages.map(async (image) => {
+          if (!image?.url) {
+            return null;
+          }
+          return await fetch(image.url).then((response) => response.blob());
+        })
+      );
+      return {
+        recordId: `${sourceRecord.sourceId}::${problem.id}`,
+        sourceId: sourceRecord.sourceId,
+        textbookName: sourceRecord.textbookName,
+        sourceName: sourceRecord.fileName,
+        sourceImportedAt: sourceRecord.importedAt,
+        problemId: problem.id,
+        kind: problem.kind,
+        number: problem.number,
+        groupLabel: problem.groupLabel || "",
+        worksheetFamily: problem.worksheetFamily || sourceRecord.textbookName,
+        worksheetRef: problem.worksheetRef || "",
+        passageKey: getPassageReferenceKey(problem),
+        passageLabel: getPassageReferenceLabel(problem),
+        pageSignature: problem.pageSignature || "",
+        pageCount: problem.pageCount || 0,
+        promptText: problem.promptText || "",
+        analysisText: problem.analysisText || "",
+        problemType: problem.problemType || PROBLEM_TYPE_OTHER,
+        subjectiveType: problem.subjectiveType || "",
+        selectableType: getSelectableTypeLabel(problem),
+        isSubjective: Boolean(problem.isSubjective),
+        typeTags: Array.isArray(problem.typeTags) ? [...problem.typeTags] : [],
+        segmentMeta: problem.segments.map((segment) => ({ ...segment })),
+        segmentBlobs
+      };
+    }
+
+    async function serializeProblemForSavedWork(problem) {
+      const segmentBlobs = await Promise.all(
+        problem.segmentImages.map(async (image) => {
+          if (!image?.url) {
+            return null;
+          }
+          return await fetch(image.url).then((response) => response.blob());
+        })
+      );
+      return {
+        id: problem.id,
+        kind: problem.kind,
+        number: problem.number,
+        groupLabel: problem.groupLabel || "",
+        worksheetFamily: problem.worksheetFamily || "",
+        worksheetRef: problem.worksheetRef || "",
+        passageGroupKey: problem.passageGroupKey || "",
+        segments: Array.isArray(problem.segments) ? problem.segments.map((segment) => ({ ...segment })) : [],
+        segmentBlobs,
+        pageSignature: problem.pageSignature || "",
+        pageCount: problem.pageCount || 0,
+        promptText: problem.promptText || "",
+        analysisText: problem.analysisText || "",
+        problemType: problem.problemType || "",
+        subjectiveType: problem.subjectiveType || "",
+        isSubjective: Boolean(problem.isSubjective),
+        typeTags: Array.isArray(problem.typeTags) ? [...problem.typeTags] : [],
+        manualSquashPercent: getManualSquashPercent(problem)
+      };
+    }
+
+    function buildSegmentImageFromSnapshot(blob, segment) {
+      if (!blob) {
+        return null;
+      }
+      const url = URL.createObjectURL(blob);
+      state.imageUrls.push(url);
+      const width = Math.max(1, Math.round((Number(segment?.x1) || 0) - (Number(segment?.x0) || 0) || 1));
+      const height = Math.max(1, Math.round((Number(segment?.y1) || 0) - (Number(segment?.y0) || 0) || 1));
+      return { url, width, height };
+    }
+
+    function hydrateProblemFromSavedWork(snapshot) {
+      const segments = Array.isArray(snapshot.segments) ? snapshot.segments.map((segment) => ({ ...segment })) : [];
+      const segmentBlobs = Array.isArray(snapshot.segmentBlobs) ? snapshot.segmentBlobs : [];
+      const problemText = snapshot.analysisText || snapshot.promptText || "";
+      const isShared = snapshot.kind === "shared";
+      const isTailProblem = !isShared && Boolean(snapshot.groupLabel);
+      const isSubjective = isShared ? false : isSubjectiveProblem(problemText);
+      const problemType = isShared
+        ? null
+        : (isTailProblem ? PROBLEM_TYPE_TAIL : classifyProblemType(problemText));
+      const subjectiveType = isSubjective && !isTailProblem
+        ? classifySubjectiveType(problemText, problemType)
+        : "";
+      return {
+        id: snapshot.id,
+        kind: snapshot.kind,
+        number: snapshot.number ?? null,
+        groupLabel: snapshot.groupLabel || "",
+        worksheetFamily: snapshot.worksheetFamily || "",
+        worksheetRef: snapshot.worksheetRef || "",
+        passageGroupKey: snapshot.passageGroupKey || "",
+        segments,
+        segmentImages: segments.map((segment, index) => buildSegmentImageFromSnapshot(segmentBlobs[index] || null, segment)),
+        pageSignature: snapshot.pageSignature || "",
+        pageCount: snapshot.pageCount || 0,
+        promptText: snapshot.promptText || "",
+        analysisText: snapshot.analysisText || "",
+        problemType,
+        subjectiveType,
+        isSubjective,
+        typeTags: buildProblemTypeTags(problemType, isSubjective, subjectiveType),
+        manualSquashPercent: snapshot.manualSquashPercent == null ? null : clampSquashPercent(snapshot.manualSquashPercent)
+      };
+    }
+
+    function captureSharedLayoutSettings() {
+      const settings = readSettings();
+      return {
+        kicker: elements.kickerInput.value.trim(),
+        title: settings.title,
+        subtitle: settings.subtitle,
+        maxPerColumn: settings.maxPerColumn,
+        pagePadding: settings.pagePadding,
+        columnGap: settings.columnGap,
+        cardGap: settings.cardGap,
+        previewZoom: Math.round(settings.previewZoom * 100),
+        accent: settings.accent,
+        logoSrc: state.logoSrc || "",
+        logoLabel: state.logoLabel || ""
+      };
+    }
+
+    function applySharedLayoutSettingsSnapshot(snapshot = {}) {
+      elements.kickerInput.value = snapshot.kicker || "";
+      elements.titleInput.value = snapshot.title || "변형문제 정리본";
+      elements.subtitleInput.value = snapshot.subtitle || "";
+      elements.maxPerColumnInput.value = String(snapshot.maxPerColumn || 2);
+      elements.pagePaddingInput.value = String(snapshot.pagePadding || 12);
+      elements.columnGapInput.value = String(snapshot.columnGap || 7);
+      elements.cardGapInput.value = String(snapshot.cardGap || 6);
+      const previewZoom = Number(snapshot.previewZoom);
+      elements.previewZoomInput.value = String(Number.isFinite(previewZoom) && previewZoom > 0 ? previewZoom : 90);
+      const accent = normalizeHex(snapshot.accent) || "#186b63";
+      elements.accentInput.value = accent;
+      elements.accentTextInput.value = accent;
+      state.logoSrc = snapshot.logoSrc || DEFAULT_LOGO_SRC;
+      state.logoLabel = snapshot.logoLabel || (snapshot.logoSrc ? "저장된 로고" : DEFAULT_LOGO_LABEL);
+      updateLogoUi();
+      applySettingsToUi();
+    }
+
+    async function saveProblemsToLibrary() {
+      if (!state.problems.length) {
+        return;
+      }
+      if (!state.selectedTextbookName) {
+        throw new Error("교재명이 정해지지 않아 문제 라이브러리에 저장할 수 없습니다.");
+      }
+
+      setBusy(true);
+      setStatus("문제 라이브러리에 저장할 이미지를 준비하는 중입니다...", "working", "라이브러리");
+      elements.librarySaveSummary.textContent = "문제 이미지를 정리해서 라이브러리에 저장하는 중입니다...";
+      await ensureAllProblemSegmentsReadyForLibrary();
+
+      const sourceRecord = {
+        sourceId: createLibrarySourceId(state.selectedTextbookName, state.fileName || state.lastExportName),
+        textbookName: state.selectedTextbookName,
+        fileName: state.fileName || `${state.lastExportName}.pdf`,
+        importedAt: Date.now(),
+        pageCount: state.stats?.pageCount || 0,
+        problemCount: getQuestionCount(state.problems)
+      };
+
+      const problemRecords = [];
+      for (const problem of state.problems) {
+        problemRecords.push(await serializeProblemForLibrary(problem, sourceRecord));
+      }
+
+      await deleteProblemsForSourceId(sourceRecord.sourceId);
+
+      const db = await openLibraryDb();
+      const transaction = db.transaction([LIBRARY_IMPORT_STORE, LIBRARY_PROBLEM_STORE], "readwrite");
+      const importStore = transaction.objectStore(LIBRARY_IMPORT_STORE);
+      const problemStore = transaction.objectStore(LIBRARY_PROBLEM_STORE);
+      importStore.put(sourceRecord);
+      problemRecords.forEach((record) => problemStore.put(record));
+      await idbTransactionDone(transaction);
+
+      await refreshLibrarySummary();
+      elements.librarySaveSummary.textContent = `${sourceRecord.textbookName} / ${sourceRecord.fileName} 저장 완료 · ${formatTimestamp(sourceRecord.importedAt)}`;
+      setBusy(false);
+      setStatus(`페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount()}개를 감지했습니다. 라이브러리 저장이 완료되었습니다.`, "idle", "저장 완료");
+    }
+
+    function getProblemRecordsOnly() {
+      return (state.libraryCache.problemRecords || []).filter((record) => record.kind === "problem");
+    }
+
+    function getSharedRecordsOnly() {
+      return (state.libraryCache.problemRecords || []).filter((record) => record.kind === "shared");
+    }
+
+    function getTailProblemRecordsOnly() {
+      return getProblemRecordsOnly().filter((record) => record.problemType === PROBLEM_TYPE_TAIL);
+    }
+
+    function getExamItems() {
+      return Array.isArray(state.libraryCache.examItems) ? state.libraryCache.examItems : [];
+    }
+
+    function getExamSets() {
+      return Array.isArray(state.libraryCache.examSets) ? state.libraryCache.examSets : [];
+    }
+
+    function getSavedWorks(kind = "") {
+      const records = Array.isArray(state.libraryCache.savedWorks) ? state.libraryCache.savedWorks : [];
+      return kind ? records.filter((record) => record.kind === kind) : records;
+    }
+
+    function getActiveHistoryExamItems() {
+      if (!state.examBuilder.loadedExamId) {
+        return getExamItems();
+      }
+      return getExamItems().filter((item) => item.examId !== state.examBuilder.loadedExamId);
+    }
+
+    function createPassageTypeKey(passageKey, typeLabel) {
+      return `${normalizeProblemText(passageKey)}::${normalizeProblemTypeToken(typeLabel)}`;
+    }
+
+    function getUsedProblemIdsFromHistory() {
+      return new Set(getActiveHistoryExamItems().map((item) => item.problemRecordId).filter(Boolean));
+    }
+
+    function getUsedPassageTypeKeysFromHistory() {
+      return new Set(getActiveHistoryExamItems().map((item) => item.passageTypeKey).filter(Boolean));
+    }
+
+    function createTailPackKey(record) {
+      return `${record.textbookName}::${record.sourceName}::${record.groupLabel || "tail"}`;
+    }
+
+    function getUsedTailPackKeysFromHistory() {
+      return new Set(
+        getActiveHistoryExamItems()
+          .filter((item) => item.category === "tail")
+          .map((item) => item.tailPackKey)
+          .filter(Boolean)
+      );
+    }
+
+    function getTailPackRecordsByKey(tailPackKey) {
+      const tailProblems = getTailProblemRecordsOnly().filter((record) => createTailPackKey(record) === tailPackKey);
+      if (!tailProblems.length) {
+        return [];
+      }
+      const firstRecord = tailProblems[0];
+      const sharedRecord = getSharedRecordsOnly().find((record) =>
+        record.textbookName === firstRecord.textbookName &&
+        record.sourceName === firstRecord.sourceName &&
+        record.groupLabel === firstRecord.groupLabel
+      );
+      const orderedProblems = [...tailProblems].sort((left, right) => (Number(left.number) || 0) - (Number(right.number) || 0));
+      return sharedRecord ? [sharedRecord, ...orderedProblems] : orderedProblems;
+    }
+
+    function buildLibrarySummary(imports, problemRecords) {
+      const questionRecords = problemRecords.filter((record) => record.kind === "problem");
+      return {
+        textbookCount: new Set(questionRecords.map((record) => record.textbookName).filter(Boolean)).size,
+        passageCount: new Set(questionRecords.map((record) => record.passageKey).filter(Boolean)).size,
+        problemCount: questionRecords.length,
+        importCount: imports.length,
+        examCount: getExamSets().length
+      };
+    }
+
+    function renderExamLibraryList() {
+      const questionRecords = getProblemRecordsOnly();
+      if (!questionRecords.length) {
+        elements.examLibraryList.innerHTML = `
+          <div class="exam-empty-state">
+            <h3>저장된 교재가 없습니다</h3>
+      <p>PDF LAB 탭에서 교재를 등록하고 라이브러리에 저장하면 여기서 지문과 유형을 바로 고를 수 있습니다.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const grouped = new Map();
+      questionRecords.forEach((record) => {
+        if (!grouped.has(record.textbookName)) {
+          grouped.set(record.textbookName, {
+            textbookName: record.textbookName,
+            passages: new Set(),
+            types: new Set(),
+            problems: 0,
+            updatedAt: 0
+          });
+        }
+        const group = grouped.get(record.textbookName);
+        group.passages.add(record.passageLabel || record.passageKey);
+        group.types.add(record.selectableType || record.problemType || PROBLEM_TYPE_OTHER);
+        group.problems += 1;
+        group.updatedAt = Math.max(group.updatedAt, Number(record.sourceImportedAt) || 0);
+      });
+
+      const cards = Array.from(grouped.values())
+        .sort((left, right) => left.textbookName.localeCompare(right.textbookName, "ko"))
+        .map((group) => `
+          <article class="exam-library-card">
+            <header class="exam-library-card-header">
+              <h3>${escapeHtml(group.textbookName)}</h3>
+              <span>${group.problems}문항</span>
+            </header>
+            <p class="exam-library-card-meta">지문 ${group.passages.size}개 · 유형 ${group.types.size}개 · 최근 저장 ${escapeHtml(formatTimestamp(group.updatedAt) || "-")}</p>
+            <p class="exam-library-card-types">${escapeHtml(Array.from(group.types).sort((left, right) => left.localeCompare(right, "ko")).join(", "))}</p>
+          </article>
+        `);
+
+      elements.examLibraryList.innerHTML = cards.join("");
+    }
+
+    function createExamSlot(category, order) {
+      return {
+        id: `${category}-${order}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        category,
+        textbookName: "",
+        passageKey: "",
+        tailPackKey: "",
+        selectedType: "",
+        assignedProblemId: "",
+        assignedProblemIds: [],
+        errorMessage: ""
+      };
+    }
+
+    function getExamSlot(slotId) {
+      return state.examBuilder.slots.find((slot) => slot.id === slotId) || null;
+    }
+
+    function getExamSlotAssignedRecord(slot) {
+      return getProblemRecordsOnly().find((record) => record.recordId === slot.assignedProblemId) || null;
+    }
+
+    function getExamSlotAssignedRecordsForSlot(slot) {
+      if (slot.category === "tail") {
+        return getTailPackRecordsByKey(slot.tailPackKey);
+      }
+      const assignedRecord = getExamSlotAssignedRecord(slot);
+      return assignedRecord ? [assignedRecord] : [];
+    }
+
+    function getExamCategoryRecords(category) {
+      if (category === "tail") {
+        return getTailProblemRecordsOnly();
+      }
+      return getProblemRecordsOnly().filter((record) => category === "subjective" ? record.isSubjective : !record.isSubjective && record.problemType !== PROBLEM_TYPE_TAIL);
+    }
+
+    function getExamTextbookOptions(category) {
+      return [...new Set(getExamCategoryRecords(category).map((record) => record.textbookName).filter(Boolean))]
+        .sort((left, right) => left.localeCompare(right, "ko"));
+    }
+
+    function getExamPassageOptions(slot) {
+      if (slot.category === "tail") {
+        const grouped = new Map();
+        getExamCategoryRecords(slot.category)
+          .filter((record) => record.textbookName === slot.textbookName)
+          .forEach((record) => {
+            const tailPackKey = createTailPackKey(record);
+            if (!grouped.has(tailPackKey)) {
+              grouped.set(tailPackKey, {
+                value: tailPackKey,
+                label: `${record.passageLabel || record.passageKey} · ${record.groupLabel}`,
+                count: 0
+              });
+            }
+            grouped.get(tailPackKey).count += 1;
+          });
+        return Array.from(grouped.values()).sort((left, right) => left.label.localeCompare(right.label, "ko"));
+      }
+      const grouped = new Map();
+      getExamCategoryRecords(slot.category)
+        .filter((record) => record.textbookName === slot.textbookName)
+        .forEach((record) => {
+          if (!grouped.has(record.passageKey)) {
+            grouped.set(record.passageKey, {
+              value: record.passageKey,
+              label: record.passageLabel || record.passageKey,
+              count: 0
+            });
+          }
+          grouped.get(record.passageKey).count += 1;
+        });
+      return Array.from(grouped.values()).sort((left, right) => left.label.localeCompare(right.label, "ko"));
+    }
+
+    function getExamTypeOptions(slot) {
+      if (slot.category === "tail") {
+        return [PROBLEM_TYPE_TAIL];
+      }
+      return [...new Set(
+        getExamCategoryRecords(slot.category)
+          .filter((record) => record.textbookName === slot.textbookName && record.passageKey === slot.passageKey)
+          .map((record) => record.selectableType || record.problemType || PROBLEM_TYPE_OTHER)
+      )].sort((left, right) => left.localeCompare(right, "ko"));
+    }
+
+    function getOtherAssignedProblemIds(slotId) {
+      return new Set(
+        state.examBuilder.slots
+          .filter((slot) => slot.id !== slotId)
+          .flatMap((slot) => slot.category === "tail" ? (slot.assignedProblemIds || []) : [slot.assignedProblemId])
+          .filter(Boolean)
+      );
+    }
+
+    function getOtherAssignedPassageTypeKeys(slotId) {
+      return new Set(
+        state.examBuilder.slots
+          .filter((slot) => slot.id !== slotId && slot.passageKey && slot.selectedType)
+          .map((slot) => createPassageTypeKey(slot.passageKey, slot.selectedType))
+      );
+    }
+
+    function getOtherAssignedTailPackKeys(slotId) {
+      return new Set(
+        state.examBuilder.slots
+          .filter((slot) => slot.id !== slotId && slot.category === "tail" && slot.tailPackKey)
+          .map((slot) => slot.tailPackKey)
+      );
+    }
+
+    function assignProblemToExamSlot(slotId, forceAlternate = false) {
+      const slot = getExamSlot(slotId);
+      if (!slot) {
+        return;
+      }
+      const previousProblemId = slot.assignedProblemId;
+      const previousProblemIds = Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [];
+      slot.errorMessage = "";
+      slot.assignedProblemId = "";
+      slot.assignedProblemIds = [];
+
+      if (!slot.textbookName || !slot.selectedType || (!slot.passageKey && !slot.tailPackKey)) {
+        return;
+      }
+
+      if (slot.category === "tail") {
+        if (getUsedTailPackKeysFromHistory().has(slot.tailPackKey)) {
+          slot.errorMessage = "이 꼬리문제 지문은 이전 시험지에서 사용되었습니다.";
+          return;
+        }
+        if (getOtherAssignedTailPackKeys(slotId).has(slot.tailPackKey)) {
+          slot.errorMessage = "현재 시험지에 이미 같은 꼬리문제 지문이 들어 있습니다.";
+          return;
+        }
+
+        const tailPackRecords = getTailPackRecordsByKey(slot.tailPackKey).filter((record) => record.kind === "problem");
+        if (!tailPackRecords.length) {
+          slot.errorMessage = "이 꼬리문제 지문에는 배치 가능한 문항이 없습니다.";
+          return;
+        }
+        const historyUsedProblemIds = getUsedProblemIdsFromHistory();
+        const otherAssignedProblemIds = getOtherAssignedProblemIds(slotId);
+        const unavailableProblemIds = new Set([...historyUsedProblemIds, ...otherAssignedProblemIds]);
+        if (tailPackRecords.some((record) => unavailableProblemIds.has(record.recordId))) {
+          slot.errorMessage = "이 꼬리문제 세트 안에 이전에 사용된 문제가 포함되어 있어 배치할 수 없습니다.";
+          return;
+        }
+        slot.assignedProblemIds = tailPackRecords.map((record) => record.recordId);
+        slot.assignedProblemId = tailPackRecords[0]?.recordId || "";
+        return;
+      }
+
+      const passageTypeKey = createPassageTypeKey(slot.passageKey, slot.selectedType);
+      if (getUsedPassageTypeKeysFromHistory().has(passageTypeKey)) {
+        slot.errorMessage = "이 지문의 이 유형은 이전 시험지에서 사용되었습니다.";
+        return;
+      }
+      if (getOtherAssignedPassageTypeKeys(slotId).has(passageTypeKey)) {
+        slot.errorMessage = "현재 시험지에 이미 같은 지문·유형이 들어 있습니다.";
+        return;
+      }
+
+      const allCandidates = getExamCategoryRecords(slot.category)
+        .filter((record) =>
+          record.textbookName === slot.textbookName &&
+          record.passageKey === slot.passageKey &&
+          (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === slot.selectedType
+        );
+
+      if (!allCandidates.length) {
+        slot.errorMessage = "이 지문에는 해당 유형 문제가 없습니다.";
+        return;
+      }
+
+      const usedProblemIds = new Set([
+        ...getOtherAssignedProblemIds(slotId),
+        ...getUsedProblemIdsFromHistory()
+      ]);
+      let availableCandidates = allCandidates.filter((record) => !usedProblemIds.has(record.recordId));
+
+      if (forceAlternate && previousProblemId) {
+        availableCandidates = availableCandidates.filter((record) => record.recordId !== previousProblemId);
+      }
+
+      if (!availableCandidates.length) {
+        slot.errorMessage = forceAlternate
+          ? "교체 가능한 다른 문항이 없습니다."
+          : "이미 사용된 문제를 제외하면 배치 가능한 문항이 없습니다.";
+        return;
+      }
+
+      const selectedRecord = availableCandidates[Math.floor(Math.random() * availableCandidates.length)];
+      slot.assignedProblemId = selectedRecord.recordId;
+      slot.assignedProblemIds = [selectedRecord.recordId];
+    }
+
+    function updateExamBuilderSummary() {
+      const questionRecords = getProblemRecordsOnly();
+      if (!questionRecords.length) {
+    elements.examBuilderSummary.textContent = "먼저 PDF LAB 탭에서 문제를 라이브러리에 저장해주세요.";
+        return;
+      }
+      const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
+      elements.examBuilderSummary.textContent = `현재 라이브러리 ${questionRecords.length}문항 · 시험 이력 ${getExamSets().length}건 · 슬롯 ${state.examBuilder.slots.length}개 · 자동 배정 ${assignedCount}개`;
+    }
+
+    function updateExamActionButtons() {
+      const slotCount = state.examBuilder.slots.length;
+      const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
+      const isReady = slotCount > 0 && assignedCount === slotCount;
+      elements.saveExamWorkButton.disabled = state.isBusy || slotCount === 0;
+      elements.previewExamButton.disabled = state.isBusy || !isReady;
+      elements.printExamButton.disabled = state.isBusy || !isReady;
+      elements.commitExamButton.disabled = state.isBusy || !isReady;
+    }
+
+    function renderExamSlots() {
+      const slots = state.examBuilder.slots;
+      elements.examSlotEmptyState.hidden = slots.length > 0;
+      if (!slots.length) {
+        elements.examSlotList.innerHTML = "";
+        updateExamBuilderSummary();
+        updateExamActionButtons();
+        renderExamMiniPreview();
+        return;
+      }
+
+      elements.examSlotList.innerHTML = slots.map((slot, index) => {
+        const textbookOptions = getExamTextbookOptions(slot.category);
+        const passageOptions = slot.textbookName ? getExamPassageOptions(slot) : [];
+        const hasPassageSelection = slot.category === "tail" ? Boolean(slot.tailPackKey) : Boolean(slot.passageKey);
+        const typeOptions = hasPassageSelection ? getExamTypeOptions(slot) : [];
+        const assignedRecord = getExamSlotAssignedRecord(slot);
+        const assignedRecords = getExamSlotAssignedRecordsForSlot(slot);
+        const canReroll = Boolean(slot.assignedProblemId);
+        const categoryLabel = slot.category === "subjective" ? "주관식" : slot.category === "tail" ? "꼬리문제" : "객관식";
+        const slotNumber = index + 1;
+        const resultMarkup = slot.category === "tail"
+          ? (
+            assignedRecords.length
+              ? `
+                <strong>자동 선택 꼬리문항 ${assignedRecords.filter((record) => record.kind === "problem").map((record) => record.number).join(", ")}</strong>
+                <p>${escapeHtml(assignedRecords[0]?.sourceName || "")}</p>
+                <p>${escapeHtml(assignedRecords.filter((record) => record.kind === "problem").map((record) => getSelectableTypeLabel(record)).join(" · "))}</p>
+              `
+              : `<p>${escapeHtml(slot.errorMessage || "아직 꼬리문제 세트가 선택되지 않았습니다.")}</p>`
+          )
+          : (
+            assignedRecord
+              ? `
+                <strong>자동 선택 문항 ${assignedRecord.number || "-"}</strong>
+                <p>${escapeHtml(assignedRecord.sourceName)}</p>
+                <p>${escapeHtml(truncateText(assignedRecord.promptText || assignedRecord.analysisText || "문항 미리보기 텍스트가 없습니다.", 130))}</p>
+              `
+              : `<p>${escapeHtml(slot.errorMessage || "아직 문항이 선택되지 않았습니다.")}</p>`
+          );
+        return `
+          <article class="exam-slot-card" data-slot-id="${escapeHtml(slot.id)}">
+            <header class="exam-slot-card-header">
+              <div>
+                <p class="exam-slot-label">${escapeHtml(categoryLabel)} 슬롯 ${slotNumber}</p>
+                <h3 class="exam-slot-title">${escapeHtml(slot.selectedType || (slot.category === "tail" ? "꼬리문제 지문을 선택해주세요" : "지문과 유형을 선택해주세요"))}</h3>
+              </div>
+              <button class="ghost-button exam-slot-reroll-button" type="button" data-slot-reroll="${escapeHtml(slot.id)}"${canReroll ? "" : " disabled"}>문항 교체</button>
+            </header>
+            <div class="exam-slot-grid">
+              <label class="field-row">
+                <span class="field-label">교재</span>
+                <select class="select-input exam-slot-select" data-slot-field="textbookName" data-slot-id="${escapeHtml(slot.id)}">
+                  <option value="">교재 선택</option>
+                  ${textbookOptions.map((value) => `<option value="${escapeHtml(value)}"${value === slot.textbookName ? " selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+                </select>
+              </label>
+              <label class="field-row">
+                <span class="field-label">지문</span>
+                <select class="select-input exam-slot-select" data-slot-field="${slot.category === "tail" ? "tailPackKey" : "passageKey"}" data-slot-id="${escapeHtml(slot.id)}"${slot.textbookName ? "" : " disabled"}>
+                  <option value="">지문 선택</option>
+                  ${passageOptions.map((option) => {
+                    const selectedValue = slot.category === "tail" ? slot.tailPackKey : slot.passageKey;
+                    return `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? " selected" : ""}>${escapeHtml(option.label)} (${option.count})</option>`;
+                  }).join("")}
+                </select>
+              </label>
+              <label class="field-row">
+                <span class="field-label">유형</span>
+                <select class="select-input exam-slot-select" data-slot-field="selectedType" data-slot-id="${escapeHtml(slot.id)}"${hasPassageSelection && slot.category !== "tail" ? "" : " disabled"}>
+                  <option value="">유형 선택</option>
+                  ${typeOptions.map((value) => `<option value="${escapeHtml(value)}"${value === slot.selectedType ? " selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+            <div class="exam-slot-result${slot.errorMessage ? " is-error" : ""}">
+              ${resultMarkup}
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      updateExamBuilderSummary();
+      updateExamActionButtons();
+      renderExamMiniPreview();
+    }
+
+    function updateExamSlotField(slotId, fieldName, value) {
+      const slot = getExamSlot(slotId);
+      if (!slot) {
+        return;
+      }
+      slot[fieldName] = value;
+      if (fieldName === "textbookName") {
+        slot.passageKey = "";
+        slot.tailPackKey = "";
+        slot.selectedType = "";
+        slot.assignedProblemId = "";
+        slot.assignedProblemIds = [];
+        slot.errorMessage = "";
+      } else if (fieldName === "passageKey" || fieldName === "tailPackKey") {
+        if (fieldName === "passageKey") {
+          slot.tailPackKey = "";
+        }
+        if (fieldName === "tailPackKey") {
+          slot.passageKey = "";
+        }
+        slot.selectedType = slot.category === "tail" && fieldName === "tailPackKey" ? PROBLEM_TYPE_TAIL : "";
+        slot.assignedProblemId = "";
+        slot.assignedProblemIds = [];
+        slot.errorMessage = "";
+        if (slot.category === "tail" && fieldName === "tailPackKey" && slot.tailPackKey) {
+          assignProblemToExamSlot(slotId, false);
+        }
+      } else if (fieldName === "selectedType") {
+        assignProblemToExamSlot(slotId, false);
+      }
+      renderExamSlots();
+    }
+
+    function createExamSlotsFromInputs() {
+      const objectiveCount = Math.max(0, Math.min(60, Number.parseInt(elements.examObjectiveCountInput.value, 10) || 0));
+      const subjectiveCount = Math.max(0, Math.min(20, Number.parseInt(elements.examSubjectiveCountInput.value, 10) || 0));
+      const tailCount = Math.max(0, Math.min(20, Number.parseInt(elements.examTailCountInput.value, 10) || 0));
+      state.examBuilder.loadedExamId = "";
+      state.examBuilder.loadedWorkId = "";
+      state.examBuilder.slots = [
+        ...Array.from({ length: objectiveCount }, (_, index) => createExamSlot("objective", index + 1)),
+        ...Array.from({ length: subjectiveCount }, (_, index) => createExamSlot("subjective", index + 1)),
+        ...Array.from({ length: tailCount }, (_, index) => createExamSlot("tail", index + 1))
+      ];
+      elements.examExportSummary.textContent = "슬롯을 채운 뒤 시험지 HTML 미리보기 또는 PDF 저장 / 인쇄를 진행할 수 있습니다.";
+      renderExamSlots();
+    }
+
+    function clearExamSlots() {
+      cleanupExamPreviewUrls();
+      cleanupExamExportUrls();
+      state.examBuilder.loadedExamId = "";
+      state.examBuilder.loadedWorkId = "";
+      state.examBuilder.slots = [];
+      elements.examWorkNameInput.value = "";
+      elements.examExportSummary.textContent = "슬롯을 채우면 선택된 문항들로 바로 시험지 PDF를 만들 수 있습니다.";
+      renderExamSlots();
+    }
+
+    async function refreshLibrarySummary() {
+      const [imports, problemRecords, examSets, examItems, savedWorks] = await Promise.all([
+        loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
+        loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
+        loadAllRecordsFromStore(LIBRARY_EXAM_ITEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_WORK_STORE)
+      ]);
+      state.libraryCache = {
+        imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
+        problemRecords,
+        examSets: examSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
+        examItems,
+        savedWorks: savedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
+      };
+      const summary = buildLibrarySummary(state.libraryCache.imports, state.libraryCache.problemRecords);
+      elements.libraryTextbookCount.textContent = String(summary.textbookCount);
+      elements.libraryPassageCount.textContent = String(summary.passageCount);
+      elements.libraryProblemCount.textContent = String(summary.problemCount);
+      elements.libraryImportCount.textContent = String(summary.importCount);
+      if (!summary.problemCount) {
+        elements.librarySummaryNote.textContent = "아직 저장된 문제 라이브러리가 없습니다.";
+      } else {
+        const latestImport = state.libraryCache.imports[0];
+        elements.librarySummaryNote.textContent = latestImport
+          ? `최근 저장: ${latestImport.textbookName} / ${latestImport.fileName} · ${formatTimestamp(latestImport.importedAt)} · 시험 이력 ${summary.examCount}건`
+          : "저장된 문제 라이브러리를 불러왔습니다.";
+      }
+      renderExamLibraryList();
+      renderExamHistoryList();
+      renderSavedWorkLists();
+      renderExamSlots();
+    }
+
+    function readExamExportSettings() {
+      const base = readSettings();
+      return {
+        ...base,
+        kicker: elements.examKickerInput.value.trim() || "FINAL TEST WORKSHEET",
+        title: elements.examTitleInput.value.trim() || "파이널 테스트",
+        subtitle: elements.examSubtitleInput.value.trim()
+      };
+    }
+
+    function renderExamHistoryList() {
+      const examSets = getExamSets();
+      elements.examHistoryEmptyState.hidden = examSets.length > 0;
+      if (!examSets.length) {
+        elements.examHistoryList.innerHTML = "";
+        return;
+      }
+      const examItems = getExamItems();
+      elements.examHistoryList.innerHTML = examSets.map((examSet) => {
+        const items = examItems.filter((item) => item.examId === examSet.examId);
+        const typeSummary = Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko"));
+        return `
+          <article class="exam-history-card">
+            <header class="exam-history-card-header">
+              <div>
+                <h3>${escapeHtml(examSet.title || "시험지")}</h3>
+                <p>${escapeHtml(formatTimestamp(examSet.createdAt) || "-")}</p>
+              </div>
+              <div class="exam-history-actions">
+                <button class="ghost-button exam-history-load-button" type="button" data-exam-load="${escapeHtml(examSet.examId)}">불러오기</button>
+                <button class="ghost-button exam-history-delete-button" type="button" data-exam-delete="${escapeHtml(examSet.examId)}">이력 삭제</button>
+              </div>
+            </header>
+            <p class="exam-history-meta">총 ${examSet.totalCount || items.length}문항 · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0} · 꼬리문제 ${examSet.tailCount || 0}</p>
+            <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderSavedWorkCards(kind, currentWorkId = "") {
+      const works = getSavedWorks(kind);
+      return works.map((record) => {
+        const isCurrent = currentWorkId && record.workId === currentWorkId;
+        const subtitle = record.summaryLine || record.subtitle || "";
+        return `
+          <article class="saved-work-card${isCurrent ? " is-current" : ""}">
+            <header class="saved-work-card-header">
+              <div>
+                <h3>${escapeHtml(record.name || "저장 작업")}</h3>
+                <p>${escapeHtml(formatTimestamp(record.updatedAt || record.createdAt) || "-")}</p>
+              </div>
+              <div class="saved-work-actions">
+                <button class="ghost-button saved-work-load-button" type="button" data-work-load="${escapeHtml(record.workId)}">불러오기</button>
+                <button class="ghost-button saved-work-delete-button" type="button" data-work-delete="${escapeHtml(record.workId)}">삭제</button>
+              </div>
+            </header>
+            ${subtitle ? `<p class="saved-work-meta">${escapeHtml(subtitle)}</p>` : ""}
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderSavedWorkLists() {
+      const repackWorks = getSavedWorks("repack");
+      elements.repackWorkEmptyState.hidden = repackWorks.length > 0;
+      elements.repackWorkList.innerHTML = repackWorks.length
+        ? renderSavedWorkCards("repack", state.loadedRepackWorkId)
+        : "";
+
+      const examWorks = getSavedWorks("exam");
+      elements.examWorkEmptyState.hidden = examWorks.length > 0;
+      elements.examWorkList.innerHTML = examWorks.length
+        ? renderSavedWorkCards("exam", state.examBuilder.loadedWorkId)
+        : "";
+    }
+
+    function getDefaultRepackWorkName() {
+      return normalizeProblemText(
+        elements.repackWorkNameInput.value ||
+        [state.selectedTextbookName, state.fileName || readSettings().title].filter(Boolean).join(" / ")
+      ) || `정리 작업 ${formatTimestamp(Date.now())}`;
+    }
+
+    function getDefaultExamWorkName() {
+      return normalizeProblemText(elements.examWorkNameInput.value || elements.examTitleInput.value) || `시험지 작업 ${formatTimestamp(Date.now())}`;
+    }
+
+    async function saveCurrentRepackWork() {
+      if (!state.problems.length) {
+        throw new Error("먼저 PDF를 분석해 문항을 만든 뒤 저장해주세요.");
+      }
+
+      setBusy(true);
+      setStatus("정리 작업을 저장하는 중입니다...", "working", "작업 저장");
+      try {
+        await ensureAllProblemSegmentsReadyForLibrary();
+        const existingRecord = state.loadedRepackWorkId
+          ? getSavedWorks("repack").find((record) => record.workId === state.loadedRepackWorkId)
+          : null;
+        const workId = existingRecord?.workId || createSavedWorkId("repack");
+        const now = Date.now();
+        const problems = [];
+        for (const problem of state.problems) {
+          problems.push(await serializeProblemForSavedWork(problem));
+        }
+        const workName = getDefaultRepackWorkName();
+        const visibleCount = getQuestionCount(getActiveProblems());
+        const payload = {
+          fileName: state.fileName,
+          selectedTextbookName: state.selectedTextbookName || getSelectedTextbookName(),
+          lastExportName: state.lastExportName,
+          renderScale: state.renderScale,
+          stats: state.stats,
+          questionFilterText: elements.questionFilterInput.value,
+          typeFilterText: elements.typeFilterInput.value,
+          layoutSettings: captureSharedLayoutSettings(),
+          problems
+        };
+        const workRecord = {
+          workId,
+          kind: "repack",
+          name: workName,
+          createdAt: existingRecord?.createdAt || now,
+          updatedAt: now,
+          summaryLine: `${payload.selectedTextbookName || "교재 미지정"} · ${payload.fileName || "PDF 없음"} · 문항 ${getQuestionCount(state.problems)}개 / 현재 출력 ${visibleCount}개`,
+          payload
+        };
+
+        const db = await openLibraryDb();
+        const transaction = db.transaction(LIBRARY_WORK_STORE, "readwrite");
+        transaction.objectStore(LIBRARY_WORK_STORE).put(workRecord);
+        await idbTransactionDone(transaction);
+        state.loadedRepackWorkId = workId;
+        elements.repackWorkNameInput.value = workName;
+        await refreshLibrarySummary();
+        elements.repackWorkSummary.textContent = `${workName} 작업을 저장했습니다. 나중에 다시 불러와 필터와 레이아웃을 이어서 수정할 수 있습니다.`;
+        setStatus(`${workName} 작업을 저장했습니다.`, "idle", "작업 저장");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function saveCurrentExamWork() {
+      if (!state.examBuilder.slots.length) {
+        throw new Error("먼저 시험지 슬롯을 만든 뒤 저장해주세요.");
+      }
+
+      setBusy(true);
+      setStatus("시험지 작업을 저장하는 중입니다...", "working", "작업 저장");
+      try {
+        const existingRecord = state.examBuilder.loadedWorkId
+          ? getSavedWorks("exam").find((record) => record.workId === state.examBuilder.loadedWorkId)
+          : null;
+        const workId = existingRecord?.workId || createSavedWorkId("exam");
+        const now = Date.now();
+        const slots = state.examBuilder.slots.map((slot) => ({
+          id: slot.id,
+          category: slot.category,
+          textbookName: slot.textbookName,
+          passageKey: slot.passageKey,
+          tailPackKey: slot.tailPackKey,
+          selectedType: slot.selectedType,
+          assignedProblemId: slot.assignedProblemId,
+          assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
+          errorMessage: slot.errorMessage || ""
+        }));
+        const workName = getDefaultExamWorkName();
+        const assignedCount = slots.filter((slot) => slot.assignedProblemId).length;
+        const payload = {
+          objectiveCount: Number.parseInt(elements.examObjectiveCountInput.value, 10) || 0,
+          subjectiveCount: Number.parseInt(elements.examSubjectiveCountInput.value, 10) || 0,
+          tailCount: Number.parseInt(elements.examTailCountInput.value, 10) || 0,
+          kicker: elements.examKickerInput.value.trim(),
+          title: elements.examTitleInput.value.trim(),
+          subtitle: elements.examSubtitleInput.value.trim(),
+          loadedExamId: state.examBuilder.loadedExamId || "",
+          layoutSettings: captureSharedLayoutSettings(),
+          slots
+        };
+        const workRecord = {
+          workId,
+          kind: "exam",
+          name: workName,
+          createdAt: existingRecord?.createdAt || now,
+          updatedAt: now,
+          summaryLine: `객관식 ${payload.objectiveCount} · 주관식 ${payload.subjectiveCount} · 꼬리문제 ${payload.tailCount} · 배정 ${assignedCount}/${slots.length}`,
+          payload
+        };
+
+        const db = await openLibraryDb();
+        const transaction = db.transaction(LIBRARY_WORK_STORE, "readwrite");
+        transaction.objectStore(LIBRARY_WORK_STORE).put(workRecord);
+        await idbTransactionDone(transaction);
+        state.examBuilder.loadedWorkId = workId;
+        elements.examWorkNameInput.value = workName;
+        await refreshLibrarySummary();
+        elements.examWorkSummary.textContent = `${workName} 작업을 저장했습니다. 나중에 다시 불러와 제목 수정이나 문항 교체를 이어갈 수 있습니다.`;
+        setStatus(`${workName} 작업을 저장했습니다.`, "idle", "작업 저장");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function applySelectedTextbookToUi(textbookName) {
+      const normalized = registerTextbookName(textbookName);
+      state.selectedTextbookName = normalized;
+      elements.textbookModeExisting.checked = true;
+      elements.textbookModeNew.checked = false;
+      elements.newTextbookInput.value = normalized;
+      elements.existingTextbookSelect.value = normalized;
+      syncTextbookModeUi();
+      updateLoadedFileLabel();
+    }
+
+    async function loadSavedWork(workId) {
+      const record = getSavedWorks().find((entry) => entry.workId === workId);
+      if (!record) {
+        throw new Error("불러올 저장 작업을 찾을 수 없습니다.");
+      }
+
+      if (record.kind === "repack") {
+        cleanupObjectUrls();
+        cleanupExamPreviewUrls();
+        cleanupExamExportUrls();
+        if (state.pdfDoc) {
+          try {
+            await state.pdfDoc.destroy();
+          } catch (error) {
+            console.warn("Failed to destroy previous PDF document", error);
+          }
+        }
+        state.pdfDoc = null;
+        state.pages = [];
+        state.layoutPages = [];
+        state.selectionInfo = null;
+        state.fileName = record.payload?.fileName || "";
+        state.lastExportName = record.payload?.lastExportName || "repacked-problems";
+        state.renderScale = record.payload?.renderScale || DEFAULT_RENDER_SCALE;
+        state.stats = record.payload?.stats || null;
+        applySelectedTextbookToUi(record.payload?.selectedTextbookName || "");
+        applySharedLayoutSettingsSnapshot(record.payload?.layoutSettings || {});
+        elements.questionFilterInput.value = record.payload?.questionFilterText || "";
+        elements.typeFilterInput.value = record.payload?.typeFilterText || "";
+        state.problems = Array.isArray(record.payload?.problems)
+          ? record.payload.problems.map(hydrateProblemFromSavedWork)
+          : [];
+        state.visibleProblems = null;
+        state.loadedRepackWorkId = workId;
+        elements.repackWorkNameInput.value = record.name || "";
+        updateLoadedFileLabel();
+        renderPreview();
+        setActiveTab("repack");
+        elements.repackWorkSummary.textContent = `${record.name || "저장 작업"}을 불러왔습니다. 문항 선택과 유형 필터, 레이아웃을 다시 수정할 수 있습니다.`;
+        setStatus(`${record.name || "저장 작업"}을 불러왔습니다.`, "idle", "작업 불러오기");
+        return;
+      }
+
+      const payload = record.payload || {};
+      applySharedLayoutSettingsSnapshot(payload.layoutSettings || {});
+      elements.examObjectiveCountInput.value = String(payload.objectiveCount || 0);
+      elements.examSubjectiveCountInput.value = String(payload.subjectiveCount || 0);
+      elements.examTailCountInput.value = String(payload.tailCount || 0);
+      elements.examKickerInput.value = payload.kicker || "FINAL TEST WORKSHEET";
+      elements.examTitleInput.value = payload.title || "파이널 테스트";
+      elements.examSubtitleInput.value = payload.subtitle || "";
+      state.examBuilder.loadedExamId = payload.loadedExamId || "";
+      state.examBuilder.loadedWorkId = workId;
+      state.examBuilder.slots = Array.isArray(payload.slots)
+        ? payload.slots.map((slot, index) => ({
+            id: slot.id || `${slot.category || "objective"}-${index + 1}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            category: slot.category || "objective",
+            textbookName: slot.textbookName || "",
+            passageKey: slot.passageKey || "",
+            tailPackKey: slot.tailPackKey || "",
+            selectedType: slot.selectedType || "",
+            assignedProblemId: slot.assignedProblemId || "",
+            assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
+            errorMessage: slot.errorMessage || ""
+          }))
+        : [];
+      const availableProblemIds = new Set(getProblemRecordsOnly().map((record) => record.recordId));
+      state.examBuilder.slots.forEach((slot) => {
+        const hasAssignedRecord = slot.category === "tail"
+          ? Array.isArray(slot.assignedProblemIds) && slot.assignedProblemIds.length > 0 && slot.assignedProblemIds.every((id) => availableProblemIds.has(id))
+          : Boolean(slot.assignedProblemId && availableProblemIds.has(slot.assignedProblemId));
+        if (!hasAssignedRecord && slot.textbookName && slot.selectedType && (slot.passageKey || slot.tailPackKey)) {
+          assignProblemToExamSlot(slot.id, false);
+        }
+      });
+      elements.examWorkNameInput.value = record.name || "";
+      renderExamSlots();
+      setActiveTab("exam");
+      elements.examWorkSummary.textContent = `${record.name || "저장 작업"}을 불러왔습니다. 제목을 바꾸거나 문항을 교체한 뒤 다시 저장할 수 있습니다.`;
+      setStatus(`${record.name || "저장 작업"}을 불러왔습니다.`, "idle", "작업 불러오기");
+    }
+
+    async function deleteSavedWork(workId) {
+      const target = getSavedWorks().find((record) => record.workId === workId);
+      await deleteRecordFromStore(LIBRARY_WORK_STORE, workId);
+      if (state.loadedRepackWorkId === workId) {
+        state.loadedRepackWorkId = "";
+      }
+      if (state.examBuilder.loadedWorkId === workId) {
+        state.examBuilder.loadedWorkId = "";
+      }
+      await refreshLibrarySummary();
+      const label = target?.name || "저장 작업";
+      if (target?.kind === "repack") {
+        elements.repackWorkSummary.textContent = `${label} 작업을 삭제했습니다.`;
+      } else if (target?.kind === "exam") {
+        elements.examWorkSummary.textContent = `${label} 작업을 삭제했습니다.`;
+      }
+      setStatus(`${label} 작업을 삭제했습니다.`, "idle", "작업 삭제");
+    }
+
+    function loadExamHistory(examId) {
+      const examSet = getExamSets().find((entry) => entry.examId === examId);
+      if (!examSet) {
+        throw new Error("불러올 시험지 이력을 찾을 수 없습니다.");
+      }
+
+      const examItems = getExamItems()
+        .filter((item) => item.examId === examId)
+        .sort((left, right) => {
+          const slotDiff = (Number(left.slotIndex) || 0) - (Number(right.slotIndex) || 0);
+          if (slotDiff !== 0) {
+            return slotDiff;
+          }
+          return String(left.problemRecordId || "").localeCompare(String(right.problemRecordId || ""), "ko");
+        });
+
+      if (!examItems.length) {
+        throw new Error("불러올 시험지에 저장된 문항 이력이 없습니다.");
+      }
+
+      elements.examObjectiveCountInput.value = String(examSet.objectiveCount || examItems.filter((item) => item.category === "objective").length);
+      elements.examSubjectiveCountInput.value = String(examSet.subjectiveCount || examItems.filter((item) => item.category === "subjective").length);
+      elements.examTailCountInput.value = String(examSet.tailCount || new Set(examItems.filter((item) => item.category === "tail").map((item) => item.slotIndex)).size);
+      createExamSlotsFromInputs();
+
+      state.examBuilder.loadedExamId = examId;
+      elements.examKickerInput.value = examSet.kicker || "FINAL TEST WORKSHEET";
+      elements.examTitleInput.value = examSet.title || "파이널 테스트";
+      elements.examSubtitleInput.value = examSet.subtitle || "";
+
+      const slotSeedItems = Array.from(
+        examItems.reduce((map, item) => {
+          if (!map.has(item.slotIndex)) {
+            map.set(item.slotIndex, item);
+          }
+          return map;
+        }, new Map()).values()
+      ).sort((left, right) => (Number(left.slotIndex) || 0) - (Number(right.slotIndex) || 0));
+
+      for (const seedItem of slotSeedItems) {
+        const slot = state.examBuilder.slots[(Number(seedItem.slotIndex) || 1) - 1];
+        if (!slot) {
+          continue;
+        }
+        slot.textbookName = seedItem.textbookName || "";
+        slot.errorMessage = "";
+        if (slot.category === "tail") {
+          slot.tailPackKey = seedItem.tailPackKey || "";
+          slot.selectedType = PROBLEM_TYPE_TAIL;
+        } else {
+          slot.passageKey = seedItem.passageKey || "";
+          slot.selectedType = seedItem.typeLabel || "";
+        }
+        assignProblemToExamSlot(slot.id, false);
+      }
+
+      renderExamSlots();
+      setActiveTab("exam");
+      elements.examHistorySummary.textContent = `${examSet.title || "시험지"} 이력을 불러왔습니다. 제목과 부제를 수정한 뒤 바로 다시 PDF로 출력할 수 있습니다.`;
+    }
+
+    function cleanupExamUrls(bucketName = "previewUrls") {
+      const targetUrls = state.examBuilder[bucketName] || [];
+      for (const url of targetUrls) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn("Failed to revoke exam preview URL", error);
+        }
+      }
+      state.examBuilder[bucketName] = [];
+    }
+
+    function cleanupExamPreviewUrls() {
+      cleanupExamUrls("previewUrls");
+    }
+
+    function cleanupExamExportUrls() {
+      cleanupExamUrls("exportUrls");
+    }
+
+    function getExamSlotAssignedRecords() {
+      return state.examBuilder.slots
+        .flatMap((slot, index) => getExamSlotAssignedRecordsForSlot(slot).map((record) => ({
+          slot,
+          slotIndex: index,
+          record
+        })))
+        .filter((entry) => entry.record);
+    }
+
+    function getExamSelectionSignature(entries) {
+      return entries
+        .map((entry) => `${entry.record.recordId}@${entry.slotIndex}`)
+        .join("|");
+    }
+
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
+      if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
+      throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. PDF LAB 탭에서 다시 저장해주세요.`);
+      }
+      const segmentImages = record.segmentBlobs.map((blob, index) => {
+        if (!blob) {
+          throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
+        }
+        const url = URL.createObjectURL(blob);
+        state.examBuilder[urlBucket].push(url);
+        const segment = record.segmentMeta?.[index] || {};
+        return {
+          id: `${record.recordId}-segment-${index + 1}`,
+          width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
+          height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
+          url
+        };
+      });
+      return {
+        id: `exam-${record.recordId}`,
+        kind: record.kind || "problem",
+        number: examNumber,
+        displayNumber: examNumber,
+        originalNumber: record.number,
+        groupLabel: record.groupLabel || "",
+        worksheetFamily: record.worksheetFamily || record.textbookName,
+        worksheetRef: record.worksheetRef || "",
+        passageGroupKey: record.passageKey,
+        segments: Array.isArray(record.segmentMeta) ? record.segmentMeta.map((segment) => ({ ...segment })) : [],
+        segmentImages,
+        pageSignature: record.pageSignature || "",
+        pageCount: record.pageCount || 0,
+        promptText: record.promptText || "",
+        analysisText: record.analysisText || "",
+        problemType: record.problemType || PROBLEM_TYPE_OTHER,
+        subjectiveType: record.subjectiveType || "",
+        isSubjective: Boolean(record.isSubjective),
+        typeTags: Array.isArray(record.typeTags) ? [...record.typeTags] : [],
+        manualSquashPercent: null
+      };
+    }
+
+    function buildExamProblemsFromSlots(urlBucket = "previewUrls") {
+      cleanupExamUrls(urlBucket);
+      const entries = getExamSlotAssignedRecords();
+      let problemNumber = 1;
+      return entries.map((entry) => {
+        const runtimeProblem = createExamRuntimeProblemFromRecord(entry.record, entry.record.kind === "shared" ? null : problemNumber, urlBucket);
+        if (entry.record.kind !== "shared") {
+          problemNumber += 1;
+        }
+        return runtimeProblem;
+      });
+    }
+
+    function getCssTextForStandaloneDocument() {
+      const styleSheet = Array.from(document.styleSheets)
+        .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
+      return styleSheet ? Array.from(styleSheet.cssRules).map((rule) => rule.cssText).join("\n") : "";
+    }
+
+    function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
+      const cssText = getCssTextForStandaloneDocument();
+      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(titleText)}</title><style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+    }
+
+    function buildExamPreviewDocument(urlBucket = "exportUrls") {
+      const settings = readExamExportSettings();
+      const problems = buildExamProblemsFromSlots(urlBucket);
+      const layoutMeta = buildLayoutPages(settings, problems);
+      const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
+      const container = document.createElement("div");
+      container.innerHTML = rawMarkup;
+      container.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
+      return {
+        settings,
+        markup: container.innerHTML,
+        html: buildStandaloneHtmlDocument(container.innerHTML, settings.title)
+      };
+    }
+
+    function renderExamMiniPreview() {
+      const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
+      const slotCount = state.examBuilder.slots.length;
+      const isReady = slotCount > 0 && assignedCount === slotCount;
+      elements.examMiniPreviewEmptyState.hidden = isReady;
+      if (!isReady) {
+        cleanupExamPreviewUrls();
+        elements.examMiniPreviewRoot.innerHTML = "";
+        return;
+      }
+      try {
+        const { markup } = buildExamPreviewDocument("previewUrls");
+        elements.examMiniPreviewRoot.innerHTML = markup;
+      } catch (error) {
+        console.warn("Failed to render exam mini preview", error);
+        cleanupExamPreviewUrls();
+        elements.examMiniPreviewEmptyState.hidden = false;
+        elements.examMiniPreviewRoot.innerHTML = "";
+        elements.examMiniPreviewEmptyState.innerHTML = `
+          <h3>미리보기를 만들 수 없습니다</h3>
+        <p>${escapeHtml(error.message || "라이브러리 문제 이미지가 비어 있습니다. PDF LAB 탭에서 해당 교재를 다시 저장해주세요.")}</p>
+        `;
+      }
+    }
+
+    function validateExamBuilderForExport() {
+      if (!state.examBuilder.slots.length) {
+        throw new Error("먼저 시험지 슬롯을 만들어주세요.");
+      }
+      const unassignedSlots = state.examBuilder.slots.filter((slot) => !slot.assignedProblemId);
+      if (unassignedSlots.length) {
+        throw new Error(`아직 문항이 배정되지 않은 슬롯이 ${unassignedSlots.length}개 있습니다.`);
+      }
+    }
+
+    function openStandaloneHtmlPreview(htmlText) {
+      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      state.examBuilder.exportUrls.push(url);
+      const popup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+      }
+    }
+
+    function printStandaloneHtml(htmlText) {
+      return new Promise((resolve, reject) => {
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.right = "0";
+        iframe.style.bottom = "0";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        iframe.style.border = "0";
+        iframe.setAttribute("aria-hidden", "true");
+        document.body.appendChild(iframe);
+        const cleanup = () => {
+          setTimeout(() => {
+            iframe.remove();
+          }, 250);
+        };
+        iframe.onload = async () => {
+          try {
+            const targetWindow = iframe.contentWindow;
+            if (!targetWindow) {
+              cleanup();
+              reject(new Error("인쇄용 프레임을 열지 못했습니다."));
+              return;
+            }
+            const images = Array.from(iframe.contentDocument?.images || []);
+            await Promise.all(images.map((image) => {
+              if (image.complete && image.naturalWidth > 0) {
+                return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+              }
+              return new Promise((imageResolve) => {
+                image.addEventListener("load", () => imageResolve(), { once: true });
+                image.addEventListener("error", () => imageResolve(), { once: true });
+              });
+            }));
+            targetWindow.focus();
+            targetWindow.print();
+            cleanup();
+            resolve();
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        };
+        const frameDocument = iframe.contentDocument;
+        if (!frameDocument) {
+          cleanup();
+          reject(new Error("인쇄용 문서를 만들지 못했습니다."));
+          return;
+        }
+        frameDocument.open();
+        frameDocument.write(htmlText);
+        frameDocument.close();
+      });
+    }
+
+    async function persistExamHistory() {
+      validateExamBuilderForExport();
+      const entries = getExamSlotAssignedRecords();
+      const signature = getExamSelectionSignature(entries);
+      if (getExamSets().some((examSet) => examSet.signature === signature && examSet.examId !== state.examBuilder.loadedExamId)) {
+        throw new Error("같은 시험지 구성은 이미 확정 저장되어 있습니다.");
+      }
+
+      const existingExam = state.examBuilder.loadedExamId
+        ? getExamSets().find((examSet) => examSet.examId === state.examBuilder.loadedExamId)
+        : null;
+      const examId = existingExam?.examId || `exam-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const createdAt = existingExam?.createdAt || Date.now();
+      const settings = readExamExportSettings();
+      const examSet = {
+        examId,
+        title: settings.title,
+        kicker: settings.kicker,
+        subtitle: settings.subtitle,
+        createdAt,
+        updatedAt: Date.now(),
+        signature,
+        totalCount: entries.length,
+        objectiveCount: entries.filter((entry) => entry.slot.category === "objective").length,
+        subjectiveCount: entries.filter((entry) => entry.slot.category === "subjective").length,
+        tailCount: new Set(entries.filter((entry) => entry.slot.category === "tail").map((entry) => entry.slot.id)).size
+      };
+      const examItems = entries.map((entry) => ({
+        entryId: `${examId}-${entry.slotIndex + 1}-${entry.record.recordId}`,
+        examId,
+        slotIndex: entry.slotIndex + 1,
+        problemRecordId: entry.record.recordId,
+        passageKey: entry.record.passageKey,
+        passageTypeKey: entry.slot.category === "tail"
+          ? createPassageTypeKey(entry.slot.tailPackKey, PROBLEM_TYPE_TAIL)
+          : createPassageTypeKey(entry.record.passageKey, entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER),
+        typeLabel: entry.slot.category === "tail"
+          ? PROBLEM_TYPE_TAIL
+          : (entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER),
+        textbookName: entry.record.textbookName,
+        category: entry.slot.category,
+        tailPackKey: entry.slot.category === "tail" ? entry.slot.tailPackKey : ""
+      }));
+
+      const db = await openLibraryDb();
+      const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE], "readwrite");
+      const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
+      const examItemStore = transaction.objectStore(LIBRARY_EXAM_ITEM_STORE);
+
+      if (existingExam) {
+        const examItemIndex = examItemStore.index("examId");
+        await new Promise((resolve, reject) => {
+          const request = examItemIndex.openCursor(IDBKeyRange.only(examId));
+          request.addEventListener("success", () => {
+            const cursor = request.result;
+            if (!cursor) {
+              resolve();
+              return;
+            }
+            cursor.delete();
+            cursor.continue();
+          });
+          request.addEventListener("error", () => reject(request.error || new Error("기존 시험지 이력을 업데이트하지 못했습니다.")));
+        });
+      }
+
+      examStore.put(examSet);
+      examItems.forEach((item) => examItemStore.put(item));
+      await idbTransactionDone(transaction);
+      await refreshLibrarySummary();
+      state.examBuilder.loadedExamId = examId;
+      elements.examHistorySummary.textContent = existingExam
+        ? `${examSet.title} 이력을 업데이트했습니다. 제목과 부제를 바꾼 뒤 다시 출력해도 됩니다.`
+        : `${examSet.title} · ${formatTimestamp(createdAt)} 기준으로 시험 이력을 저장했습니다. 이후 같은 문제와 같은 지문 유형은 자동 차단됩니다.`;
+    }
+
+    async function deleteExamHistory(examId) {
+      if (!examId) {
+        return;
+      }
+      const targetExam = getExamSets().find((examSet) => examSet.examId === examId);
+      const db = await openLibraryDb();
+      const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE], "readwrite");
+      const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
+      const examItemStore = transaction.objectStore(LIBRARY_EXAM_ITEM_STORE);
+      examStore.delete(examId);
+      const examItemIndex = examItemStore.index("examId");
+      await new Promise((resolve, reject) => {
+        const request = examItemIndex.openCursor(IDBKeyRange.only(examId));
+        request.addEventListener("success", () => {
+          const cursor = request.result;
+          if (!cursor) {
+            resolve();
+            return;
+          }
+          cursor.delete();
+          cursor.continue();
+        });
+        request.addEventListener("error", () => reject(request.error || new Error("시험지 이력 항목을 삭제하지 못했습니다.")));
+      });
+      await idbTransactionDone(transaction);
+      await refreshLibrarySummary();
+      elements.examHistorySummary.textContent = targetExam
+        ? `${targetExam.title} 이력을 삭제했습니다. 같은 문제와 같은 지문 유형을 다시 사용할 수 있습니다.`
+        : "시험지 이력을 삭제했습니다.";
+    }
+
+    async function previewExamLayout() {
+      validateExamBuilderForExport();
+      setBusy(true);
+      setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
+      try {
+        cleanupExamExportUrls();
+        const { settings, html } = buildExamPreviewDocument("exportUrls");
+        openStandaloneHtmlPreview(html);
+        setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
+        elements.examExportSummary.textContent = `${settings.title} 미리보기를 새 창에서 열었습니다.`;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function printExamLayout(commitHistory = false) {
+      validateExamBuilderForExport();
+      setBusy(true);
+      try {
+        cleanupExamExportUrls();
+        if (commitHistory) {
+          setStatus("시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...", "working", "시험지 확정");
+          await persistExamHistory();
+        } else {
+          setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
+        }
+        const { settings, html } = buildExamPreviewDocument("exportUrls");
+        await printStandaloneHtml(html);
+        elements.examExportSummary.textContent = commitHistory
+          ? `${settings.title} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
+          : `${settings.title} · 인쇄/PDF 출력 창을 열었습니다.`;
+        setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+      } finally {
+        cleanupExamExportUrls();
+        setBusy(false);
+      }
+    }
+
+    function normalizeWorksheetRef(value) {
+      const trimmed = String(value || "").trim();
+      const inner = trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+      return normalizeProblemText(inner).replace(/\s*[-~]\s*/g, "-").toLowerCase();
+    }
+
+    function extractWorksheetRef(value) {
+      const match = String(value || "").slice(0, 260).match(WORKSHEET_REF_PATTERN);
+      return match ? normalizeWorksheetRef(match[0]) : "";
+    }
+
+    function normalizeWorksheetFamily(fileName) {
+      const safeName = String(fileName || "").replace(/\.[^.]+$/, "");
+      const parts = safeName.split("_");
+      let family = parts.length > 1 ? parts.slice(1).join("_") : safeName;
+      ["어법어휘", "주관식", "서술형"].forEach((suffix) => {
+        if (family.endsWith(`_${suffix}`)) {
+          family = family.slice(0, -(suffix.length + 1));
+        }
+      });
+      return normalizeProblemText(family);
+    }
+
+    function sortItemsByReadingOrder(items) {
+      return [...items].sort((left, right) => {
+        const yDiff = left.y0 - right.y0;
+        if (Math.abs(yDiff) > 1.6) {
+          return yDiff;
+        }
+        return left.x0 - right.x0;
+      });
+    }
+
+    function collectSegmentText(columnLookup, segment) {
+      const column = columnLookup.get(`${segment.pageIndex}-${segment.columnIndex}`);
+      if (!column?.items?.length) {
+        return "";
+      }
+      const items = sortItemsByReadingOrder(
+        column.items.filter((item) => item.y1 > segment.y0 - 0.8 && item.y0 < segment.y1 + 0.8)
+      );
+      return normalizeProblemText(items.map((item) => item.str).join(" "));
+    }
+
+    function collectProblemText(columnLookup, segments, options = {}) {
+      const { maxLength = Number.POSITIVE_INFINITY, maxSegments = Number.POSITIVE_INFINITY } = options;
+      const parts = [];
+      for (const segment of segments) {
+        const segmentText = collectSegmentText(columnLookup, segment);
+        if (segmentText) {
+          parts.push(segmentText);
+        }
+        if (normalizeProblemText(parts.join(" ")).length >= maxLength || parts.length >= maxSegments) {
+          break;
+        }
+      }
+      return normalizeProblemText(parts.join(" "));
+    }
+
+    function collectProblemPromptText(columnLookup, segments) {
+      return collectProblemText(columnLookup, segments, { maxLength: 1600, maxSegments: 6 });
+    }
+
+    function hasObjectiveOptions(problemText) {
+      return (String(problemText || "").match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]/g) || []).length >= 2;
+    }
+
+    function isSubjectiveProblem(problemText) {
+      const searchableText = normalizeProblemTypeToken(problemText).slice(0, 2400);
+      if (!searchableText) {
+        return false;
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("주관식")) ||
+        searchableText.includes(normalizeProblemTypeToken("서술형")) ||
+        searchableText.includes(normalizeProblemTypeToken("영작"))
+      ) {
+        return true;
+      }
+      return !hasObjectiveOptions(problemText);
+    }
+
+    function classifyProblemType(problemText) {
+      const searchableText = normalizeProblemTypeToken(problemText).slice(0, 1800);
+      if (!searchableText) {
+        return PROBLEM_TYPE_OTHER;
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("영영표현")) ||
+        searchableText.includes(normalizeProblemTypeToken("영영풀이"))
+      ) {
+        return PROBLEM_TYPE_OTHER;
+      }
+      if (searchableText.includes(normalizeProblemTypeToken("한 문장으로 요약"))) {
+        return "요약";
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("한 문장으로 정리")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약할 때")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약할때"))
+      ) {
+        return "요약";
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("요약문")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약한 문장")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약하고자 한다")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약한 것이다")) ||
+        searchableText.includes(normalizeProblemTypeToken("요약문을 읽고"))
+      ) {
+        return "요약";
+      }
+      if (searchableText.includes(normalizeProblemTypeToken("주제문"))) {
+        return "주제";
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("빈칸")) &&
+        searchableText.includes("(A)") &&
+        searchableText.includes("(B)")
+      ) {
+        return "연결사";
+      }
+      for (const rule of PROBLEM_TYPE_RULES) {
+        if (rule.matchers.some((matcher) => searchableText.includes(matcher))) {
+          return rule.type;
+        }
+      }
+      return PROBLEM_TYPE_OTHER;
+    }
+
+    function classifySubjectiveType(problemText, baseType) {
+      const searchableText = normalizeProblemTypeToken(problemText).slice(0, 2400);
+      if (!searchableText) {
+        return SUBJECTIVE_TYPE_OTHER;
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("영영표현")) ||
+        searchableText.includes(normalizeProblemTypeToken("영영풀이"))
+      ) {
+        return SUBJECTIVE_TYPE_OTHER;
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("영작")) ||
+        searchableText.includes(normalizeProblemTypeToken("영어로완성")) ||
+        searchableText.includes(normalizeProblemTypeToken("영어로작성"))
+      ) {
+        return SUBJECTIVE_TYPE_WRITING;
+      }
+      if (
+        searchableText.includes(normalizeProblemTypeToken("재배열")) ||
+        searchableText.includes(normalizeProblemTypeToken("배열하시오")) ||
+        searchableText.includes(normalizeProblemTypeToken("바르게배열"))
+      ) {
+        return SUBJECTIVE_TYPE_ARRANGEMENT;
+      }
+      if (baseType === "요약" || searchableText.includes(normalizeProblemTypeToken("요약"))) {
+        return SUBJECTIVE_TYPE_SUMMARY;
+      }
+      if (baseType === "연결사") {
+        return SUBJECTIVE_TYPE_CONNECTION;
+      }
+      if (baseType === "빈칸") {
+        return SUBJECTIVE_TYPE_BLANK;
+      }
+      if (
+        baseType === "밑줄어법" ||
+        baseType === "선택어법" ||
+        searchableText.includes(normalizeProblemTypeToken("어법상")) ||
+        searchableText.includes(normalizeProblemTypeToken("바르게고치시오")) ||
+        searchableText.includes(normalizeProblemTypeToken("틀린부분을찾아"))
+      ) {
+        return SUBJECTIVE_TYPE_GRAMMAR;
+      }
+      return SUBJECTIVE_TYPE_OTHER;
+    }
+
+    function buildProblemTypeTags(problemType, isSubjective, subjectiveType = "") {
+      const tags = [];
+      if (problemType) {
+        tags.push(problemType);
+      }
+      if (problemType === "무관") {
+        tags.push(PROBLEM_TYPE_ODD_SENTENCE);
+      }
+      if (problemType === "밑줄어법" || problemType === "선택어법") {
+        tags.push(PROBLEM_TYPE_GRAMMAR);
+      }
+      if (problemType === "밑줄어휘" || problemType === "선택어휘") {
+        tags.push(PROBLEM_TYPE_VOCAB);
+      }
+      if (isSubjective) {
+        tags.push(PROBLEM_TYPE_SUBJECTIVE);
+        if (subjectiveType) {
+          tags.push(subjectiveType);
+        }
+      }
+      return [...new Set(tags.filter(Boolean))];
+    }
+
+    function getManualSquashPercent(problem) {
+      if (problem?.manualSquashPercent == null) {
+        return null;
+      }
+      return clampSquashPercent(problem.manualSquashPercent);
+    }
+
+    function getProblemSquashPercent(problem) {
+      return getManualSquashPercent(problem) ?? 0;
+    }
+
+    function getSquashRatioFromPercent(squashPercent) {
+      return 1 - clampSquashPercent(squashPercent) / 100;
+    }
+
+    function getEntryAppliedSquashPercent(entry) {
+      return clampSquashPercent(entry?.appliedSquashPercent ?? getProblemSquashPercent(entry?.problem ?? entry));
+    }
+
+    function getProblemSquashSelectionValue(problem) {
+      const manualSquashPercent = getManualSquashPercent(problem);
+      return manualSquashPercent == null ? AUTO_SQUASH_VALUE : String(manualSquashPercent);
+    }
+
+    function parseSquashSelectionValue(value) {
+      if (value === AUTO_SQUASH_VALUE) {
+        return null;
+      }
+      return clampSquashPercent(value);
+    }
+
+    function getProblemSquashRatio(problemOrEntry) {
+      return getSquashRatioFromPercent(getEntryAppliedSquashPercent(problemOrEntry));
+    }
+
+    function getQuestionCount(problems = getActiveProblems()) {
+      return problems.filter((problem) => problem.kind !== "shared").length;
+    }
+
+    function getActiveProblems() {
+      return Array.isArray(state.visibleProblems) ? state.visibleProblems : state.problems;
+    }
+
+    function parseQuestionFilter(value) {
+      const raw = (value || "").trim();
+      if (!raw) {
+        return {
+          raw,
+          hasInput: false,
+          hasFilter: false,
+          selectedNumbers: null,
+          invalidTokens: []
+        };
+      }
+
+      const selectedNumbers = new Set();
+      const invalidTokens = [];
+      raw
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+          const rangeMatch = token.match(/^(\d+)\s*[-~]\s*(\d+)$/);
+          if (rangeMatch) {
+            const start = Number(rangeMatch[1]);
+            const end = Number(rangeMatch[2]);
+            if (Number.isFinite(start) && Number.isFinite(end) && start > 0 && end >= start) {
+              for (let number = start; number <= end; number += 1) {
+                selectedNumbers.add(number);
+              }
+              return;
+            }
+          }
+
+          if (/^\d+$/.test(token)) {
+            selectedNumbers.add(Number(token));
+            return;
+          }
+
+          invalidTokens.push(token);
+        });
+
+      return {
+        raw,
+        hasInput: true,
+        hasFilter: selectedNumbers.size > 0,
+        selectedNumbers,
+        invalidTokens
+      };
+    }
+
+    function parseTypeFilter(value) {
+      const raw = (value || "").trim();
+      if (!raw) {
+        return {
+          raw,
+          hasInput: false,
+          hasFilter: false,
+          selectedTypes: null,
+          invalidTokens: []
+        };
+      }
+
+      const selectedTypes = new Set();
+      const invalidTokens = [];
+      raw
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+          const resolvedType = PROBLEM_TYPE_FILTER_MAP.get(normalizeProblemTypeToken(token));
+          if (resolvedType) {
+            selectedTypes.add(resolvedType);
+            return;
+          }
+          invalidTokens.push(token);
+        });
+
+      return {
+        raw,
+        hasInput: true,
+        hasFilter: selectedTypes.size > 0,
+        selectedTypes,
+        invalidTokens
+      };
+    }
+
+    function parseSelectionInfo(questionValue, typeValue) {
+      const questionInfo = parseQuestionFilter(questionValue);
+      const typeInfo = parseTypeFilter(typeValue);
+      return {
+        questionRaw: questionInfo.raw,
+        typeRaw: typeInfo.raw,
+        hasInput: questionInfo.hasInput || typeInfo.hasInput,
+        hasFilter: questionInfo.hasFilter || typeInfo.hasFilter,
+        selectedNumbers: questionInfo.selectedNumbers,
+        selectedTypes: typeInfo.selectedTypes,
+        invalidQuestionTokens: questionInfo.invalidTokens,
+        invalidTypeTokens: typeInfo.invalidTokens
+      };
+    }
+
+    function groupLabelToRange(groupLabel) {
+      const match = (groupLabel || "").match(/^(\d+)-(\d+)$/);
+      if (!match) {
+        return null;
+      }
+      return {
+        start: Number(match[1]),
+        end: Number(match[2])
+      };
+    }
+
+    function problemMatchesNumberSelection(problem, selectedNumbers) {
+      if (!selectedNumbers || !selectedNumbers.size) {
+        return true;
+      }
+      return selectedNumbers.has(problem.number);
+    }
+
+    function problemMatchesTypeSelection(problem, selectedTypes) {
+      if (!selectedTypes || !selectedTypes.size) {
+        return true;
+      }
+      const problemTypes = new Set(problem.typeTags?.length ? problem.typeTags : [problem.problemType || PROBLEM_TYPE_OTHER]);
+      return Array.from(problemTypes).some((type) => selectedTypes.has(type));
+    }
+
+    function getVisibleProblems(problems, selectionInfo) {
+      if (!selectionInfo?.hasFilter) {
+        return problems;
+      }
+      const visibleProblemIds = new Set();
+      const visibleGroupLabels = new Set();
+
+      problems.forEach((problem) => {
+        if (problem.kind !== "problem") {
+          return;
+        }
+        if (!problemMatchesNumberSelection(problem, selectionInfo.selectedNumbers)) {
+          return;
+        }
+        if (!problemMatchesTypeSelection(problem, selectionInfo.selectedTypes)) {
+          return;
+        }
+        visibleProblemIds.add(problem.id);
+        if (problem.groupLabel) {
+          visibleGroupLabels.add(problem.groupLabel);
+        }
+      });
+
+      return problems.filter((problem) => {
+        if (problem.kind === "shared") {
+          return visibleGroupLabels.has(problem.groupLabel);
+        }
+        return visibleProblemIds.has(problem.id);
+      });
+    }
+
+    function getAppliedFilterLabels(selectionInfo) {
+      const labels = [];
+      if (selectionInfo?.selectedNumbers?.size) {
+        labels.push("번호");
+      }
+      if (selectionInfo?.selectedTypes?.size) {
+        labels.push(`유형 ${Array.from(selectionInfo.selectedTypes).join(", ")}`);
+      }
+      return labels;
+    }
+
+    function getAppliedFilterLabelText(selectionInfo) {
+      const labels = getAppliedFilterLabels(selectionInfo);
+      return labels.length ? labels.join(" / ") : "입력한 필터";
+    }
+
+    function updateQuestionFilterSummary(totalQuestionCount, visibleQuestionCount, selectionInfo) {
+      if (!selectionInfo?.hasInput) {
+        elements.questionFilterSummary.textContent = "비워두면 전체 문항을 출력합니다.";
+        return;
+      }
+
+      const invalidTokens = [
+        ...(selectionInfo.invalidQuestionTokens || []),
+        ...(selectionInfo.invalidTypeTokens || [])
+      ];
+      const invalidText = invalidTokens.length
+        ? ` · 무시됨: ${invalidTokens.join(", ")}`
+        : "";
+      const filterText = getAppliedFilterLabels(selectionInfo).join(" / ");
+
+      if (!selectionInfo.hasFilter) {
+        elements.questionFilterSummary.textContent = `유효한 번호나 유형이 없어 전체 문항을 출력합니다${invalidText}`;
+        return;
+      }
+
+      if (!visibleQuestionCount) {
+        elements.questionFilterSummary.textContent = `선택된 문항이 없습니다${filterText ? ` · ${filterText}` : ""}${invalidText}`;
+        return;
+      }
+
+      elements.questionFilterSummary.textContent =
+        `선택 ${visibleQuestionCount}문항 / 전체 ${totalQuestionCount}문항${filterText ? ` · ${filterText} 필터 적용` : ""}${invalidText}`;
+    }
+
+    function getEntryBadge(problem) {
+      const displayNumber = problem.displayNumber ?? problem.number;
+      return problem.kind === "shared" ? `${problem.groupLabel} 공통 지문` : `문항 ${displayNumber}`;
+    }
+
+    function getEntryTypeBadges(problem) {
+      if (problem.kind === "shared") {
+        return [{ label: "공통지문", className: " is-shared" }];
+      }
+      const badges = [{ label: problem.problemType || PROBLEM_TYPE_OTHER, className: "" }];
+      if (problem.isSubjective && problem.subjectiveType) {
+        badges.push({ label: problem.subjectiveType, className: " is-subjective" });
+      } else if (problem.isSubjective) {
+        badges.push({ label: PROBLEM_TYPE_SUBJECTIVE, className: " is-subjective" });
+      }
+      return badges;
+    }
+
+    function getEntryMeta(problem) {
+      if (problem.kind === "shared") {
+        return `${problem.groupLabel} 묶음 지문`;
+      }
+      if (problem.groupLabel) {
+        return `${problem.groupLabel} 묶음 문제`;
+      }
+      return problem.pageCount > 1 ? `원본 ${problem.pageCount}페이지 연결` : "원본 단일 블록";
+    }
+
+    function slugifyFileName(value) {
+      const safe = value
+        .replace(/\.[^.]+$/, "")
+        .replace(/[^\p{L}\p{N}\-_]+/gu, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      return safe || "repacked-problems";
+    }
+
+    function readSettings() {
+      return {
+        kicker: elements.kickerInput.value.trim(),
+        title: elements.titleInput.value.trim() || "변형문제 정리본",
+        subtitle: elements.subtitleInput.value.trim(),
+        logoSrc: state.logoSrc,
+        maxPerColumn: Number(elements.maxPerColumnInput.value) || 2,
+        pagePadding: Number(elements.pagePaddingInput.value) || 12,
+        columnGap: Number(elements.columnGapInput.value) || 7,
+        cardGap: Number(elements.cardGapInput.value) || 6,
+        previewZoom: (Number(elements.previewZoomInput.value) || 90) / 100,
+        accent: normalizeHex(elements.accentTextInput.value) || elements.accentInput.value
+      };
+    }
+
+    function applySettingsToUi() {
+      const settings = readSettings();
+      elements.pagePaddingValue.textContent = `${settings.pagePadding}mm`;
+      elements.pagePaddingValueMirror.textContent = `${settings.pagePadding}mm`;
+      elements.columnGapValue.textContent = `${settings.columnGap}mm`;
+      elements.columnGapValueMirror.textContent = `${settings.columnGap}mm`;
+      elements.cardGapValue.textContent = `${settings.cardGap}mm`;
+      elements.cardGapValueMirror.textContent = `${settings.cardGap}mm`;
+      elements.previewZoomValue.textContent = `${Math.round(settings.previewZoom * 100)}%`;
+      elements.previewZoomValueMirror.textContent = `${Math.round(settings.previewZoom * 100)}%`;
+      elements.root.style.setProperty("--accent", settings.accent);
+      elements.root.style.setProperty("--accent-soft", hexToRgba(settings.accent, 0.12));
+      elements.root.style.setProperty("--preview-zoom", String(settings.previewZoom));
+      elements.accentInput.value = settings.accent;
+      elements.accentTextInput.value = settings.accent;
+    }
+
+    function updateLogoUi() {
+      elements.logoFileName.textContent = state.logoLabel || "로고 없음";
+      elements.clearLogoButton.disabled = !state.logoSrc;
+    }
+
+    function updateLoadedFileLabel() {
+      if (!state.fileName) {
+        elements.fileName.textContent = "아직 불러온 PDF가 없습니다.";
+        return;
+      }
+      const textbookName = state.selectedTextbookName || getSelectedTextbookName();
+      elements.fileName.textContent = textbookName
+        ? `${state.fileName} · 교재: ${textbookName}`
+        : state.fileName;
+    }
+
+    function setActiveTab(tabName) {
+      state.activeTab = tabName === "exam" ? "exam" : "repack";
+      const isExamTab = state.activeTab === "exam";
+      elements.repackTabButton.classList.toggle("is-active", !isExamTab);
+      elements.examBuilderTabButton.classList.toggle("is-active", isExamTab);
+      elements.repackTabButton.setAttribute("aria-selected", String(!isExamTab));
+      elements.examBuilderTabButton.setAttribute("aria-selected", String(isExamTab));
+      elements.repackTabPanel.hidden = isExamTab;
+      elements.examBuilderTabPanel.hidden = !isExamTab;
+      elements.repackTabPanel.classList.toggle("is-active", !isExamTab);
+      elements.examBuilderTabPanel.classList.toggle("is-active", isExamTab);
+      if (isExamTab) {
+        refreshLibrarySummary().catch(handleError);
+      }
+    }
+
+    function setStatus(message, tone = "idle", pillText = "준비됨") {
+      elements.statusBar.dataset.tone = tone;
+      elements.statusCopy.textContent = message;
+      elements.statsPill.textContent = pillText;
+    }
+
+    function setBusy(isBusy) {
+      const activeProblems = getActiveProblems();
+      state.isBusy = isBusy;
+      elements.choosePdfButton.disabled = isBusy;
+      elements.clearButton.disabled = isBusy || !state.problems.length;
+      elements.textbookModeNew.disabled = isBusy;
+      elements.textbookModeExisting.disabled = isBusy;
+      elements.newTextbookInput.disabled = isBusy || elements.textbookModeExisting.checked;
+      elements.existingTextbookSelect.disabled = isBusy || !elements.textbookModeExisting.checked;
+      elements.printButton.disabled = isBusy || !activeProblems.length;
+      elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
+      elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
+      elements.saveRepackWorkButton.disabled = isBusy || !state.problems.length;
+      elements.loadMoreButton.disabled = isBusy;
+      elements.renderAllButton.disabled = isBusy;
+      elements.createExamSlotsButton.disabled = isBusy;
+      elements.clearExamSlotsButton.disabled = isBusy;
+      elements.previewExamButton.disabled = isBusy;
+      elements.printExamButton.disabled = isBusy;
+      elements.commitExamButton.disabled = isBusy;
+      elements.saveExamWorkButton.disabled = isBusy || !state.examBuilder.slots.length;
+      if (!isBusy) {
+        updateExamActionButtons();
+      }
+    }
+
+    function updatePreviewActionRow() {
+      const totalSheets = state.layoutPages.length;
+      const renderedSheets = state.renderedSheetIndices.size;
+      const allRendered = totalSheets > 0 && renderedSheets >= totalSheets;
+      const hasProblems = getActiveProblems().length > 0;
+      elements.previewActionRow.hidden = !hasProblems || allRendered;
+      elements.printButton.disabled = state.isBusy || !hasProblems;
+      elements.exportHtmlButton.disabled = state.isBusy || !hasProblems;
+      elements.saveLibraryButton.disabled = state.isBusy || !state.problems.length;
+      if (!hasProblems || allRendered) {
+        return;
+      }
+      const remaining = Math.max(0, totalSheets - renderedSheets);
+      const batch = Math.min(6, remaining);
+      elements.loadMoreButton.textContent = `다음 ${batch}쪽 더 렌더`;
+      elements.renderAllButton.textContent = `전체 ${totalSheets}쪽 렌더`;
+    }
+
+    function cleanupObjectUrls() {
+      for (const url of state.imageUrls) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn("Failed to revoke object URL", error);
+        }
+      }
+      state.imageUrls = [];
+    }
+
+    function getPageSignature(problem) {
+      const pageSet = new Set(problem.segments.map((segment) => segment.pageIndex + 1));
+      return Array.from(pageSet).sort((a, b) => a - b).join(", ");
+    }
+
+    function chooseRenderScale(pageCount, problemCount) {
+      if (pageCount >= 40 || problemCount >= 140) {
+        return XL_RENDER_SCALE;
+      }
+      if (pageCount >= 20 || problemCount >= 80) {
+        return LARGE_RENDER_SCALE;
+      }
+      return DEFAULT_RENDER_SCALE;
+    }
+
+    async function renderPdfPage(page, scale) {
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: context, viewport }).promise;
+      return { canvas, viewport };
+    }
+
+    function blobFromCanvas(canvas, type = "image/webp", quality = 0.95) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+            return;
+          }
+          reject(new Error("캔버스를 이미지로 변환하지 못했습니다."));
+        }, type, quality);
+      });
+    }
+
+    function normalizeTextItems(textItems, viewport) {
+      return textItems
+        .map((item) => {
+          if (!item.str || !item.str.trim()) {
+            return null;
+          }
+          const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+          const x0 = tx[4];
+          const width = item.width * viewport.scale;
+          const height = Math.abs(item.height * viewport.scale) || Math.abs(tx[3]) || 10;
+          const y1 = tx[5];
+          const y0 = y1 - height;
+          return {
+            str: item.str.trim(),
+            x0,
+            y0,
+            x1: x0 + width,
+            y1,
+            cx: x0 + width / 2,
+            height
+          };
+        })
+        .filter(Boolean);
+    }
+
+    function buildEmptyColumn(pageIndex, columnIndex, colStart, colEnd, pageHeight) {
+      return {
+        key: `${pageIndex}-${columnIndex}`,
+        pageIndex,
+        columnIndex,
+        items: [],
+        x0: colStart,
+        x1: colEnd,
+        topY: HEADER_CUTOFF,
+        bottomY: pageHeight - FOOTER_CUTOFF,
+        markers: [],
+        rangeMarkers: []
+      };
+    }
+
+    function collectQuestionMarkers(columnItems) {
+      const candidates = columnItems.filter((item) => QUESTION_MARKER_PATTERN.test(item.str));
+      if (!candidates.length) {
+        return [];
+      }
+
+      const maxHeight = Math.max(...candidates.map((item) => item.height));
+      const minHeight = maxHeight - MARKER_HEIGHT_SLACK;
+      return candidates
+        .filter((item) => {
+          if (item.height + 0.001 < minHeight) {
+            return false;
+          }
+          const lineLeftX = Math.min(
+            ...columnItems
+              .filter((other) => Math.abs(other.y0 - item.y0) <= MARKER_LINE_TOLERANCE)
+              .map((other) => other.x0)
+          );
+          return item.x0 - lineLeftX <= MARKER_LINE_START_TOLERANCE;
+        })
+        .sort((a, b) => a.y0 - b.y0)
+        .map((item) => ({ number: Number(item.str.slice(0, -1)), item }));
+    }
+
+    function collectRangeMarkers(columnItems) {
+      return columnItems
+        .map((item) => {
+          const match = item.str.match(RANGE_MARKER_PATTERN);
+          if (!match) {
+            return null;
+          }
+          const startNumber = Number(match[1]);
+          const endNumber = Number(match[2]);
+          if (!Number.isFinite(startNumber) || !Number.isFinite(endNumber) || endNumber <= startNumber) {
+            return null;
+          }
+          return {
+            label: item.str,
+            startNumber,
+            endNumber,
+            item
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.item.y0 - b.item.y0);
+    }
+
+    function buildPageInfo(pageIndex, viewport, items) {
+      const midpoint = viewport.width / COLUMN_COUNT;
+      if (items.some((item) => ANSWER_PAGE_PATTERN.test(item.str))) {
+        return {
+          pageIndex,
+          isAnswerPage: true,
+          columns: Array.from({ length: COLUMN_COUNT }, (_, columnIndex) =>
+            buildEmptyColumn(pageIndex, columnIndex, midpoint * columnIndex, midpoint * (columnIndex + 1), viewport.height)
+          )
+        };
+      }
+
+      const contentItems = items.filter((item) => item.y0 > HEADER_CUTOFF && item.y1 < viewport.height - FOOTER_CUTOFF);
+      const columns = Array.from({ length: COLUMN_COUNT }, (_, columnIndex) => {
+        const colStart = midpoint * columnIndex;
+        const colEnd = midpoint * (columnIndex + 1);
+        const columnItems = contentItems.filter((item) => item.cx >= colStart && item.cx < colEnd);
+        if (!columnItems.length) {
+          return buildEmptyColumn(pageIndex, columnIndex, colStart, colEnd, viewport.height);
+        }
+        return {
+          key: `${pageIndex}-${columnIndex}`,
+          pageIndex,
+          columnIndex,
+          items: columnItems,
+          x0: Math.max(0, Math.min(...columnItems.map((item) => item.x0)) - 10),
+          x1: Math.min(viewport.width, Math.max(...columnItems.map((item) => item.x1)) + 10),
+          topY: Math.max(HEADER_CUTOFF, Math.min(...columnItems.map((item) => item.y0)) - 6),
+          bottomY: Math.min(viewport.height - FOOTER_CUTOFF, Math.max(...columnItems.map((item) => item.y1)) + 6),
+          markers: collectQuestionMarkers(columnItems),
+          rangeMarkers: collectRangeMarkers(columnItems)
+        };
+      });
+      return {
+        pageIndex,
+        isAnswerPage: false,
+        columns
+      };
+    }
+
+    function getEventPosition(event) {
+      return [event.orderIndex, event.item.y0];
+    }
+
+    function isAfterEvent(left, right) {
+      const [leftOrder, leftY] = getEventPosition(left);
+      const [rightOrder, rightY] = getEventPosition(right);
+      return leftOrder > rightOrder || (leftOrder === rightOrder && leftY > rightY);
+    }
+
+    function collectSegmentsForEvent(orderedColumns, startEvent, endEvent) {
+      const endOrderIndex = endEvent ? endEvent.orderIndex : orderedColumns.length - 1;
+      const topPad = startEvent.type === "shared" ? SHARED_MARKER_TOP_PAD : FIRST_SEGMENT_TOP_PAD;
+      const segments = [];
+      for (let orderIndex = startEvent.orderIndex; orderIndex <= endOrderIndex; orderIndex += 1) {
+        const column = orderedColumns[orderIndex];
+        let y0 = column.topY;
+        let y1 = column.bottomY;
+        if (orderIndex === startEvent.orderIndex) {
+          y0 = Math.max(column.topY, startEvent.item.y0 - topPad);
+        }
+        if (endEvent && orderIndex === endEvent.orderIndex) {
+          y1 = Math.min(column.bottomY, endEvent.item.y0 - NEXT_START_GAP);
+        }
+        if (y1 - y0 >= 16) {
+          segments.push({
+            pageIndex: column.pageIndex,
+            columnIndex: column.columnIndex,
+            x0: column.x0,
+            x1: column.x1,
+            y0,
+            y1
+          });
+        }
+      }
+      return segments;
+    }
+
+    function buildProblemsFromPages(pages, fileName = "", worksheetFamilyOverride = "") {
+      const orderedColumns = pages
+        .filter((page) => !page.isAnswerPage)
+        .flatMap((page) => page.columns)
+        .filter((column) => column.items.length > 0);
+      const worksheetFamily = normalizeTextbookName(worksheetFamilyOverride) || normalizeWorksheetFamily(fileName);
+      const columnMap = new Map(orderedColumns.map((column, index) => [column.key, { ...column, orderIndex: index }]));
+      const questionEvents = [];
+      const sharedEvents = [];
+
+      orderedColumns.forEach((column) => {
+        const orderIndex = columnMap.get(column.key).orderIndex;
+        column.markers.forEach((marker) => {
+          questionEvents.push({
+            type: "problem",
+            number: marker.number,
+            item: marker.item,
+            orderIndex
+          });
+        });
+        (column.rangeMarkers || []).forEach((marker) => {
+          sharedEvents.push({
+            type: "shared",
+            groupLabel: `${marker.startNumber}-${marker.endNumber}`,
+            startNumber: marker.startNumber,
+            endNumber: marker.endNumber,
+            item: marker.item,
+            orderIndex
+          });
+        });
+      });
+
+      questionEvents.sort((a, b) => (a.orderIndex - b.orderIndex) || (a.item.y0 - b.item.y0));
+      if (!questionEvents.length) {
+        throw new Error("문항 시작 번호를 찾지 못했습니다. 현재는 `4.` 같은 번호 형식에 맞춰져 있어요.");
+      }
+
+      const validSharedEvents = sharedEvents
+        .map((sharedEvent) => {
+          const targetQuestion = questionEvents.find((questionEvent) =>
+            questionEvent.number === sharedEvent.startNumber && isAfterEvent(questionEvent, sharedEvent)
+          );
+          return targetQuestion ? { ...sharedEvent, targetQuestion } : null;
+        })
+        .filter(Boolean);
+
+      const groupedLabels = new Map();
+      validSharedEvents.forEach((sharedEvent) => {
+        for (let number = sharedEvent.startNumber; number <= sharedEvent.endNumber; number += 1) {
+          groupedLabels.set(number, sharedEvent.groupLabel);
+        }
+      });
+
+      const orderedEvents = [...questionEvents, ...validSharedEvents].sort(
+        (a, b) => (a.orderIndex - b.orderIndex) || (a.item.y0 - b.item.y0)
+      );
+
+      return orderedEvents
+        .map((event, index) => {
+          if (event.type === "shared") {
+            const segments = collectSegmentsForEvent(orderedColumns, event, event.targetQuestion);
+            if (!segments.length) {
+              return null;
+            }
+            return {
+              id: `shared-${event.groupLabel}`,
+              kind: "shared",
+              number: null,
+              groupLabel: event.groupLabel,
+              worksheetFamily,
+              worksheetRef: "",
+              passageGroupKey: event.groupLabel,
+              segments,
+              segmentImages: Array.from({ length: segments.length }, () => null),
+              pageSignature: getPageSignature({ segments }),
+              pageCount: new Set(segments.map((segment) => segment.pageIndex)).size,
+              problemType: null,
+              isSubjective: false,
+              manualSquashPercent: null
+            };
+          }
+
+          const nextEvent = orderedEvents[index + 1] || null;
+          const segments = collectSegmentsForEvent(orderedColumns, event, nextEvent);
+          if (!segments.length) {
+            return null;
+          }
+          const promptText = collectProblemPromptText(columnMap, segments);
+          const analysisText = collectProblemText(columnMap, segments, { maxLength: 6000, maxSegments: 24 });
+          const groupLabel = groupedLabels.get(event.number) || "";
+          const worksheetRef = extractWorksheetRef(analysisText || promptText);
+          const isSubjective = isSubjectiveProblem(analysisText || promptText);
+          const problemType = groupLabel ? PROBLEM_TYPE_TAIL : classifyProblemType(promptText || analysisText);
+          const subjectiveType = isSubjective && !groupLabel
+            ? classifySubjectiveType(analysisText || promptText, problemType)
+            : "";
+          return {
+            id: `problem-${event.number}`,
+            kind: "problem",
+            number: event.number,
+            groupLabel,
+            worksheetFamily,
+            worksheetRef,
+            passageGroupKey: worksheetRef ? `${worksheetFamily}::${worksheetRef}` : groupLabel,
+            segments,
+            segmentImages: Array.from({ length: segments.length }, () => null),
+            pageSignature: getPageSignature({ segments }),
+            pageCount: new Set(segments.map((segment) => segment.pageIndex)).size,
+            promptText,
+            analysisText,
+            problemType,
+            subjectiveType,
+            isSubjective,
+            typeTags: buildProblemTypeTags(problemType, isSubjective, subjectiveType),
+            manualSquashPercent: null
+          };
+        })
+        .filter(Boolean);
+    }
+
+    async function cropSegmentToImage(pageCanvas, renderScale, segment, segmentIndex) {
+      const sx = Math.max(0, Math.floor(segment.x0 * renderScale));
+      const sy = Math.max(0, Math.floor(segment.y0 * renderScale));
+      const sw = Math.max(1, Math.ceil((segment.x1 - segment.x0) * renderScale));
+      const sh = Math.max(1, Math.ceil((segment.y1 - segment.y0) * renderScale));
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, sw, sh);
+      context.drawImage(pageCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+      const blob = await blobFromCanvas(canvas);
+      const url = URL.createObjectURL(blob);
+      state.imageUrls.push(url);
+      canvas.width = 0;
+      canvas.height = 0;
+      return {
+        id: `segment-${segment.pageIndex + 1}-${segment.columnIndex + 1}-${segmentIndex + 1}`,
+        width: sw,
+        height: sh,
+        url
+      };
+    }
+
+    async function generateSegmentImages(pdf, problems, renderScale) {
+      const usagesByPage = new Map();
+      let totalSegments = 0;
+
+      problems.forEach((problem, problemIndex) => {
+        problem.segments.forEach((segment, segmentIndex) => {
+          if (problem.segmentImages[segmentIndex]) {
+            return;
+          }
+          if (!usagesByPage.has(segment.pageIndex)) {
+            usagesByPage.set(segment.pageIndex, []);
+          }
+          usagesByPage.get(segment.pageIndex).push({ problemIndex, segmentIndex, segment });
+          totalSegments += 1;
+        });
+      });
+
+      let processedSegments = 0;
+      const pageIndexes = Array.from(usagesByPage.keys()).sort((a, b) => a - b);
+      if (!pageIndexes.length) {
+        return;
+      }
+
+      for (const pageIndex of pageIndexes) {
+        setStatus(
+          `문항 이미지를 만드는 중입니다... ${processedSegments}/${totalSegments}`,
+          "working",
+          `${pageIndex + 1}/${pageIndexes.length}쪽`
+        );
+        const page = await pdf.getPage(pageIndex + 1);
+        const renderInfo = await renderPdfPage(page, renderScale);
+        const usages = usagesByPage.get(pageIndex) || [];
+
+        for (const usage of usages) {
+          problems[usage.problemIndex].segmentImages[usage.segmentIndex] = await cropSegmentToImage(
+            renderInfo.canvas,
+            renderScale,
+            usage.segment,
+            usage.segmentIndex
+          );
+          processedSegments += 1;
+        }
+
+        renderInfo.canvas.width = 0;
+        renderInfo.canvas.height = 0;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
+
+    function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
+      const squashRatio = getSquashRatioFromPercent(squashPercent);
+      const scalableHeightMm = problem.segments.reduce((sum, segment) => {
+        const width = Math.max(1, segment.x1 - segment.x0);
+        const height = Math.max(1, segment.y1 - segment.y0);
+        return sum + columnWidthMm * ((height * squashRatio) / width);
+      }, 0);
+      const fixedHeightMm = CARD_FIXED_HEIGHT_MM + Math.max(0, problem.segments.length - 1) * SEGMENT_GAP_MM;
+      return { scalableHeightMm, fixedHeightMm };
+    }
+
+    function estimateHeightMm(metrics, fitScale) {
+      return metrics.fixedHeightMm + metrics.scalableHeightMm * fitScale;
+    }
+
+    function estimateProblemHeight(problem, columnWidthMm, fitScale, squashPercent) {
+      return estimateHeightMm(calculateProblemMetrics(problem, columnWidthMm, squashPercent), fitScale);
+    }
+
+    function buildBalancedSquashCandidates(firstProblem, secondProblem) {
+      const firstManual = getManualSquashPercent(firstProblem);
+      const secondManual = getManualSquashPercent(secondProblem);
+      const candidates = [];
+
+      if (firstManual != null && secondManual != null) {
+        return [[firstManual, secondManual]];
+      }
+
+      if (firstManual != null || secondManual != null) {
+        const fixedValue = firstManual ?? secondManual;
+        const fixedOnFirst = firstManual != null;
+        [fixedValue, fixedValue - 1, fixedValue + 1]
+          .filter((value, index, values) => value >= 0 && value <= 20 && values.indexOf(value) === index)
+          .forEach((candidateValue) => {
+            candidates.push(fixedOnFirst ? [fixedValue, candidateValue] : [candidateValue, fixedValue]);
+          });
+        return candidates.sort((left, right) =>
+          Math.max(left[0], left[1]) - Math.max(right[0], right[1]) ||
+          Math.abs(left[0] - left[1]) - Math.abs(right[0] - right[1]) ||
+          (left[0] + left[1]) - (right[0] + right[1])
+        );
+      }
+
+      for (let first = 0; first <= AUTO_BALANCED_MAX_SQUASH; first += 1) {
+        for (let second = 0; second <= AUTO_BALANCED_MAX_SQUASH; second += 1) {
+          if (Math.abs(first - second) <= 1) {
+            candidates.push([first, second]);
+          }
+        }
+      }
+
+      return candidates.sort((left, right) =>
+        Math.max(left[0], left[1]) - Math.max(right[0], right[1]) ||
+        Math.abs(left[0] - left[1]) - Math.abs(right[0] - right[1]) ||
+        (left[0] + left[1]) - (right[0] + right[1])
+      );
+    }
+
+    function findBalancedPairPlacement(existingEntry, nextProblem, settings, columnWidthMm, columnHeightMm) {
+      const candidates = buildBalancedSquashCandidates(existingEntry.problem, nextProblem);
+      const existingFitScale = existingEntry.fitScale ?? 1;
+
+      for (const [firstSquashPercent, secondSquashPercent] of candidates) {
+        const firstHeightMm = estimateProblemHeight(existingEntry.problem, columnWidthMm, existingFitScale, firstSquashPercent);
+        const secondHeightMm = estimateProblemHeight(nextProblem, columnWidthMm, 1, secondSquashPercent);
+        const totalHeightMm = firstHeightMm + settings.cardGap + secondHeightMm;
+        if (totalHeightMm <= columnHeightMm + 0.4) {
+          return {
+            firstSquashPercent,
+            secondSquashPercent,
+            firstHeightMm,
+            secondHeightMm,
+            totalHeightMm
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function buildLayoutPages(settings, problems) {
+      const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
+      const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
+      const columnHeightMm = innerHeightMm - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM;
+      const columnWidthMm = (innerWidthMm - settings.columnGap) / 2;
+      const createColumn = () => ({ items: [], usedHeightMm: 0 });
+      const createSheet = () => ({ columns: [createColumn(), createColumn()] });
+      const sheets = [createSheet()];
+      let sheetIndex = 0;
+      let columnIndex = 0;
+
+      function advanceSlot() {
+        if (columnIndex === 0) {
+          columnIndex = 1;
+          return;
+        }
+        sheets.push(createSheet());
+        sheetIndex += 1;
+        columnIndex = 0;
+      }
+
+      for (const problem of problems) {
+        const baseSquashPercent = getProblemSquashPercent(problem);
+        const metrics = calculateProblemMetrics(problem, columnWidthMm, baseSquashPercent);
+        let placed = false;
+        while (!placed) {
+          const currentSheet = sheets[sheetIndex];
+          const currentColumn = currentSheet.columns[columnIndex];
+          const gapBefore = currentColumn.items.length ? settings.cardGap : 0;
+          const fullHeightMm = estimateHeightMm(metrics, 1);
+          const remainingMm = columnHeightMm - currentColumn.usedHeightMm - gapBefore;
+          if (currentColumn.items.length < settings.maxPerColumn && fullHeightMm <= remainingMm) {
+            currentColumn.items.push({ problem, fitScale: 1, appliedSquashPercent: baseSquashPercent });
+            currentColumn.usedHeightMm += gapBefore + fullHeightMm;
+            placed = true;
+            continue;
+          }
+          if (currentColumn.items.length === 1 && settings.maxPerColumn >= 2) {
+            const pairPlacement = findBalancedPairPlacement(currentColumn.items[0], problem, settings, columnWidthMm, columnHeightMm);
+            if (pairPlacement) {
+              currentColumn.items[0] = {
+                ...currentColumn.items[0],
+                appliedSquashPercent: pairPlacement.firstSquashPercent
+              };
+              currentColumn.items.push({
+                problem,
+                fitScale: 1,
+                appliedSquashPercent: pairPlacement.secondSquashPercent
+              });
+              currentColumn.usedHeightMm = pairPlacement.totalHeightMm;
+              placed = true;
+              continue;
+            }
+          }
+          if (!currentColumn.items.length && remainingMm > metrics.fixedHeightMm + 18) {
+            const fitScale = Math.min(1, Math.max(MIN_FIT_SCALE, (remainingMm - metrics.fixedHeightMm) / metrics.scalableHeightMm));
+            if (estimateHeightMm(metrics, fitScale) <= remainingMm + 0.4) {
+              currentColumn.items.push({ problem, fitScale, appliedSquashPercent: baseSquashPercent });
+              currentColumn.usedHeightMm += estimateHeightMm(metrics, fitScale);
+              placed = true;
+              continue;
+            }
+          }
+          advanceSlot();
+        }
+      }
+      return { sheets, columnHeightMm };
+    }
+
+    function getInitialSheetTarget(totalSheets) {
+      if (totalSheets <= 12) {
+        return totalSheets;
+      }
+      return Math.min(6, totalSheets);
+    }
+
+    function collectProblemsForSheetIndexes(sheetIndexes) {
+      const seen = new Set();
+      const selected = [];
+      for (const sheetIndex of sheetIndexes) {
+        const sheet = state.layoutPages[sheetIndex];
+        if (!sheet) {
+          continue;
+        }
+        for (const column of sheet.columns) {
+          for (const entry of column.items) {
+            if (!seen.has(entry.problem.id)) {
+              seen.add(entry.problem.id);
+              selected.push(entry.problem);
+            }
+          }
+        }
+      }
+      return selected;
+    }
+
+    function recomputeRenderedSheetIndices() {
+      const nextRendered = new Set();
+      state.layoutPages.forEach((sheet, sheetIndex) => {
+        const ready = sheet.columns.every((column) =>
+          column.items.every((entry) => entry.problem.segmentImages.every(Boolean))
+        );
+        if (ready) {
+          nextRendered.add(sheetIndex);
+        }
+      });
+      state.renderedSheetIndices = nextRendered;
+    }
+
+    async function ensureSheetRangeRendered(targetSheetCount) {
+      const boundedTarget = Math.min(targetSheetCount, state.layoutPages.length);
+      const missingSheetIndexes = [];
+      for (let i = 0; i < boundedTarget; i += 1) {
+        if (!state.renderedSheetIndices.has(i)) {
+          missingSheetIndexes.push(i);
+        }
+      }
+      if (!missingSheetIndexes.length || !state.pdfDoc) {
+        updatePreviewActionRow();
+        return;
+      }
+
+      setBusy(true);
+      const selectedProblems = collectProblemsForSheetIndexes(missingSheetIndexes);
+      await generateSegmentImages(state.pdfDoc, selectedProblems, state.renderScale);
+      missingSheetIndexes.forEach((index) => state.renderedSheetIndices.add(index));
+      renderPreview();
+      const allRendered = state.renderedSheetIndices.size >= state.layoutPages.length;
+      const optimizedLabel = state.renderScale < DEFAULT_RENDER_SCALE ? " · 대용량 최적화 적용" : "";
+      const questionCount = getQuestionCount();
+      const previewLabel = allRendered
+        ? `페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${questionCount}개를 감지했습니다${optimizedLabel}.`
+        : `문항 ${questionCount}개 기준 미리보기 ${state.renderedSheetIndices.size}/${state.layoutPages.length}쪽 생성${optimizedLabel}.`;
+      setBusy(false);
+      setStatus(previewLabel, "idle", allRendered ? `${questionCount}문항` : `${state.renderedSheetIndices.size}/${state.layoutPages.length}쪽`);
+      updatePreviewActionRow();
+    }
+
+    function buildProblemSquashOptions(selectedValue) {
+      const normalizedSelectedValue = String(selectedValue);
+      return [
+        `<option value="${AUTO_SQUASH_VALUE}"${normalizedSelectedValue === AUTO_SQUASH_VALUE ? " selected" : ""}>자동 계산</option>`,
+        ...PROBLEM_SQUASH_OPTIONS.map(
+          (value) => `<option value="${value}"${String(value) === normalizedSelectedValue ? " selected" : ""}>${value}%</option>`
+        )
+      ].join("");
+    }
+
+    function createProblemCardMarkup(entry) {
+      const { problem, fitScale } = entry;
+      const squashPercent = getEntryAppliedSquashPercent(entry);
+      const squashRatio = getSquashRatioFromPercent(squashPercent);
+      const squashLabel = `압축 ${squashPercent}%`;
+      const entryBadge = getEntryBadge(problem);
+      const typeBadges = getEntryTypeBadges(problem)
+        .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
+        .join("");
+      const availableImages = problem.segmentImages.filter(Boolean);
+      const images = availableImages.length
+        ? availableImages
+            .map((image, index) => {
+              const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
+              return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
+            })
+            .join("")
+        : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+      return `
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""}">
+          <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
+            <header class="problem-card-header">
+              <div class="problem-heading-stack">
+                <span class="problem-badge">${escapeHtml(entryBadge)}</span>
+                ${typeBadges}
+              </div>
+              <label class="problem-squash-control">
+                <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
+                <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
+                  ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
+                </select>
+              </label>
+            </header>
+            <div class="problem-segments">${images}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta) {
+      const pageNumber = sheetIndex + 1;
+      const isOddPage = pageNumber % 2 === 1;
+      const extraLeftMm = isOddPage ? BINDING_MARGIN_MM : 0;
+      const extraRightMm = isOddPage ? 0 : BINDING_MARGIN_MM;
+      const contentCenterOffsetMm = (extraLeftMm - extraRightMm) / 2;
+      const kickerMarkup = settings.kicker ? `<p class="sheet-kicker">${escapeHtml(settings.kicker)}</p>` : "";
+      const subtitleMarkup = settings.subtitle ? `<p class="sheet-subtitle">${escapeHtml(settings.subtitle)}</p>` : "";
+      const logoMarkup = settings.logoSrc
+        ? `<img class="sheet-logo-image" src="${escapeHtml(settings.logoSrc)}" alt="학원 로고">`
+        : "";
+      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
+      return `
+        <section class="sheet" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${layoutMeta.columnHeightMm}mm;--sheet-header-height:${HEADER_HEIGHT_MM}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
+          <header class="sheet-header">
+            <div class="sheet-header-main">
+              ${kickerMarkup}
+              <h2 class="sheet-title">${escapeHtml(settings.title)}</h2>
+              ${subtitleMarkup}
+            </div>
+            <div class="sheet-brand${settings.logoSrc ? "" : " is-empty"}">
+              ${logoMarkup}
+            </div>
+          </header>
+          <div class="sheet-columns">${columnsMarkup}</div>
+        </section>
+      `;
+    }
+
+    function updateProblemSquash(problemId, squashValue) {
+      const problem = state.problems.find((candidate) => candidate.id === problemId);
+      if (!problem) {
+        return;
+      }
+      const nextValue = parseSquashSelectionValue(squashValue);
+      const currentValue = getManualSquashPercent(problem);
+      if (currentValue === nextValue) {
+        return;
+      }
+      problem.manualSquashPercent = nextValue;
+      renderPreview();
+      const manualCount = state.problems.filter((candidate) => getManualSquashPercent(candidate) != null).length;
+      const pill = manualCount ? `수동 압축 ${manualCount}개` : "자동 균형 압축";
+      const message = nextValue == null
+        ? `${getEntryBadge(problem)} 압축을 자동 균형 모드로 되돌렸습니다.`
+        : `${getEntryBadge(problem)}에 세로 압축 ${nextValue}%를 수동 적용했습니다.`;
+      setStatus(message, "idle", pill);
+    }
+
+    function renderPreview() {
+      applySettingsToUi();
+      state.selectionInfo = parseSelectionInfo(elements.questionFilterInput.value, elements.typeFilterInput.value);
+      if (!state.problems.length) {
+        state.visibleProblems = null;
+        elements.saveRepackWorkButton.disabled = true;
+        elements.questionFilterSummary.textContent = state.selectionInfo?.hasInput
+          ? `PDF를 불러오면 ${getAppliedFilterLabelText(state.selectionInfo)} 기준으로 문항을 추려서 출력합니다.`
+          : "비워두면 전체 문항을 출력합니다.";
+        elements.previewRoot.innerHTML = `
+          <section class="empty-state">
+            <div>
+              <h2>문항 카드 미리보기가 여기에 생성됩니다</h2>
+              <p>샘플처럼 문제 5가 다음 단으로 넘어가고 문제 7이 다음 페이지로 찢어져 있어도 각 문항을 다시 이어붙여서 A4 두 단 템플릿에 정돈해 줍니다.</p>
+            </div>
+          </section>
+        `;
+        elements.printButton.disabled = true;
+        elements.exportHtmlButton.disabled = true;
+        elements.previewActionRow.hidden = true;
+        return;
+      }
+      const settings = readSettings();
+      const visibleProblems = getVisibleProblems(state.problems, state.selectionInfo);
+      state.visibleProblems = visibleProblems;
+      elements.saveRepackWorkButton.disabled = state.isBusy || !state.problems.length;
+      updateQuestionFilterSummary(getQuestionCount(state.problems), getQuestionCount(visibleProblems), state.selectionInfo);
+      if (!visibleProblems.length) {
+        state.layoutPages = [];
+        state.renderedSheetIndices = new Set();
+        elements.previewRoot.innerHTML = `
+          <section class="empty-state">
+            <div>
+              <h2>선택한 문항이 없습니다</h2>
+              <p>문항 번호나 유형 입력값을 다시 확인해 주세요. 예: <span class="mono">1, 3, 5-8, 20-21</span> / <span class="mono">빈칸, 삽입</span></p>
+            </div>
+          </section>
+        `;
+        elements.printButton.disabled = true;
+        elements.exportHtmlButton.disabled = true;
+        elements.previewActionRow.hidden = true;
+        return;
+      }
+      const layoutMeta = buildLayoutPages(settings, visibleProblems);
+      state.layoutPages = layoutMeta.sheets;
+      recomputeRenderedSheetIndices();
+      elements.previewRoot.innerHTML = state.layoutPages.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
+      updatePreviewActionRow();
+    }
+
+    async function analyzePdf(file) {
+      const selectedTextbookName = getSelectedTextbookName();
+      if (!selectedTextbookName) {
+        throw new Error("PDF를 분석하려면 먼저 새 교재명을 입력하거나 기존 교재를 선택해주세요.");
+      }
+      setBusy(true);
+      cleanupObjectUrls();
+      state.fileName = file.name;
+      state.selectedTextbookName = registerTextbookName(selectedTextbookName);
+      if (state.pdfDoc) {
+        try {
+          await state.pdfDoc.destroy();
+        } catch (error) {
+          console.warn("Failed to destroy previous PDF document", error);
+        }
+      }
+      state.pdfDoc = null;
+      state.problems = [];
+      state.visibleProblems = null;
+      state.loadedRepackWorkId = "";
+      state.selectionInfo = null;
+      state.pages = [];
+      state.layoutPages = [];
+      state.stats = null;
+      state.renderedSheetIndices = new Set();
+      updateLoadedFileLabel();
+      renderPreview();
+      setStatus("PDF를 읽는 중입니다...", "working", "분석 준비");
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const pages = [];
+      for (let index = 0; index < pdf.numPages; index += 1) {
+        setStatus(`페이지 ${index + 1}/${pdf.numPages} 구조를 읽고 있습니다...`, "working", `${index + 1}/${pdf.numPages}`);
+        const page = await pdf.getPage(index + 1);
+        const analysisViewport = page.getViewport({ scale: 1 });
+        const textContent = await page.getTextContent();
+        pages.push(buildPageInfo(index, analysisViewport, normalizeTextItems(textContent.items, analysisViewport)));
+      }
+      setStatus("문항 블록을 다시 묶고 있습니다...", "working", "문항 결합");
+      const problems = buildProblemsFromPages(pages, file.name, state.selectedTextbookName);
+      const renderScale = chooseRenderScale(pdf.numPages, problems.length);
+      state.fileName = file.name;
+      state.pdfDoc = pdf;
+      state.pages = pages;
+      state.problems = problems;
+      state.renderScale = renderScale;
+      state.stats = { pageCount: pdf.numPages, problemCount: getQuestionCount(problems) };
+      state.lastExportName = slugifyFileName(file.name);
+      updateLoadedFileLabel();
+      elements.librarySaveSummary.textContent = `${state.selectedTextbookName} / ${file.name} · 아직 라이브러리에 저장되지 않았습니다.`;
+      if (!elements.titleInput.value.trim() || elements.titleInput.value.trim() === "변형문제 정리본") {
+        elements.titleInput.value = file.name.replace(/\.[^.]+$/, "");
+      }
+      renderPreview();
+      elements.clearButton.disabled = false;
+      elements.saveLibraryButton.disabled = false;
+      await ensureSheetRangeRendered(getInitialSheetTarget(state.layoutPages.length));
+    }
+
+    function clearAll() {
+      cleanupObjectUrls();
+      if (state.pdfDoc) {
+        try {
+          state.pdfDoc.destroy();
+        } catch (error) {
+          console.warn("Failed to destroy PDF document", error);
+        }
+      }
+      state.fileName = "";
+      state.pdfDoc = null;
+      state.problems = [];
+      state.visibleProblems = null;
+      state.loadedRepackWorkId = "";
+      state.selectionInfo = null;
+      state.pages = [];
+      state.layoutPages = [];
+      state.stats = null;
+      state.renderedSheetIndices = new Set();
+      elements.pdfInput.value = "";
+      elements.repackWorkNameInput.value = "";
+      updateLoadedFileLabel();
+      elements.librarySaveSummary.textContent = "추출한 문제 이미지와 유형 정보를 저장해 다음 탭에서 시험지 제작에 재사용합니다.";
+      renderPreview();
+      setStatus("PDF를 불러오면 문제를 자동으로 잘라서 새 템플릿에 재배치합니다.", "idle", "준비됨");
+      elements.clearButton.disabled = true;
+      elements.saveLibraryButton.disabled = true;
+    }
+
+    async function blobUrlToDataUrl(url) {
+      const blob = await fetch(url).then((response) => response.blob());
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("이미지 내보내기에 실패했습니다."));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function readLocalFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("로고 이미지를 읽지 못했습니다."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function setLogoState(src, label) {
+      state.logoSrc = src;
+      state.logoLabel = label;
+      updateLogoUi();
+      if (state.problems.length) {
+        renderPreview();
+      }
+    }
+
+    function waitForLayoutPaint() {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    }
+
+    function waitForPreviewImage(image) {
+      if (image.complete && image.naturalWidth > 0) {
+        return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        const finish = () => resolve();
+        image.addEventListener("load", finish, { once: true });
+        image.addEventListener("error", finish, { once: true });
+      });
+    }
+
+    async function waitForPreviewImages() {
+      const images = Array.from(elements.previewRoot.querySelectorAll("img"));
+      if (!images.length) {
+        return;
+      }
+      await Promise.all(images.map((image) => waitForPreviewImage(image)));
+    }
+
+    async function ensureAllSheetsReady(reasonLabel) {
+      if (!state.problems.length || !state.layoutPages.length) {
+        return;
+      }
+      if (state.renderedSheetIndices.size < state.layoutPages.length) {
+        setStatus(
+          `${reasonLabel}용 시트를 준비하는 중입니다...`,
+          "working",
+          `${state.renderedSheetIndices.size}/${state.layoutPages.length}쪽`
+        );
+        await ensureSheetRangeRendered(state.layoutPages.length);
+      }
+      await waitForLayoutPaint();
+      await waitForPreviewImages();
+      await waitForLayoutPaint();
+    }
+
+    async function printCurrentLayout() {
+      if (!state.problems.length) {
+        return;
+      }
+      await ensureAllSheetsReady("인쇄");
+      setStatus("인쇄 레이아웃을 여는 중입니다...", "idle", `${getQuestionCount()}문항`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      window.print();
+    }
+
+    async function exportStandaloneHtml() {
+      if (!state.problems.length) {
+        return;
+      }
+      await ensureAllSheetsReady("저장");
+      setBusy(true);
+      setStatus("인쇄용 HTML로 내보내는 중입니다...", "working", "내보내기");
+      const settings = readSettings();
+      const clone = elements.previewRoot.cloneNode(true);
+      clone.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
+      const exportImages = Array.from(clone.querySelectorAll("img"));
+      for (const image of exportImages) {
+        image.setAttribute("src", await blobUrlToDataUrl(image.getAttribute("src")));
+      }
+      const previewMarkup = clone.innerHTML;
+      const styleText = Array.from(document.styleSheets)
+        .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
+      const cssText = styleText ? Array.from(styleText.cssRules).map((rule) => rule.cssText).join("\n") : "";
+      const exportHtml = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(settings.title)}</title><style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}@media print{.preview-panel{padding:0}.preview-root{display:block}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      const blob = new Blob([exportHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${state.lastExportName || "repacked-problems"}_layout.html`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setBusy(false);
+      const optimizedLabel = state.renderScale < DEFAULT_RENDER_SCALE ? " · 대용량 최적화 적용" : "";
+      setStatus(`페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount()}개를 감지했습니다${optimizedLabel}.`, "idle", `${getQuestionCount()}문항`);
+    }
+
+    function handleError(error) {
+      console.error(error);
+      setBusy(false);
+      setStatus(error.message || "PDF 처리 중 오류가 발생했습니다.", "error", "오류");
+    }
+
+    function wireEvents() {
+      applySettingsToUi();
+      updateLogoUi();
+      populateStoredTextbookOptions();
+      syncTextbookModeUi();
+      updateLoadedFileLabel();
+      setActiveTab("repack");
+      refreshLibrarySummary().catch(handleError);
+      elements.repackTabButton.addEventListener("click", () => {
+        setActiveTab("repack");
+      });
+      elements.examBuilderTabButton.addEventListener("click", () => {
+        setActiveTab("exam");
+      });
+      elements.choosePdfButton.addEventListener("click", () => elements.pdfInput.click());
+      elements.pdfInput.addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+          analyzePdf(file).catch(handleError);
+        }
+      });
+      [elements.textbookModeNew, elements.textbookModeExisting].forEach((input) => {
+        input.addEventListener("change", () => {
+          syncTextbookModeUi();
+          updateLoadedFileLabel();
+        });
+      });
+      elements.newTextbookInput.addEventListener("input", () => {
+        updateTextbookSummary();
+        updateLoadedFileLabel();
+      });
+      elements.existingTextbookSelect.addEventListener("change", () => {
+        updateTextbookSummary();
+        updateLoadedFileLabel();
+      });
+      elements.chooseLogoButton.addEventListener("click", () => elements.logoImageInput.click());
+      elements.logoImageInput.addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+          return;
+        }
+        try {
+          const dataUrl = await readLocalFileAsDataUrl(file);
+          setLogoState(dataUrl, `${file.name} 적용 중`);
+        } catch (error) {
+          handleError(error);
+        } finally {
+          elements.logoImageInput.value = "";
+        }
+      });
+      elements.clearLogoButton.addEventListener("click", () => {
+        setLogoState("", "로고 없음");
+      });
+      elements.clearButton.addEventListener("click", clearAll);
+      elements.printButton.addEventListener("click", () => {
+        printCurrentLayout().catch(handleError);
+      });
+      elements.exportHtmlButton.addEventListener("click", () => {
+        exportStandaloneHtml().catch(handleError);
+      });
+      elements.saveLibraryButton.addEventListener("click", () => {
+        saveProblemsToLibrary().catch(handleError);
+      });
+      elements.previewExamButton.addEventListener("click", () => {
+        previewExamLayout().catch(handleError);
+      });
+      elements.printExamButton.addEventListener("click", () => {
+        printExamLayout(false).catch(handleError);
+      });
+      elements.commitExamButton.addEventListener("click", () => {
+        printExamLayout(true).catch(handleError);
+      });
+      elements.loadMoreButton.addEventListener("click", () => {
+        ensureSheetRangeRendered(state.renderedSheetIndices.size + 6).catch(handleError);
+      });
+      elements.renderAllButton.addEventListener("click", () => {
+        ensureSheetRangeRendered(state.layoutPages.length).catch(handleError);
+      });
+      [
+        elements.questionFilterInput,
+        elements.typeFilterInput,
+        elements.kickerInput,
+        elements.titleInput,
+        elements.subtitleInput,
+        elements.maxPerColumnInput,
+        elements.pagePaddingInput,
+        elements.columnGapInput,
+        elements.cardGapInput,
+        elements.previewZoomInput
+      ].forEach((input) => {
+        input.addEventListener("input", () => {
+          applySettingsToUi();
+          if (state.problems.length) {
+            renderPreview();
+          }
+        });
+      });
+      elements.accentInput.addEventListener("input", () => {
+        elements.accentTextInput.value = elements.accentInput.value;
+        applySettingsToUi();
+        if (state.problems.length) {
+          renderPreview();
+        }
+      });
+      elements.accentTextInput.addEventListener("input", () => {
+        const normalized = normalizeHex(elements.accentTextInput.value);
+        if (normalized) {
+          elements.accentInput.value = normalized;
+        }
+        applySettingsToUi();
+        if (state.problems.length) {
+          renderPreview();
+        }
+      });
+      elements.previewRoot.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement) || !target.classList.contains("problem-squash-select")) {
+          return;
+        }
+        updateProblemSquash(target.dataset.problemId, target.value);
+      });
+      elements.createExamSlotsButton.addEventListener("click", () => {
+        createExamSlotsFromInputs();
+      });
+      elements.clearExamSlotsButton.addEventListener("click", () => {
+        clearExamSlots();
+      });
+      elements.examSlotList.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement) || !target.classList.contains("exam-slot-select")) {
+          return;
+        }
+        updateExamSlotField(target.dataset.slotId, target.dataset.slotField, target.value);
+      });
+      elements.examSlotList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement) || !target.dataset.slotReroll) {
+          return;
+        }
+        const slotId = target.dataset.slotReroll;
+        const slot = getExamSlot(slotId);
+        if (!slot) {
+          return;
+        }
+        const currentAssignedProblemId = slot.assignedProblemId;
+        assignProblemToExamSlot(slotId, true);
+        if (!slot.assignedProblemId && currentAssignedProblemId) {
+          slot.assignedProblemId = currentAssignedProblemId;
+        }
+        renderExamSlots();
+      });
+      elements.saveRepackWorkButton.addEventListener("click", () => {
+        saveCurrentRepackWork().catch(handleError);
+      });
+      elements.saveExamWorkButton.addEventListener("click", () => {
+        saveCurrentExamWork().catch(handleError);
+      });
+      elements.repackWorkList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+        if (target.dataset.workLoad) {
+          loadSavedWork(target.dataset.workLoad).catch(handleError);
+          return;
+        }
+        if (target.dataset.workDelete) {
+          deleteSavedWork(target.dataset.workDelete).catch(handleError);
+        }
+      });
+      elements.examWorkList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+        if (target.dataset.workLoad) {
+          loadSavedWork(target.dataset.workLoad).catch(handleError);
+          return;
+        }
+        if (target.dataset.workDelete) {
+          deleteSavedWork(target.dataset.workDelete).catch(handleError);
+        }
+      });
+      elements.examHistoryList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+          return;
+        }
+        if (target.dataset.examLoad) {
+          try {
+            loadExamHistory(target.dataset.examLoad);
+          } catch (error) {
+            handleError(error);
+          }
+          return;
+        }
+        if (target.dataset.examDelete) {
+          deleteExamHistory(target.dataset.examDelete).catch(handleError);
+        }
+      });
+      ["dragenter", "dragover"].forEach((name) => {
+        elements.dropZone.addEventListener(name, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          elements.dropZone.classList.add("dragging");
+        });
+      });
+      ["dragleave", "drop"].forEach((name) => {
+        elements.dropZone.addEventListener(name, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (name === "drop") {
+            elements.dropZone.classList.remove("dragging");
+            const file = event.dataTransfer?.files?.[0];
+            if (file) {
+              analyzePdf(file).catch(handleError);
+            }
+            return;
+          }
+          elements.dropZone.classList.remove("dragging");
+        });
+      });
+      updateExamActionButtons();
+    }
+
+    wireEvents();
+    document.body.dataset.appReady = "true";
+  </script>
+</body>
+</html>

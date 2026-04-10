@@ -1,0 +1,2883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>월_교과서 1과</title>
+  <style>
+    :root {
+      --ink: #182126;
+      --muted: #62727c;
+      --page: #fffdf7;
+      --accent: #186b63;
+      --accent-soft: rgba(24, 107, 99, 0.12);
+      --shadow: 0 28px 60px rgba(19, 30, 37, 0.16);
+      font-family: "SUIT Variable", "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #eef1eb; color: var(--ink); }
+    body { padding: 18px 0 42px; }
+    .preview-root { display: grid; gap: 22px; justify-content: center; }
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      padding: var(--sheet-padding, 12mm);
+      background: var(--page);
+      border: 1px solid rgba(24, 33, 38, 0.08);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 7mm;
+    }
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 18px;
+      min-height: var(--sheet-header-height, 24mm);
+      padding-bottom: 5mm;
+      border-bottom: 1px solid rgba(24, 33, 38, 0.08);
+    }
+    .sheet-kicker { margin: 0 0 4px; color: var(--accent); font-size: 3.2mm; letter-spacing: 0.24em; text-transform: uppercase; font-weight: 800; }
+    .sheet-title { margin: 0; font-size: 8.2mm; line-height: 1; letter-spacing: -0.05em; font-weight: 800; }
+    .sheet-subtitle { margin: 2.8mm 0 0; color: var(--muted); font-size: 3.6mm; line-height: 1.45; max-width: 114mm; white-space: pre-line; }
+    .sheet-meta { text-align: right; color: var(--muted); font-size: 3.2mm; line-height: 1.55; font-weight: 700; }
+    .sheet-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--column-gap, 7mm); }
+    .sheet-column { display: flex; flex-direction: column; gap: var(--card-gap, 6mm); min-height: var(--column-height, 245mm); }
+    .problem-card { position: relative; border-radius: 18px; border: 1px solid rgba(24, 33, 38, 0.12); background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,253,248,0.95)); padding: 3.8mm; overflow: hidden; }
+    .problem-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, var(--accent), rgba(24,107,99,0.26)); }
+    .problem-card.is-shared { background: linear-gradient(180deg, rgba(241,251,248,0.96), rgba(255,253,248,0.95)); border-style: dashed; }
+    .problem-card-inner { width: var(--fit-width, 100%); margin-inline: auto; }
+    .problem-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2.6mm; }
+    .problem-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 8.4mm; padding: 0 4.4mm; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 3.5mm; font-weight: 800; }
+    .problem-meta { color: var(--muted); font-size: 3.1mm; font-weight: 700; text-align: right; }
+    .problem-segments { display: grid; gap: 1.8mm; }
+    .problem-image { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid rgba(24, 33, 38, 0.08); background: #fff; }
+    .sheet-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 3mm; color: var(--muted); font-weight: 700; padding-top: 2mm; }
+    @media print {
+      body { padding: 0; background: #fff; }
+      @page { size: A4 portrait; margin: 0; }
+      .preview-root { gap: 0; }
+      .sheet { border: none; box-shadow: none; break-after: page; page-break-after: always; }
+      .sheet:last-child { break-after: auto; page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-root">
+    
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>1 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 1</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_001_001_seg_01.png" alt="문항 1 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 2</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_002_002_seg_01.png" alt="문항 2 조각 1">
+<img class="problem-image" src="images/problem_002_002_seg_02.png" alt="문항 2 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>2 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 3</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_003_003_seg_01.png" alt="문항 3 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 4</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_004_004_seg_01.png" alt="문항 4 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>3 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 5</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_005_005_seg_01.png" alt="문항 5 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 6</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_006_006_seg_01.png" alt="문항 6 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>4 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 7</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_007_007_seg_01.png" alt="문항 7 조각 1">
+<img class="problem-image" src="images/problem_007_007_seg_02.png" alt="문항 7 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 8</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_008_008_seg_01.png" alt="문항 8 조각 1">
+<img class="problem-image" src="images/problem_008_008_seg_02.png" alt="문항 8 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>5 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 9</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_009_009_seg_01.png" alt="문항 9 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 10</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_010_010_seg_01.png" alt="문항 10 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 11</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_011_011_seg_01.png" alt="문항 11 조각 1">
+<img class="problem-image" src="images/problem_011_011_seg_02.png" alt="문항 11 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 12</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_012_012_seg_01.png" alt="문항 12 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>6 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 13</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_013_013_seg_01.png" alt="문항 13 조각 1">
+<img class="problem-image" src="images/problem_013_013_seg_02.png" alt="문항 13 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 14</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_014_014_seg_01.png" alt="문항 14 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>7 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 15</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_015_015_seg_01.png" alt="문항 15 조각 1">
+<img class="problem-image" src="images/problem_015_015_seg_02.png" alt="문항 15 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 16</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_016_016_seg_01.png" alt="문항 16 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>8 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 17</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_017_017_seg_01.png" alt="문항 17 조각 1">
+<img class="problem-image" src="images/problem_017_017_seg_02.png" alt="문항 17 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 18</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_018_018_seg_01.png" alt="문항 18 조각 1">
+<img class="problem-image" src="images/problem_018_018_seg_02.png" alt="문항 18 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>9 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 19</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_019_019_seg_01.png" alt="문항 19 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card is-shared">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">20-21 공통 지문</span>
+                          <span class="problem-meta">20-21 묶음 지문</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/shared_20_21_020_seg_01.png" alt="20-21 공통 지문 조각 1">
+<img class="problem-image" src="images/shared_20_21_020_seg_02.png" alt="20-21 공통 지문 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 20</span>
+                          <span class="problem-meta">20-21 묶음 문제</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_020_021_seg_01.png" alt="문항 20 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>10 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 21</span>
+                          <span class="problem-meta">20-21 묶음 문제</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_021_022_seg_01.png" alt="문항 21 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 22</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_022_023_seg_01.png" alt="문항 22 조각 1">
+<img class="problem-image" src="images/problem_022_023_seg_02.png" alt="문항 22 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 23</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_023_024_seg_01.png" alt="문항 23 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>11 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 24</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_024_025_seg_01.png" alt="문항 24 조각 1">
+<img class="problem-image" src="images/problem_024_025_seg_02.png" alt="문항 24 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 25</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_025_026_seg_01.png" alt="문항 25 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>12 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 26</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_026_027_seg_01.png" alt="문항 26 조각 1">
+<img class="problem-image" src="images/problem_026_027_seg_02.png" alt="문항 26 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 27</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_027_028_seg_01.png" alt="문항 27 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>13 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 28</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_028_029_seg_01.png" alt="문항 28 조각 1">
+<img class="problem-image" src="images/problem_028_029_seg_02.png" alt="문항 28 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 29</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_029_030_seg_01.png" alt="문항 29 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 30</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_030_031_seg_01.png" alt="문항 30 조각 1">
+<img class="problem-image" src="images/problem_030_031_seg_02.png" alt="문항 30 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>14 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 31</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_031_032_seg_01.png" alt="문항 31 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 32</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_032_033_seg_01.png" alt="문항 32 조각 1">
+<img class="problem-image" src="images/problem_032_033_seg_02.png" alt="문항 32 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 33</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_033_034_seg_01.png" alt="문항 33 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>15 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 34</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_034_035_seg_01.png" alt="문항 34 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 35</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_035_036_seg_01.png" alt="문항 35 조각 1">
+<img class="problem-image" src="images/problem_035_036_seg_02.png" alt="문항 35 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>16 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 36</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_036_037_seg_01.png" alt="문항 36 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 37</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_037_038_seg_01.png" alt="문항 37 조각 1">
+<img class="problem-image" src="images/problem_037_038_seg_02.png" alt="문항 37 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>17 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 38</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_038_039_seg_01.png" alt="문항 38 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 39</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_039_040_seg_01.png" alt="문항 39 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>18 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 40</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_040_041_seg_01.png" alt="문항 40 조각 1">
+<img class="problem-image" src="images/problem_040_041_seg_02.png" alt="문항 40 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 41</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_041_042_seg_01.png" alt="문항 41 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 42</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_042_043_seg_01.png" alt="문항 42 조각 1">
+<img class="problem-image" src="images/problem_042_043_seg_02.png" alt="문항 42 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>19 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 43</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_043_044_seg_01.png" alt="문항 43 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 44</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_044_045_seg_01.png" alt="문항 44 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 45</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_045_046_seg_01.png" alt="문항 45 조각 1">
+<img class="problem-image" src="images/problem_045_046_seg_02.png" alt="문항 45 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>20 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 46</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_046_047_seg_01.png" alt="문항 46 조각 1">
+<img class="problem-image" src="images/problem_046_047_seg_02.png" alt="문항 46 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 47</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_047_048_seg_01.png" alt="문항 47 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>21 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 48</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_048_049_seg_01.png" alt="문항 48 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 49</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_049_050_seg_01.png" alt="문항 49 조각 1">
+<img class="problem-image" src="images/problem_049_050_seg_02.png" alt="문항 49 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>22 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 50</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_050_051_seg_01.png" alt="문항 50 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 51</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_051_052_seg_01.png" alt="문항 51 조각 1">
+<img class="problem-image" src="images/problem_051_052_seg_02.png" alt="문항 51 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 52</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_052_053_seg_01.png" alt="문항 52 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>23 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 53</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_053_054_seg_01.png" alt="문항 53 조각 1">
+<img class="problem-image" src="images/problem_053_054_seg_02.png" alt="문항 53 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 54</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_054_055_seg_01.png" alt="문항 54 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>24 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 55</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_055_056_seg_01.png" alt="문항 55 조각 1">
+<img class="problem-image" src="images/problem_055_056_seg_02.png" alt="문항 55 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 56</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_056_057_seg_01.png" alt="문항 56 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>25 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 57</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_057_058_seg_01.png" alt="문항 57 조각 1">
+<img class="problem-image" src="images/problem_057_058_seg_02.png" alt="문항 57 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 58</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_058_059_seg_01.png" alt="문항 58 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>26 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 59</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_059_060_seg_01.png" alt="문항 59 조각 1">
+<img class="problem-image" src="images/problem_059_060_seg_02.png" alt="문항 59 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 60</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_060_061_seg_01.png" alt="문항 60 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>27 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 61</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_061_062_seg_01.png" alt="문항 61 조각 1">
+<img class="problem-image" src="images/problem_061_062_seg_02.png" alt="문항 61 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 62</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_062_063_seg_01.png" alt="문항 62 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>28 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 63</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_063_064_seg_01.png" alt="문항 63 조각 1">
+<img class="problem-image" src="images/problem_063_064_seg_02.png" alt="문항 63 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 64</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_064_065_seg_01.png" alt="문항 64 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>29 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 65</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_065_066_seg_01.png" alt="문항 65 조각 1">
+<img class="problem-image" src="images/problem_065_066_seg_02.png" alt="문항 65 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 66</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_066_067_seg_01.png" alt="문항 66 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 67</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_067_068_seg_01.png" alt="문항 67 조각 1">
+<img class="problem-image" src="images/problem_067_068_seg_02.png" alt="문항 67 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>30 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 68</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_068_069_seg_01.png" alt="문항 68 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 69</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_069_070_seg_01.png" alt="문항 69 조각 1">
+<img class="problem-image" src="images/problem_069_070_seg_02.png" alt="문항 69 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>31 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 70</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_070_071_seg_01.png" alt="문항 70 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 71</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_071_072_seg_01.png" alt="문항 71 조각 1">
+<img class="problem-image" src="images/problem_071_072_seg_02.png" alt="문항 71 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>32 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 72</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_072_073_seg_01.png" alt="문항 72 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 73</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_073_074_seg_01.png" alt="문항 73 조각 1">
+<img class="problem-image" src="images/problem_073_074_seg_02.png" alt="문항 73 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>33 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 74</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_074_075_seg_01.png" alt="문항 74 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 75</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_075_076_seg_01.png" alt="문항 75 조각 1">
+<img class="problem-image" src="images/problem_075_076_seg_02.png" alt="문항 75 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>34 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 76</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_076_077_seg_01.png" alt="문항 76 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 77</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_077_078_seg_01.png" alt="문항 77 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 78</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_078_079_seg_01.png" alt="문항 78 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>35 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 79</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_079_080_seg_01.png" alt="문항 79 조각 1">
+<img class="problem-image" src="images/problem_079_080_seg_02.png" alt="문항 79 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 80</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_080_081_seg_01.png" alt="문항 80 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>36 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 81</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_081_082_seg_01.png" alt="문항 81 조각 1">
+<img class="problem-image" src="images/problem_081_082_seg_02.png" alt="문항 81 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 82</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_082_083_seg_01.png" alt="문항 82 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>37 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 83</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_083_084_seg_01.png" alt="문항 83 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 84</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_084_085_seg_01.png" alt="문항 84 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 85</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_085_086_seg_01.png" alt="문항 85 조각 1">
+<img class="problem-image" src="images/problem_085_086_seg_02.png" alt="문항 85 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>38 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 86</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_086_087_seg_01.png" alt="문항 86 조각 1">
+<img class="problem-image" src="images/problem_086_087_seg_02.png" alt="문항 86 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 87</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_087_088_seg_01.png" alt="문항 87 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>39 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 88</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_088_089_seg_01.png" alt="문항 88 조각 1">
+<img class="problem-image" src="images/problem_088_089_seg_02.png" alt="문항 88 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 89</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_089_090_seg_01.png" alt="문항 89 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>40 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 90</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_090_091_seg_01.png" alt="문항 90 조각 1">
+<img class="problem-image" src="images/problem_090_091_seg_02.png" alt="문항 90 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 91</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_091_092_seg_01.png" alt="문항 91 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 92</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_092_093_seg_01.png" alt="문항 92 조각 1">
+<img class="problem-image" src="images/problem_092_093_seg_02.png" alt="문항 92 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>41 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 93</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_093_094_seg_01.png" alt="문항 93 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 94</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_094_095_seg_01.png" alt="문항 94 조각 1">
+<img class="problem-image" src="images/problem_094_095_seg_02.png" alt="문항 94 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>42 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 95</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_095_096_seg_01.png" alt="문항 95 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 96</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_096_097_seg_01.png" alt="문항 96 조각 1">
+<img class="problem-image" src="images/problem_096_097_seg_02.png" alt="문항 96 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 97</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_097_098_seg_01.png" alt="문항 97 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>43 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 98</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_098_099_seg_01.png" alt="문항 98 조각 1">
+<img class="problem-image" src="images/problem_098_099_seg_02.png" alt="문항 98 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 99</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_099_100_seg_01.png" alt="문항 99 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>44 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 100</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_100_101_seg_01.png" alt="문항 100 조각 1">
+<img class="problem-image" src="images/problem_100_101_seg_02.png" alt="문항 100 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 101</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_101_102_seg_01.png" alt="문항 101 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>45 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 102</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_102_103_seg_01.png" alt="문항 102 조각 1">
+<img class="problem-image" src="images/problem_102_103_seg_02.png" alt="문항 102 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 103</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_103_104_seg_01.png" alt="문항 103 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>46 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 104</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_104_105_seg_01.png" alt="문항 104 조각 1">
+<img class="problem-image" src="images/problem_104_105_seg_02.png" alt="문항 104 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 105</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_105_106_seg_01.png" alt="문항 105 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>47 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 106</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_106_107_seg_01.png" alt="문항 106 조각 1">
+<img class="problem-image" src="images/problem_106_107_seg_02.png" alt="문항 106 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 107</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_107_108_seg_01.png" alt="문항 107 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 108</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_108_109_seg_01.png" alt="문항 108 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 109</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_109_110_seg_01.png" alt="문항 109 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>48 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 110</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_110_111_seg_01.png" alt="문항 110 조각 1">
+<img class="problem-image" src="images/problem_110_111_seg_02.png" alt="문항 110 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 111</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_111_112_seg_01.png" alt="문항 111 조각 1">
+<img class="problem-image" src="images/problem_111_112_seg_02.png" alt="문항 111 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>49 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 112</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_112_113_seg_01.png" alt="문항 112 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 113</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_113_114_seg_01.png" alt="문항 113 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 114</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_114_115_seg_01.png" alt="문항 114 조각 1">
+<img class="problem-image" src="images/problem_114_115_seg_02.png" alt="문항 114 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>50 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 115</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_115_116_seg_01.png" alt="문항 115 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 116</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_116_117_seg_01.png" alt="문항 116 조각 1">
+<img class="problem-image" src="images/problem_116_117_seg_02.png" alt="문항 116 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>51 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 117</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_117_118_seg_01.png" alt="문항 117 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 118</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_118_119_seg_01.png" alt="문항 118 조각 1">
+<img class="problem-image" src="images/problem_118_119_seg_02.png" alt="문항 118 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>52 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 119</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_119_120_seg_01.png" alt="문항 119 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 120</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_120_121_seg_01.png" alt="문항 120 조각 1">
+<img class="problem-image" src="images/problem_120_121_seg_02.png" alt="문항 120 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>53 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 121</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_121_122_seg_01.png" alt="문항 121 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 122</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_122_123_seg_01.png" alt="문항 122 조각 1">
+<img class="problem-image" src="images/problem_122_123_seg_02.png" alt="문항 122 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>54 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 123</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_123_124_seg_01.png" alt="문항 123 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 124</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_124_125_seg_01.png" alt="문항 124 조각 1">
+<img class="problem-image" src="images/problem_124_125_seg_02.png" alt="문항 124 조각 2"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 125</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_125_126_seg_01.png" alt="문항 125 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>55 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 126</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_126_127_seg_01.png" alt="문항 126 조각 1">
+<img class="problem-image" src="images/problem_126_127_seg_02.png" alt="문항 126 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 127</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_127_128_seg_01.png" alt="문항 127 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>56 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 128</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_128_129_seg_01.png" alt="문항 128 조각 1">
+<img class="problem-image" src="images/problem_128_129_seg_02.png" alt="문항 128 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 129</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_129_130_seg_01.png" alt="문항 129 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>57 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 130</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_130_131_seg_01.png" alt="문항 130 조각 1">
+<img class="problem-image" src="images/problem_130_131_seg_02.png" alt="문항 130 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 131</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_131_132_seg_01.png" alt="문항 131 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>58 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 132</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_132_133_seg_01.png" alt="문항 132 조각 1">
+<img class="problem-image" src="images/problem_132_133_seg_02.png" alt="문항 132 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 133</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_133_134_seg_01.png" alt="문항 133 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>59 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 134</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_134_135_seg_01.png" alt="문항 134 조각 1">
+<img class="problem-image" src="images/problem_134_135_seg_02.png" alt="문항 134 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 135</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_135_136_seg_01.png" alt="문항 135 조각 1">
+<img class="problem-image" src="images/problem_135_136_seg_02.png" alt="문항 135 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>60 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 136</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_136_137_seg_01.png" alt="문항 136 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 137</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_137_138_seg_01.png" alt="문항 137 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 138</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_138_139_seg_01.png" alt="문항 138 조각 1">
+<img class="problem-image" src="images/problem_138_139_seg_02.png" alt="문항 138 조각 2"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>61 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 139</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_139_140_seg_01.png" alt="문항 139 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 140</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_140_141_seg_01.png" alt="문항 140 조각 1">
+<img class="problem-image" src="images/problem_140_141_seg_02.png" alt="문항 140 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 141</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_141_142_seg_01.png" alt="문항 141 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>62 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 142</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_142_143_seg_01.png" alt="문항 142 조각 1"></div>
+                      </div>
+                    </article>
+                    
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 143</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_143_144_seg_01.png" alt="문항 143 조각 1"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 144</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_144_145_seg_01.png" alt="문항 144 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>63 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 145</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_145_146_seg_01.png" alt="문항 145 조각 1">
+<img class="problem-image" src="images/problem_145_146_seg_02.png" alt="문항 145 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 146</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_146_147_seg_01.png" alt="문항 146 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>64 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 147</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_147_148_seg_01.png" alt="문항 147 조각 1">
+<img class="problem-image" src="images/problem_147_148_seg_02.png" alt="문항 147 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 148</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_148_149_seg_01.png" alt="문항 148 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+            <section class="sheet" style="--sheet-padding:12mm;--column-gap:7mm;--card-gap:6mm;--column-height:241mm;--sheet-header-height:24mm;">
+              <header class="sheet-header">
+                <div>
+                  <p class="sheet-kicker">Auto Repacked Worksheet</p>
+                  <h2 class="sheet-title">월_교과서 1과</h2>
+                  
+                </div>
+                <div class="sheet-meta">
+                  <div>월_교과서 1과.pdf</div>
+                  <div>65 / 65</div>
+                </div>
+              </header>
+              <div class="sheet-columns"><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 149</span>
+                          <span class="problem-meta">원본 2페이지 연결</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_149_150_seg_01.png" alt="문항 149 조각 1">
+<img class="problem-image" src="images/problem_149_150_seg_02.png" alt="문항 149 조각 2"></div>
+                      </div>
+                    </article>
+                    </section><section class="sheet-column">
+                    <article class="problem-card">
+                      <div class="problem-card-inner" style="--fit-width:100.0%;">
+                        <header class="problem-card-header">
+                          <span class="problem-badge">문항 150</span>
+                          <span class="problem-meta">원본 단일 블록</span>
+                        </header>
+                        <div class="problem-segments"><img class="problem-image" src="images/problem_150_151_seg_01.png" alt="문항 150 조각 1"></div>
+                      </div>
+                    </article>
+                    </section></div>
+              <footer class="sheet-footer">
+                <span>문항 카드 재배치 · 한 단 최대 2문제</span>
+                <span>원본 서식 보존형 정리본</span>
+              </footer>
+            </section>
+            
+  </main>
+</body>
+</html>

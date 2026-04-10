@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hybrid Sample 20-21</title>
+  <style>
+    :root {
+      --ink: #182126;
+      --muted: #5b6b72;
+      --paper: #fffdf8;
+      --accent: #17685f;
+      --accent-soft: rgba(23, 104, 95, 0.1);
+      --line: rgba(24, 33, 38, 0.12);
+      --shadow: 0 24px 48px rgba(18, 28, 32, 0.1);
+      font-family: "SUIT Variable", "Pretendard Variable", "Noto Sans KR", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 247, 232, 0.9), transparent 28%),
+        linear-gradient(135deg, #efe6d7, #d8ebe1 58%, #f7f4ed);
+    }
+    .page {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 24px auto 40px;
+      display: grid;
+      gap: 22px;
+    }
+    .hero, .panel {
+      background: rgba(255,255,255,0.84);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .hero {
+      padding: 28px 30px;
+      display: grid;
+      gap: 10px;
+    }
+    .eyebrow {
+      margin: 0;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 36px;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 860px;
+    }
+    .meta {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .panel {
+      padding: 24px;
+    }
+    .panel-title {
+      margin: 0 0 16px;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+    .passage-card {
+      padding: 22px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(241,251,248,0.92), rgba(255,253,248,0.94));
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .passage-text {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .passage-text p {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.88;
+      letter-spacing: 0.01em;
+    }
+    .passage-text p:last-child {
+      margin-bottom: 0;
+    }
+    .passage-card p {
+      margin: 14px 0 0;
+      font-size: 17px;
+      line-height: 1.88;
+      letter-spacing: 0.01em;
+    }
+    .question-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .question-card {
+      padding: 20px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .question-number {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #182126;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .question-badge {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .question-prompt {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+    }
+    .choice-list {
+      margin: 16px 0 0;
+      padding-left: 24px;
+      display: grid;
+      gap: 10px;
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .source-card {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.9);
+    }
+    .source-card-wide {
+      grid-column: 1 / -1;
+    }
+    .source-card-header {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .source-card-header h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .source-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+    .source-stack {
+      display: grid;
+      gap: 12px;
+    }
+    .source-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(24, 33, 38, 0.08);
+      background: #fff;
+    }
+    @media (max-width: 980px) {
+      .question-grid,
+      .source-grid {
+        grid-template-columns: 1fr;
+      }
+      .source-card-wide {
+        grid-column: auto;
+      }
+      .hero h1 {
+        font-size: 30px;
+      }
+      .passage-card p {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Hybrid Prototype</p>
+      <h1>20-21 텍스트 재구성 샘플</h1>
+      <p>이 샘플은 PDF에서 텍스트를 다시 조립해 읽기 편한 카드로 배치하고, 아래에는 원본 크롭을 같이 붙인 하이브리드 버전입니다. 즉, 레이아웃은 HTML 텍스트로 유연하게 만들고, 검수는 원본 조각으로 바로 확인하는 구조입니다.</p>
+      <span class="meta">월_교과서 1과.pdf</span>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Rebuilt Text</h2>
+      <article class="passage-card">
+        <span class="badge">20-21 공통 지문</span>
+        <div class="passage-text"><p>Minji: My role model is Jacques Cousteau, a French ocean explorer, inventor, and filmmaker. He dedicated his life to exploring and documenting the wonders of the underwater world. As a young man, he dreamed of becoming a pilot, but then he broke both of his arms in a terrible car accident. As part of his physical therapy, Cousteau began swimming. He became intrigued by the mysteries of the ocean, and he wanted to explore further. However, the diving equipment available at that time was insufficient.</p>
+<p>Instead of giving up, Cousteau decided to create his own equipment. After a long series of failed attempts, he finally succeeded in developing a portable breathing device, which he called the “Aqua-Lung.” Cousteau shared his underwater experiences with the world in a compelling documentary film released in 1956. It transformed people’s perceptions of the ocean and promoted the need for marine conservation. Cousteau’s curiosity drove him to constantly challenge himself in new areas, and his passion enabled him to make the impossible a reality. Cousteau’s life story inspired me to push the boundaries of what I can do. Because of him, I am not afraid to try different things in life. I will keep exploring until I find what suits me best.</p></div>
+      </article>
+      <div class="question-grid">
+        
+            <article class="question-card">
+              <header class="question-header">
+                <span class="question-number">문항 20</span>
+                <span class="question-badge">20-21 묶음</span>
+              </header>
+              <h3 class="question-prompt">윗글의 내용과 일치하는 것은? [1-2]</h3>
+              <ol class="choice-list"><li>①Jacques Cousteau은 교통사고를 겪었지만 부상을 당하지 않 았다.</li>
+<li>②Cousteau는 물리 치료의 일환으로 수영을 시작했고, 다시 조 종사의 꿈을 꾸었다.</li>
+<li>③Cousteau가 해양의 신비로움에 호기심을 가질 당시 휴대용 호 흡 기계가 충분히 개발되어 있었다.</li>
+<li>④‘Aqua-Lung’은 Cousteau가 직접 개발한 장비로, 포기하지 않 고 장비까지 개발한 그의 열정을 보여준다.</li>
+<li>⑤민지는 Cousteau의 삶을 보고 건강의 중요성을 깨달았고, 열 심히 탐구하는 대신 운동을 시작했다.</li></ol>
+            </article>
+            
+            <article class="question-card">
+              <header class="question-header">
+                <span class="question-number">문항 21</span>
+                <span class="question-badge">20-21 묶음</span>
+              </header>
+              <h3 class="question-prompt">윗글을 읽고 답할 수 없는 질문을 고르시오. [1-2]</h3>
+              <ol class="choice-list"><li>①What is the occupation of Minji’s role model, Jacques Cousteau?</li>
+<li>②Why was Jacques Cousteau’s first dream to become a pilot?</li>
+<li>③Who is the developer of the portable breathing device called the “Aqua-Lung”?</li>
+<li>④Who is the main subject of the compelling documentary film released in 1956?</li>
+<li>⑤What did Minji learn thanks to Cousteau?</li></ol>
+            </article>
+            
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Source Reference</h2>
+      <div class="source-grid">
+        
+        <section class="source-card source-card-wide">
+          <header class="source-card-header">
+            <span class="source-label">Source Crop</span>
+            <h3>20-21 공통 지문 원본</h3>
+          </header>
+          <div class="source-stack"><img class="source-image" src="images/shared_20_21_seg_01.png" alt="20-21 원본 조각 1">
+<img class="source-image" src="images/shared_20_21_seg_02.png" alt="20-21 원본 조각 2"></div>
+        </section>
+        
+            <section class="source-card">
+              <header class="source-card-header">
+                <span class="source-label">Source Crop</span>
+                <h3>문항 20 원본</h3>
+              </header>
+              <div class="source-stack"><img class="source-image" src="images/problem_20_seg_01.png" alt="문항 20 원본"></div>
+            </section>
+            
+            <section class="source-card">
+              <header class="source-card-header">
+                <span class="source-label">Source Crop</span>
+                <h3>문항 21 원본</h3>
+              </header>
+              <div class="source-stack"><img class="source-image" src="images/problem_21_seg_01.png" alt="문항 21 원본"></div>
+            </section>
+            
+      </div>
+    </section>
+  </main>
+</body>
+</html>
