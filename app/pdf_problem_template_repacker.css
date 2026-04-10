@@ -36,26 +36,6 @@ body {
   min-width: 1240px;
 }
 
-.app-page-shell {
-  min-height: 100vh;
-}
-
-.app-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 18px 24px;
-  border-bottom: 1px solid rgba(24, 33, 38, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8)),
-    linear-gradient(135deg, rgba(255, 249, 238, 0.9), rgba(246, 252, 248, 0.88));
-  backdrop-filter: blur(16px);
-}
-
 .app-topbar-copy {
   display: grid;
   gap: 4px;
@@ -553,6 +533,26 @@ button:disabled {
   margin: 0;
   line-height: 1.72;
   font-size: 14px;
+}
+
+.empty-state-build {
+  width: 100%;
+  min-height: 420px;
+  padding: 60px 20px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #5a4a3a;
+}
+
+.empty-kicker {
+  font-family: "Lexend", "Plus Jakarta Sans", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: #5a4a3a;
 }
 
 .sheet {
@@ -1204,9 +1204,18 @@ button:disabled {
 }
 
 @media print {
+  .app-page-shell {
+    min-height: 0;
+    padding-top: 0 !important;
+  }
+
   .app-shell {
     display: block;
     min-height: 0;
+  }
+
+  .app-tab-shell {
+    display: none !important;
   }
 
   .exam-shell,
@@ -1258,16 +1267,16 @@ body {
 .app-page-shell {
   position: relative;
   min-height: 100vh;
-  padding-top: 88px;
+  padding-top: 0;
 }
 
 .app-topbar {
-  position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
   width: min(560px, calc(100% - 36px));
-  margin: 0;
+  margin: 0 auto;
   padding: 14px 18px;
   display: flex;
   flex-wrap: wrap;
@@ -1279,7 +1288,7 @@ body {
   background: rgba(246, 242, 234, 0.88);
   box-shadow: 0 10px 24px rgba(30, 42, 39, 0.07);
   backdrop-filter: blur(12px);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .app-topbar-copy {
@@ -1472,6 +1481,13 @@ body {
   box-shadow: none;
 }
 
+.preview-root .empty-state-build {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .panel-card {
   padding: 16px;
   margin-bottom: 14px;
@@ -1480,6 +1496,10 @@ body {
 .status-bar,
 .preview-root .empty-state {
   box-shadow: 0 18px 34px rgba(30, 42, 39, 0.06);
+}
+
+.preview-root .empty-state-build {
+  box-shadow: none;
 }
 
 .status-bar {
@@ -1640,7 +1660,7 @@ body {
 
 @media (max-width: 640px) {
   .app-page-shell {
-    padding-top: 80px;
+    padding-top: 0;
   }
 
   .app-tab-shell {

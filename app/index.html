@@ -249,13 +249,8 @@
       </div>
 
       <div class="preview-root" id="previewRoot">
-        <section class="empty-state">
-          <div>
-            <h2>문항 카드 미리보기가 여기에 생성됩니다</h2>
-            <p>
-              샘플처럼 원래 PDF에서 문제 5가 다음 단으로 넘어가고, 문제 7이 다음 페이지로 찢어져 있어도 이 도구는 각 문항을 다시 이어붙여서 A4 두 단 템플릿에 정돈해 줍니다.
-            </p>
-          </div>
+        <section class="empty-state empty-state-build">
+          <div class="empty-kicker">READY TO BUILD</div>
         </section>
       </div>
     </main>
@@ -3761,11 +3756,8 @@
           ? `PDF를 불러오면 ${getAppliedFilterLabelText(state.selectionInfo)} 기준으로 문항을 추려서 출력합니다.`
           : "비워두면 전체 문항을 출력합니다.";
         elements.previewRoot.innerHTML = `
-          <section class="empty-state">
-            <div>
-              <h2>문항 카드 미리보기가 여기에 생성됩니다</h2>
-              <p>샘플처럼 문제 5가 다음 단으로 넘어가고 문제 7이 다음 페이지로 찢어져 있어도 각 문항을 다시 이어붙여서 A4 두 단 템플릿에 정돈해 줍니다.</p>
-            </div>
+          <section class="empty-state empty-state-build">
+            <div class="empty-kicker">READY TO BUILD</div>
           </section>
         `;
         elements.printButton.disabled = true;
