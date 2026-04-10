@@ -5,20 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF LAB</title>
   <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
 </head>
 <body>
   <div class="app-page-shell">
     <header class="app-topbar">
       <div class="app-topbar-copy">
-        <p class="app-topbar-eyebrow">CODE LAB</p>
         <h1 class="app-topbar-title">PDF LAB</h1>
       </div>
+      <div class="app-topbar-badge">WORKSPACE</div>
+    </header>
+
+    <div class="app-tab-shell">
       <div class="app-tab-row" role="tablist" aria-label="작업 영역">
         <button class="app-tab-button is-active" type="button" id="repackTabButton" data-tab-target="repack" aria-selected="true">PDF LAB</button>
         <button class="app-tab-button" type="button" id="examBuilderTabButton" data-tab-target="exam" aria-selected="false">파이널테스트 제작</button>
       </div>
-    </header>
+    </div>
 
     <section class="tab-panel is-active" id="repackTabPanel" data-tab-panel="repack">
   <div class="app-shell">
