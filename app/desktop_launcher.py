@@ -13,7 +13,7 @@ from pathlib import Path
 import webview
 
 
-APP_FILE = "pdf_problem_template_repacker.html"
+APP_FILE = "index.html"
 WINDOW_TITLE = "\ubb38\uc81c \ub9ac\ud328\ud0a4\uc9d5"
 WINDOW_SIZE = (1500, 980)
 MIN_SIZE = (1180, 760)

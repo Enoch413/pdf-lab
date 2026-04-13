@@ -5,7 +5,7 @@ a = Analysis(
     ['desktop_launcher.py'],
     pathex=[],
     binaries=[],
-    datas=[('pdf_problem_template_repacker.html', '.'), ('pdf_problem_template_repacker.css', '.'), ('assets', 'assets'), ('vendor', 'vendor')],
+    datas=[('index.html', '.'), ('pdf_problem_template_repacker.css', '.'), ('assets', 'assets'), ('vendor', 'vendor')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

@@ -68,6 +68,20 @@
       </section>
 
       <section class="panel-card">
+        <h2 class="panel-title">라이브러리 저장 경로</h2>
+        <div class="field-grid">
+          <div class="field-row">
+            <span class="field-label">저장 폴더</span>
+            <div class="action-row">
+              <button class="ghost-button" type="button" id="chooseLibraryFolderButton">폴더 선택</button>
+              <button class="ghost-button" type="button" id="clearLibraryFolderButton">연결 해제</button>
+            </div>
+            <p class="file-name storage-path-note" id="libraryFolderSummary">브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 파일을 그 위치에 저장합니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-card">
         <h2 class="panel-title">2. 템플릿 설정</h2>
         <div class="field-grid">
           <label class="field-row">
@@ -375,12 +389,22 @@
     const SUBJECTIVE_TYPE_OTHER = "기타주관식";
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
-    const LIBRARY_DB_VERSION = 3;
+    const LIBRARY_DB_VERSION = 4;
     const LIBRARY_IMPORT_STORE = "imports";
     const LIBRARY_PROBLEM_STORE = "problems";
     const LIBRARY_EXAM_STORE = "examSets";
     const LIBRARY_EXAM_ITEM_STORE = "examItems";
     const LIBRARY_WORK_STORE = "savedWorks";
+    const LIBRARY_SETTINGS_STORE = "settings";
+    const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
+    const LIBRARY_SNAPSHOT_VERSION = 1;
+    const LIBRARY_META_FILE = "pdflab_library_meta.json";
+    const LIBRARY_TEXTBOOKS_FILE = "pdflab_textbooks.json";
+    const LIBRARY_IMPORTS_FILE = "pdflab_imports.json";
+    const LIBRARY_PROBLEMS_FILE = "pdflab_problem_records.json";
+    const LIBRARY_EXAM_SETS_FILE = "pdflab_exam_sets.json";
+    const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
+    const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
     const PROBLEM_TYPE_RULES = [
       { type: "연결사", phrases: ["다음 글의 빈칸 (A), (B)에", "다음 글의 빈칸(A), (B)에", "다음 글의 빈칸 (A),(B)에", "다음 글의 빈칸(A),(B)에", "윗글의 빈칸 (B)에 들어갈", "윗글의 빈칸(B)에 들어갈", "(A), 다음 빈칸에 들어갈", "(A) 다음 빈칸에 들어갈"] },
       { type: "선택어법", phrases: ["어법에 맞는 표현으로"] },
@@ -466,6 +490,8 @@
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
       activeTab: "repack",
+      libraryDirectoryHandle: null,
+      libraryDirectoryPermission: "unavailable",
       libraryCache: {
         imports: [],
         problemRecords: [],
@@ -504,6 +530,9 @@
       pdfInput: document.getElementById("pdfInput"),
       choosePdfButton: document.getElementById("choosePdfButton"),
       clearButton: document.getElementById("clearButton"),
+      chooseLibraryFolderButton: document.getElementById("chooseLibraryFolderButton"),
+      clearLibraryFolderButton: document.getElementById("clearLibraryFolderButton"),
+      libraryFolderSummary: document.getElementById("libraryFolderSummary"),
       textbookModeNew: document.getElementById("textbookModeNew"),
       textbookModeExisting: document.getElementById("textbookModeExisting"),
       newTextbookRow: document.getElementById("newTextbookRow"),
@@ -570,6 +599,384 @@
       if (element) {
         element.textContent = value;
       }
+    }
+
+    function supportsLibraryFolderStorage() {
+      return window.isSecureContext && typeof window.showDirectoryPicker === "function";
+    }
+
+    function updateLibraryStorageUi() {
+      if (!elements.libraryFolderSummary || !elements.chooseLibraryFolderButton || !elements.clearLibraryFolderButton) {
+        return;
+      }
+      if (!supportsLibraryFolderStorage()) {
+        elements.chooseLibraryFolderButton.disabled = true;
+        elements.clearLibraryFolderButton.disabled = true;
+        elements.chooseLibraryFolderButton.textContent = "폴더 선택";
+        elements.libraryFolderSummary.textContent = "현재 실행 환경에서는 폴더 저장을 지원하지 않습니다. START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.";
+        return;
+      }
+      if (!state.libraryDirectoryHandle) {
+        elements.chooseLibraryFolderButton.disabled = false;
+        elements.clearLibraryFolderButton.disabled = true;
+        elements.chooseLibraryFolderButton.textContent = "폴더 선택";
+        elements.libraryFolderSummary.textContent = "브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 파일을 그 위치에 저장합니다.";
+        return;
+      }
+      elements.chooseLibraryFolderButton.disabled = false;
+      elements.clearLibraryFolderButton.disabled = false;
+      elements.chooseLibraryFolderButton.textContent = state.libraryDirectoryPermission === "granted" ? "폴더 변경" : "폴더 다시 연결";
+      if (state.libraryDirectoryPermission === "granted") {
+        elements.libraryFolderSummary.textContent = `현재 저장 폴더: ${state.libraryDirectoryHandle.name}`;
+        return;
+      }
+      elements.libraryFolderSummary.textContent = `선택된 폴더: ${state.libraryDirectoryHandle.name} · 다시 연결해 권한을 허용하면 해당 폴더를 계속 사용합니다.`;
+    }
+
+    async function queryLibraryDirectoryPermission(handle, readWrite = true) {
+      if (!handle || typeof handle.queryPermission !== "function") {
+        return "unavailable";
+      }
+      try {
+        return await handle.queryPermission({ mode: readWrite ? "readwrite" : "read" });
+      } catch (error) {
+        console.warn("Failed to query library directory permission", error);
+        return "prompt";
+      }
+    }
+
+    async function ensureLibraryDirectoryPermission(handle, readWrite = true) {
+      const current = await queryLibraryDirectoryPermission(handle, readWrite);
+      if (current === "granted") {
+        state.libraryDirectoryPermission = "granted";
+        updateLibraryStorageUi();
+        return true;
+      }
+      if (!handle || typeof handle.requestPermission !== "function") {
+        state.libraryDirectoryPermission = current;
+        updateLibraryStorageUi();
+        return false;
+      }
+      const next = await handle.requestPermission({ mode: readWrite ? "readwrite" : "read" });
+      state.libraryDirectoryPermission = next;
+      updateLibraryStorageUi();
+      return next === "granted";
+    }
+
+    function readBlobAsDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(String(reader.result || "")));
+        reader.addEventListener("error", () => reject(reader.error || new Error("파일 데이터를 읽지 못했습니다.")));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const raw = String(dataUrl || "");
+      if (!raw.startsWith("data:")) {
+        return null;
+      }
+      const [meta, encoded] = raw.split(",", 2);
+      if (encoded == null) {
+        return null;
+      }
+      const mimeMatch = meta.match(/^data:([^;]+);base64$/);
+      const mimeType = mimeMatch?.[1] || "application/octet-stream";
+      const binary = window.atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      return new Blob([bytes], { type: mimeType });
+    }
+
+    async function encodeBlobListForFolder(blobs = []) {
+      return await Promise.all((blobs || []).map(async (blob) => {
+        if (!blob) {
+          return null;
+        }
+        return {
+          type: blob.type || "application/octet-stream",
+          dataUrl: await readBlobAsDataUrl(blob)
+        };
+      }));
+    }
+
+    async function decodeBlobListFromFolder(entries = []) {
+      return await Promise.all((entries || []).map(async (entry) => {
+        if (!entry) {
+          return null;
+        }
+        if (typeof entry === "string") {
+          return dataUrlToBlob(entry);
+        }
+        return dataUrlToBlob(entry.dataUrl || "");
+      }));
+    }
+
+    async function encodeProblemRecordsForFolder(records = []) {
+      return await Promise.all((records || []).map(async (record) => ({
+        ...record,
+        segmentBlobs: await encodeBlobListForFolder(record.segmentBlobs || [])
+      })));
+    }
+
+    async function decodeProblemRecordsFromFolder(records = []) {
+      return await Promise.all((records || []).map(async (record) => ({
+        ...record,
+        segmentBlobs: await decodeBlobListFromFolder(record.segmentBlobs || [])
+      })));
+    }
+
+    async function encodeSavedProblemSnapshotsForFolder(problems = []) {
+      return await Promise.all((problems || []).map(async (problem) => ({
+        ...problem,
+        segmentBlobs: await encodeBlobListForFolder(problem.segmentBlobs || [])
+      })));
+    }
+
+    async function decodeSavedProblemSnapshotsFromFolder(problems = []) {
+      return await Promise.all((problems || []).map(async (problem) => ({
+        ...problem,
+        segmentBlobs: await decodeBlobListFromFolder(problem.segmentBlobs || [])
+      })));
+    }
+
+    async function encodeSavedWorksForFolder(records = []) {
+      return await Promise.all((records || []).map(async (record) => {
+        if (record.kind !== "repack" || !Array.isArray(record.payload?.problems)) {
+          return {
+            ...record,
+            payload: record.payload ? { ...record.payload } : record.payload
+          };
+        }
+        return {
+          ...record,
+          payload: {
+            ...record.payload,
+            problems: await encodeSavedProblemSnapshotsForFolder(record.payload.problems)
+          }
+        };
+      }));
+    }
+
+    async function decodeSavedWorksFromFolder(records = []) {
+      return await Promise.all((records || []).map(async (record) => {
+        if (record.kind !== "repack" || !Array.isArray(record.payload?.problems)) {
+          return {
+            ...record,
+            payload: record.payload ? { ...record.payload } : record.payload
+          };
+        }
+        return {
+          ...record,
+          payload: {
+            ...record.payload,
+            problems: await decodeSavedProblemSnapshotsFromFolder(record.payload.problems)
+          }
+        };
+      }));
+    }
+
+    async function readJsonFileFromDirectory(directoryHandle, fileName, fallbackValue = null) {
+      try {
+        const fileHandle = await directoryHandle.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        return JSON.parse(await file.text());
+      } catch (error) {
+        if (error?.name === "NotFoundError") {
+          return fallbackValue;
+        }
+        throw error;
+      }
+    }
+
+    async function writeJsonFileToDirectory(directoryHandle, fileName, data) {
+      const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+    }
+
+    function hasLibrarySnapshotData(snapshot) {
+      if (!snapshot) {
+        return false;
+      }
+      return Boolean(
+        (snapshot.textbooks || []).length ||
+        (snapshot.imports || []).length ||
+        (snapshot.problemRecords || []).length ||
+        (snapshot.examSets || []).length ||
+        (snapshot.examItems || []).length ||
+        (snapshot.savedWorks || []).length
+      );
+    }
+
+    async function readLibrarySnapshotFromDirectory(directoryHandle) {
+      if (!directoryHandle) {
+        return null;
+      }
+      const [
+        meta,
+        textbooksRaw,
+        importsRaw,
+        problemRecordsRaw,
+        examSetsRaw,
+        examItemsRaw,
+        savedWorksRaw
+      ] = await Promise.all([
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_META_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_TEXTBOOKS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_IMPORTS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_PROBLEMS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null)
+      ]);
+      if (![meta, textbooksRaw, importsRaw, problemRecordsRaw, examSetsRaw, examItemsRaw, savedWorksRaw].some((value) => value != null)) {
+        return null;
+      }
+      return {
+        meta: meta || { version: LIBRARY_SNAPSHOT_VERSION, updatedAt: 0 },
+        textbooks: Array.isArray(textbooksRaw) ? textbooksRaw : [],
+        imports: Array.isArray(importsRaw) ? importsRaw : [],
+        problemRecords: await decodeProblemRecordsFromFolder(Array.isArray(problemRecordsRaw) ? problemRecordsRaw : []),
+        examSets: Array.isArray(examSetsRaw) ? examSetsRaw : [],
+        examItems: Array.isArray(examItemsRaw) ? examItemsRaw : [],
+        savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : [])
+      };
+    }
+
+    async function writeLibrarySnapshotToDirectory(directoryHandle, snapshot) {
+      const problemRecords = await encodeProblemRecordsForFolder(snapshot.problemRecords || []);
+      const savedWorks = await encodeSavedWorksForFolder(snapshot.savedWorks || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_TEXTBOOKS_FILE, snapshot.textbooks || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_IMPORTS_FILE, snapshot.imports || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_PROBLEMS_FILE, problemRecords);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, snapshot.examSets || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
+        version: LIBRARY_SNAPSHOT_VERSION,
+        updatedAt: Date.now()
+      });
+    }
+
+    function createLibrarySnapshotFromState() {
+      return {
+        textbooks: [...state.storedTextbooks],
+        imports: [...(state.libraryCache.imports || [])],
+        problemRecords: [...(state.libraryCache.problemRecords || [])],
+        examSets: [...(state.libraryCache.examSets || [])],
+        examItems: [...(state.libraryCache.examItems || [])],
+        savedWorks: [...(state.libraryCache.savedWorks || [])]
+      };
+    }
+
+    async function replaceLibraryStoresFromSnapshot(snapshot) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction([
+        LIBRARY_IMPORT_STORE,
+        LIBRARY_PROBLEM_STORE,
+        LIBRARY_EXAM_STORE,
+        LIBRARY_EXAM_ITEM_STORE,
+        LIBRARY_WORK_STORE
+      ], "readwrite");
+      const storeEntries = [
+        [LIBRARY_IMPORT_STORE, snapshot.imports || []],
+        [LIBRARY_PROBLEM_STORE, snapshot.problemRecords || []],
+        [LIBRARY_EXAM_STORE, snapshot.examSets || []],
+        [LIBRARY_EXAM_ITEM_STORE, snapshot.examItems || []],
+        [LIBRARY_WORK_STORE, snapshot.savedWorks || []]
+      ];
+      storeEntries.forEach(([storeName, records]) => {
+        const store = transaction.objectStore(storeName);
+        store.clear();
+        records.forEach((record) => store.put(record));
+      });
+      await idbTransactionDone(transaction);
+    }
+
+    async function syncLibraryFolderFromState() {
+      if (!state.libraryDirectoryHandle) {
+        return false;
+      }
+      if (!supportsLibraryFolderStorage()) {
+        return false;
+      }
+      const permitted = await ensureLibraryDirectoryPermission(state.libraryDirectoryHandle, true);
+      if (!permitted) {
+        throw new Error("선택한 저장 폴더에 접근할 수 없습니다. 폴더를 다시 연결해주세요.");
+      }
+      await writeLibrarySnapshotToDirectory(state.libraryDirectoryHandle, createLibrarySnapshotFromState());
+      updateLibraryStorageUi();
+      return true;
+    }
+
+    async function restoreLibraryDirectoryHandle() {
+      if (!supportsLibraryFolderStorage()) {
+        state.libraryDirectoryHandle = null;
+        state.libraryDirectoryPermission = "unavailable";
+        updateLibraryStorageUi();
+        return;
+      }
+      const stored = await readLibrarySetting(LIBRARY_DIRECTORY_HANDLE_KEY);
+      state.libraryDirectoryHandle = stored || null;
+      state.libraryDirectoryPermission = stored
+        ? await queryLibraryDirectoryPermission(stored, true)
+        : "unavailable";
+      updateLibraryStorageUi();
+    }
+
+    async function initializeLibraryFolderStorage() {
+      await restoreLibraryDirectoryHandle();
+      if (!state.libraryDirectoryHandle || state.libraryDirectoryPermission !== "granted") {
+        return;
+      }
+      const snapshot = await readLibrarySnapshotFromDirectory(state.libraryDirectoryHandle);
+      if (!hasLibrarySnapshotData(snapshot)) {
+        return;
+      }
+      writeStoredTextbooks(snapshot.textbooks || []);
+      populateStoredTextbookOptions();
+      syncTextbookModeUi();
+      await replaceLibraryStoresFromSnapshot(snapshot);
+    }
+
+    async function chooseLibraryFolder() {
+      if (!supportsLibraryFolderStorage()) {
+        throw new Error("폴더 저장은 START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.");
+      }
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      state.libraryDirectoryHandle = handle;
+      state.libraryDirectoryPermission = await queryLibraryDirectoryPermission(handle, true);
+      const permitted = await ensureLibraryDirectoryPermission(handle, true);
+      if (!permitted) {
+        throw new Error("선택한 폴더에 쓰기 권한이 없어 저장 경로로 사용할 수 없습니다.");
+      }
+      await writeLibrarySetting(LIBRARY_DIRECTORY_HANDLE_KEY, handle);
+      const snapshot = await readLibrarySnapshotFromDirectory(handle);
+      if (hasLibrarySnapshotData(snapshot)) {
+        writeStoredTextbooks(snapshot.textbooks || []);
+        populateStoredTextbookOptions();
+        syncTextbookModeUi();
+        await replaceLibraryStoresFromSnapshot(snapshot);
+        await refreshLibrarySummary();
+        setStatus(`${handle.name} 폴더의 라이브러리를 불러왔습니다.`, "idle", "폴더 연결");
+      } else {
+        await syncLibraryFolderFromState();
+        setStatus(`${handle.name} 폴더를 라이브러리 저장 경로로 설정했습니다.`, "idle", "폴더 연결");
+      }
+      updateLibraryStorageUi();
+    }
+
+    async function clearLibraryFolderConnection() {
+      state.libraryDirectoryHandle = null;
+      state.libraryDirectoryPermission = "unavailable";
+      await deleteLibrarySetting(LIBRARY_DIRECTORY_HANDLE_KEY);
+      updateLibraryStorageUi();
+      setStatus("라이브러리 저장 폴더 연결을 해제했습니다. 브라우저 내부 저장소를 계속 사용합니다.", "idle", "폴더 해제");
     }
 
     function normalizeHex(value) {
@@ -844,11 +1251,40 @@
           if (!workStore.indexNames.contains("updatedAt")) {
             workStore.createIndex("updatedAt", "updatedAt", { unique: false });
           }
+
+          if (!db.objectStoreNames.contains(LIBRARY_SETTINGS_STORE)) {
+            db.createObjectStore(LIBRARY_SETTINGS_STORE, { keyPath: "key" });
+          }
         });
         request.addEventListener("success", () => resolve(request.result));
         request.addEventListener("error", () => reject(request.error || new Error("문제 라이브러리 데이터베이스를 열지 못했습니다.")));
       });
       return libraryDbPromise;
+    }
+
+    async function readLibrarySetting(key) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_SETTINGS_STORE, "readonly");
+      const store = transaction.objectStore(LIBRARY_SETTINGS_STORE);
+      const record = await idbRequestToPromise(store.get(key));
+      await idbTransactionDone(transaction);
+      return record?.value;
+    }
+
+    async function writeLibrarySetting(key, value) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_SETTINGS_STORE, "readwrite");
+      const store = transaction.objectStore(LIBRARY_SETTINGS_STORE);
+      store.put({ key, value });
+      await idbTransactionDone(transaction);
+    }
+
+    async function deleteLibrarySetting(key) {
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_SETTINGS_STORE, "readwrite");
+      const store = transaction.objectStore(LIBRARY_SETTINGS_STORE);
+      store.delete(key);
+      await idbTransactionDone(transaction);
     }
 
     async function loadAllRecordsFromStore(storeName) {
@@ -1088,6 +1524,7 @@
       await idbTransactionDone(transaction);
 
       await refreshLibrarySummary();
+      await syncLibraryFolderFromState();
       setOptionalText(elements.librarySaveSummary, `${sourceRecord.textbookName} / ${sourceRecord.fileName} 저장 완료 · ${formatTimestamp(sourceRecord.importedAt)}`);
       setBusy(false);
       setStatus(`페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount()}개를 감지했습니다. 라이브러리 저장이 완료되었습니다.`, "idle", "저장 완료");
@@ -1758,6 +2195,7 @@
         state.loadedRepackWorkId = workId;
         elements.repackWorkNameInput.value = workName;
         await refreshLibrarySummary();
+        await syncLibraryFolderFromState();
         if (elements.repackWorkSummary) {
           elements.repackWorkSummary.textContent = `${workName} 작업을 저장했습니다. 나중에 다시 불러와 필터와 레이아웃을 이어서 수정할 수 있습니다.`;
         }
@@ -1821,6 +2259,7 @@
         state.examBuilder.loadedWorkId = workId;
         elements.examWorkNameInput.value = workName;
         await refreshLibrarySummary();
+        await syncLibraryFolderFromState();
         setOptionalText(elements.examWorkSummary, `${workName} 작업을 저장했습니다. 나중에 다시 불러와 제목 수정이나 문항 교체를 이어갈 수 있습니다.`);
         setStatus(`${workName} 작업을 저장했습니다.`, "idle", "작업 저장");
       } finally {
@@ -1933,6 +2372,7 @@
         state.examBuilder.loadedWorkId = "";
       }
       await refreshLibrarySummary();
+      await syncLibraryFolderFromState();
       const label = target?.name || "저장 작업";
       if (target?.kind === "repack") {
           if (elements.repackWorkSummary) {
@@ -2318,6 +2758,7 @@
       examItems.forEach((item) => examItemStore.put(item));
       await idbTransactionDone(transaction);
       await refreshLibrarySummary();
+      await syncLibraryFolderFromState();
       state.examBuilder.loadedExamId = examId;
       setOptionalText(elements.examHistorySummary, existingExam
         ? `${examSet.title} 이력을 업데이트했습니다. 제목과 부제를 바꾼 뒤 다시 출력해도 됩니다.`
@@ -2350,6 +2791,7 @@
       });
       await idbTransactionDone(transaction);
       await refreshLibrarySummary();
+      await syncLibraryFolderFromState();
       setOptionalText(elements.examHistorySummary, targetExam
         ? `${targetExam.title} 이력을 삭제했습니다. 같은 문제와 같은 지문 유형을 다시 사용할 수 있습니다.`
         : "시험지 이력을 삭제했습니다.");
@@ -4049,19 +4491,27 @@
       setStatus(error.message || "PDF 처리 중 오류가 발생했습니다.", "error", "오류");
     }
 
-    function wireEvents() {
+    async function wireEvents() {
       applySettingsToUi();
       updateLogoUi();
       populateStoredTextbookOptions();
       syncTextbookModeUi();
       updateLoadedFileLabel();
+      updateLibraryStorageUi();
       setActiveTab("repack");
-      refreshLibrarySummary().catch(handleError);
+      await initializeLibraryFolderStorage();
+      await refreshLibrarySummary();
       elements.repackTabButton.addEventListener("click", () => {
         setActiveTab("repack");
       });
       elements.examBuilderTabButton.addEventListener("click", () => {
         setActiveTab("exam");
+      });
+      elements.chooseLibraryFolderButton.addEventListener("click", () => {
+        chooseLibraryFolder().catch(handleError);
+      });
+      elements.clearLibraryFolderButton.addEventListener("click", () => {
+        clearLibraryFolderConnection().catch(handleError);
       });
       elements.choosePdfButton.addEventListener("click", () => elements.pdfInput.click());
       elements.pdfInput.addEventListener("change", (event) => {
@@ -4269,7 +4719,7 @@
       updateExamActionButtons();
     }
 
-    wireEvents();
+    wireEvents().catch(handleError);
     document.body.dataset.appReady = "true";
   </script>
 </body>

@@ -31,7 +31,7 @@ $args = @(
     "--windowed",
     "--onefile",
     "--name", "PdfProblemTemplateRepacker",
-    "--add-data", "pdf_problem_template_repacker.html;.",
+    "--add-data", "index.html;.",
     "--add-data", "pdf_problem_template_repacker.css;.",
     "--add-data", "assets;assets",
     "--add-data", "vendor;vendor",

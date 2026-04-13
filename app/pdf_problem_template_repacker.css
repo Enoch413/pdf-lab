@@ -1125,6 +1125,10 @@ button:disabled {
   line-height: 1.55;
 }
 
+.storage-path-note {
+  word-break: break-word;
+}
+
 .mono {
   font-family: "Consolas", "SFMono-Regular", ui-monospace, monospace;
 }
