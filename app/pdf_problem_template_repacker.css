@@ -1065,6 +1065,246 @@ button:disabled {
   border-color: rgba(184, 59, 59, 0.18);
 }
 
+.legacy-exam-controls {
+  display: none !important;
+}
+
+.school-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.school-inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.school-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.school-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 33, 38, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.school-chip.is-active {
+  border-color: rgba(24, 107, 99, 0.3);
+  background: rgba(24, 107, 99, 0.12);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.08);
+}
+
+.toggle-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 33, 38, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toggle-input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.toggle-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.toggle-copy strong {
+  font-size: 14px;
+}
+
+.toggle-copy small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.school-passage-list {
+  gap: 14px;
+}
+
+.school-passage-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(24, 33, 38, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.school-passage-card.is-selected {
+  border-color: rgba(24, 107, 99, 0.26);
+  box-shadow: 0 16px 30px rgba(24, 107, 99, 0.08);
+}
+
+.school-passage-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.school-passage-input,
+.school-type-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.school-passage-toggle-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid rgba(24, 33, 38, 0.2);
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(24, 33, 38, 0.08);
+}
+
+.school-passage-input:checked + .school-passage-toggle-mark {
+  border-color: rgba(24, 107, 99, 0.32);
+  background: linear-gradient(180deg, rgba(24, 107, 99, 0.16), rgba(24, 107, 99, 0.08));
+  box-shadow: inset 0 0 0 6px rgba(24, 107, 99, 0.85);
+}
+
+.school-passage-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.school-passage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.school-passage-header h3,
+.school-warning-card h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.school-passage-kicker,
+.school-draft-meta,
+.exam-history-school {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.school-passage-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(24, 107, 99, 0.08);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.school-passage-meta {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.school-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.school-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(24, 33, 38, 0.06);
+  color: rgba(24, 33, 38, 0.76);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.school-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.school-type-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 33, 38, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.school-type-card.is-active {
+  border-color: rgba(24, 107, 99, 0.28);
+  background: rgba(24, 107, 99, 0.12);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.08);
+}
+
+.school-warning-card {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(184, 59, 59, 0.18);
+  background: rgba(184, 59, 59, 0.06);
+}
+
+.school-warning-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.school-draft-list {
+  gap: 14px;
+}
+
+.school-draft-card .exam-slot-result {
+  margin-top: 10px;
+}
+
 .exam-mini-preview-root {
   display: grid;
   gap: 18px;
