@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --ink: #182126;
   --muted: #62727c;
   --panel: rgba(255, 252, 247, 0.92);
@@ -1267,19 +1267,10 @@ button:disabled {
   margin-top: 14px;
 }
 
-.school-chip-group {
+.school-chip-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(24, 33, 38, 0.08);
-}
-
-.school-chip-group.is-active {
-  border-color: rgba(24, 107, 99, 0.24);
-  box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.06);
+  gap: 6px;
 }
 
 .school-chip {
@@ -1306,7 +1297,7 @@ button:disabled {
   border-radius: 999px;
   border: 1px solid rgba(184, 59, 59, 0.16);
   background: rgba(184, 59, 59, 0.06);
-  color: #9f3a35;
+  color: #9a3c3c;
   font-size: 12px;
   font-weight: 800;
 }
@@ -1489,6 +1480,47 @@ button:disabled {
   box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.08);
 }
 
+.school-type-target-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: stretch;
+  min-height: 88px;
+  padding: 14px 16px;
+}
+
+.school-type-target-name {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.school-type-target-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.school-type-count-input {
+  min-width: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.school-type-target-card.is-active .school-type-target-name {
+  color: var(--accent);
+}
+
+.school-type-target-card.is-active .school-type-target-meta {
+  color: rgba(24, 107, 99, 0.84);
+}
+
 .school-warning-card {
   padding: 18px;
   border-radius: 20px;
@@ -1531,6 +1563,73 @@ button:disabled {
   font-size: 15px;
 }
 
+.exam-round-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.exam-round-tab {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 33, 38, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.exam-round-tab strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.exam-round-tab span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.exam-round-tab.is-active {
+  border-color: rgba(24, 107, 99, 0.3);
+  background: rgba(24, 107, 99, 0.12);
+  box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.08);
+}
+
+.exam-round-plan-card {
+  gap: 12px;
+}
+
+.exam-round-plan-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.exam-round-plan-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 107, 99, 0.12);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.exam-round-plan-item h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.exam-round-plan-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
 .school-draft-more-card p {
   margin: 0;
   color: var(--muted);
@@ -1571,13 +1670,32 @@ button:disabled {
   gap: 14px;
 }
 
+.exam-answer-editor-root[hidden] {
+  display: none !important;
+}
+
+.exam-answer-editor-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  place-items: center;
+  padding: 28px;
+  overflow: auto;
+  background: rgba(20, 32, 33, 0.42);
+  backdrop-filter: blur(6px);
+}
+
 .exam-answer-editor-card {
   display: grid;
   gap: 16px;
+  width: min(1120px, calc(100vw - 40px));
+  max-height: calc(100vh - 56px);
+  overflow: auto;
   padding: 20px;
   border-radius: 22px;
   border: 1px solid rgba(24, 107, 99, 0.14);
-  background: rgba(24, 107, 99, 0.04);
+  background: #fbfaf5;
+  box-shadow: 0 28px 70px rgba(20, 32, 33, 0.22);
 }
 
 .exam-answer-editor-header {
