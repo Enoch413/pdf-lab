@@ -529,6 +529,7 @@
     const SUBJECTIVE_TYPE_OTHER = "기타주관식";
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
+    const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
     const LIBRARY_DB_VERSION = 7;
     const LIBRARY_SETTINGS_STORE = "settings";
@@ -1694,6 +1695,47 @@
       } catch (error) {
         console.warn("Failed to write stored textbooks", error);
       }
+    }
+
+    function readStoredLogoSettings() {
+      try {
+        const raw = window.localStorage.getItem(SHARED_LOGO_STORAGE_KEY);
+        if (!raw) {
+          return null;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+          return null;
+        }
+        const logoSrc = typeof parsed.logoSrc === "string" ? parsed.logoSrc : "";
+        const logoLabel = typeof parsed.logoLabel === "string"
+          ? parsed.logoLabel
+          : (logoSrc ? "저장된 로고" : "로고 없음");
+        return { logoSrc, logoLabel };
+      } catch (error) {
+        console.warn("Failed to read stored logo settings", error);
+        return null;
+      }
+    }
+
+    function writeStoredLogoSettings(logoSrc, logoLabel) {
+      try {
+        window.localStorage.setItem(SHARED_LOGO_STORAGE_KEY, JSON.stringify({
+          logoSrc: String(logoSrc || ""),
+          logoLabel: String(logoLabel || "")
+        }));
+      } catch (error) {
+        console.warn("Failed to write stored logo settings", error);
+      }
+    }
+
+    function applyStoredLogoSettings() {
+      const storedLogo = readStoredLogoSettings();
+      if (!storedLogo) {
+        return;
+      }
+      state.logoSrc = storedLogo.logoSrc;
+      state.logoLabel = storedLogo.logoLabel || (storedLogo.logoSrc ? "저장된 로고" : "로고 없음");
     }
 
     function normalizeSchoolName(value) {
@@ -3881,7 +3923,7 @@
       const passageSummaries = getSchoolPassageSummaries();
       ensureSchoolPassageTextbookSelection(passageSummaries);
       const availablePassageKeys = new Set(
-        getSchoolPassageSummariesForSelectedTextbook(passageSummaries).map((entry) => entry.passageKey)
+        passageSummaries.map((entry) => entry.passageKey)
       );
       state.schoolWorkflow.selectedPassageKeys = state.schoolWorkflow.selectedPassageKeys.filter((key) => availablePassageKeys.has(key));
       syncSelectedSchoolTypes();
@@ -6029,7 +6071,8 @@
     function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
       const cssText = getCssTextForStandaloneDocument();
       const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
-      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      const baseHref = new URL(window.location.href).toString();
+      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
     }
 
     function createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount) {
@@ -7815,6 +7858,19 @@
       `;
     }
 
+    function resolveStandaloneAssetSrc(src) {
+      const raw = String(src || "").trim();
+      if (!raw || /^(data:|blob:|https?:|file:)/i.test(raw)) {
+        return raw;
+      }
+      try {
+        return new URL(raw, window.location.href).toString();
+      } catch (error) {
+        console.warn("Failed to resolve asset path", error);
+        return raw;
+      }
+    }
+
     function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta) {
       const pageNumber = sheetIndex + 1;
       const isOddPage = pageNumber % 2 === 1;
@@ -7823,8 +7879,9 @@
       const contentCenterOffsetMm = (extraLeftMm - extraRightMm) / 2;
       const kickerMarkup = settings.kicker ? `<p class="sheet-kicker">${escapeHtml(settings.kicker)}</p>` : "";
       const subtitleMarkup = settings.subtitle ? `<p class="sheet-subtitle">${escapeHtml(settings.subtitle)}</p>` : "";
-      const logoMarkup = settings.logoSrc
-        ? `<img class="sheet-logo-image" src="${escapeHtml(settings.logoSrc)}" alt="학원 로고">`
+      const logoSrc = resolveStandaloneAssetSrc(settings.logoSrc);
+      const logoMarkup = logoSrc
+        ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
       const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
@@ -7835,7 +7892,7 @@
               <h2 class="sheet-title">${escapeHtml(settings.title)}</h2>
               ${subtitleMarkup}
             </div>
-            <div class="sheet-brand${settings.logoSrc ? "" : " is-empty"}">
+            <div class="sheet-brand${logoSrc ? "" : " is-empty"}">
               ${logoMarkup}
             </div>
           </header>
@@ -8156,6 +8213,7 @@
     function setLogoState(src, label) {
       state.logoSrc = src;
       state.logoLabel = label;
+      writeStoredLogoSettings(src, label);
       updateLogoUi();
       if (state.problems.length) {
         renderPreview();
@@ -8292,6 +8350,7 @@
     }
 
     async function wireEvents() {
+      applyStoredLogoSettings();
       applySettingsToUi();
       updateLogoUi();
       updateWorkspaceNavigationUi();
@@ -8639,19 +8698,19 @@
       if (elements.schoolPassageTextbookSelect) {
         elements.schoolPassageTextbookSelect.addEventListener("change", () => {
           state.schoolWorkflow.passageTextbookName = normalizeTextbookName(elements.schoolPassageTextbookSelect.value || "");
-          state.schoolWorkflow.selectedPassageKeys = [];
-          state.schoolWorkflow.selectedTypeLabels = [];
-          state.schoolWorkflow.typeSelectionCustomized = false;
           renderExamLibraryList();
-          clearGeneratedSchoolDraft();
+          updateExamBuilderSummary();
         });
       }
       if (elements.selectAllPassagesButton) {
         elements.selectAllPassagesButton.addEventListener("click", () => {
           const passageSummaries = getSchoolPassageSummaries();
           ensureSchoolPassageTextbookSelection(passageSummaries);
-          state.schoolWorkflow.selectedPassageKeys = filterSchoolPassageSummariesForUi(passageSummaries)
-            .map((entry) => entry.passageKey);
+          const selected = new Set(state.schoolWorkflow.selectedPassageKeys);
+          filterSchoolPassageSummariesForUi(passageSummaries).forEach((entry) => {
+            selected.add(entry.passageKey);
+          });
+          state.schoolWorkflow.selectedPassageKeys = Array.from(selected);
           state.schoolWorkflow.typeSelectionCustomized = false;
           syncSelectedSchoolTypes();
           renderExamLibraryList();
@@ -8660,9 +8719,14 @@
       }
       if (elements.clearSelectedPassagesButton) {
         elements.clearSelectedPassagesButton.addEventListener("click", () => {
-          state.schoolWorkflow.selectedPassageKeys = [];
+          const passageSummaries = getSchoolPassageSummaries();
+          ensureSchoolPassageTextbookSelection(passageSummaries);
+          const visiblePassageKeys = new Set(filterSchoolPassageSummariesForUi(passageSummaries).map((entry) => entry.passageKey));
+          state.schoolWorkflow.selectedPassageKeys = state.schoolWorkflow.selectedPassageKeys
+            .filter((passageKey) => !visiblePassageKeys.has(passageKey));
           state.schoolWorkflow.selectedTypeLabels = [];
           state.schoolWorkflow.typeSelectionCustomized = false;
+          syncSelectedSchoolTypes();
           renderExamLibraryList();
           clearGeneratedSchoolDraft();
         });

@@ -291,7 +291,15 @@
               </label>
               <label class="field-row">
                 <span class="field-label">부제 / 메모</span>
-                <textarea class="textarea-input" id="examSubtitleInput" placeholder="예: 선택 지문 범위 기준 1차~3차 자동 생성"></textarea>
+                <textarea class="textarea-input" id="examSubtitleInput" placeholder="예: 선택 지문 범위 기준 선택 차수 자동 생성"></textarea>
+              </label>
+              <label class="field-row">
+                <span class="field-label">생성 차수</span>
+                <select class="select-input" id="finalRoundCountSelect">
+                  <option value="1" selected>1차만 생성</option>
+                  <option value="2">1~2차 생성</option>
+                  <option value="3">1~3차 생성</option>
+                </select>
               </label>
               <label class="field-row">
                 <span class="field-label">출력 차수</span>
@@ -342,10 +350,10 @@
             </div>
             <div class="saved-work-empty" id="examWorkEmptyState">
               <h3>저장된 파이널테스트 작업이 없습니다</h3>
-              <p>지문 범위와 1차~3차 생성 결과를 저장해두면 같은 학교 작업을 이어서 이어갈 수 있습니다.</p>
+              <p>지문 범위와 선택 차수 생성 결과를 저장해두면 같은 학교 작업을 이어서 이어갈 수 있습니다.</p>
             </div>
             <div class="saved-work-list" id="examWorkList"></div>
-            <p class="small-note" id="examWorkSummary">현재 작업을 저장하면 1차~3차 세트와 선택 조건을 그대로 다시 불러올 수 있습니다.</p>
+            <p class="small-note" id="examWorkSummary">현재 작업을 저장하면 선택 차수 세트와 선택 조건을 그대로 다시 불러올 수 있습니다.</p>
           </section>
 
           <div class="legacy-exam-controls" hidden="" aria-hidden="true">
@@ -433,15 +441,15 @@
 
           <section class="panel-card">
             <div class="school-section-header">
-              <h2 class="panel-title">3. 1차~3차 생성 결과</h2>
+              <h2 class="panel-title">3. 선택 차수 생성 결과</h2>
               <div class="school-inline-actions">
-                <button class="solid-button" type="button" id="generateSchoolDraftButton">1차~3차 생성</button>
+                <button class="solid-button" type="button" id="generateSchoolDraftButton">선택 차수 생성</button>
                 <button class="ghost-button" type="button" id="clearSchoolDraftButton">생성 결과 비우기</button>
               </div>
             </div>
             <div class="exam-round-tabs" id="examRoundTabs" hidden=""></div>
             <div class="exam-slot-empty" id="examSlotEmptyState">
-              <h3>아직 생성된 1차~3차 세트가 없습니다</h3>
+              <h3>아직 생성된 세트가 없습니다</h3>
               <p>학교 선택, 지문 범위, 유형별 문제 수를 정한 뒤 생성 버튼을 누르면 결과가 여기에 표시됩니다.</p>
             </div>
             <div class="exam-slot-list school-draft-list" id="examSlotList"></div>
@@ -531,6 +539,7 @@
     const SUBJECTIVE_TYPE_OTHER = "기타주관식";
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
+    const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
     const LIBRARY_DB_VERSION = 7;
     const LIBRARY_SETTINGS_STORE = "settings";
@@ -557,6 +566,7 @@
     const EXAM_SLOT_RENDER_BATCH_SIZE = 120;
     const EXAM_HTML_PREVIEW_PROBLEM_LIMIT = 80;
     const FINAL_EXAM_ROUND_COUNT = 3;
+    const DEFAULT_FINAL_EXAM_ROUND_COUNT = 1;
     const MAX_TYPE_TARGET_COUNT = 40;
     const PROBLEM_TYPE_RULES = [
       {
@@ -998,6 +1008,7 @@
         typeSelectionCustomized: false,
         passageTextbookName: "",
         passageQuery: "",
+        finalRoundCount: DEFAULT_FINAL_EXAM_ROUND_COUNT,
         excludeUsedProblems: true,
         excludeUsedPassageTypes: false,
         pendingTailPlan: null,
@@ -1086,6 +1097,7 @@
       examKickerInput: document.getElementById("examKickerInput"),
       examTitleInput: document.getElementById("examTitleInput"),
       examSubtitleInput: document.getElementById("examSubtitleInput"),
+      finalRoundCountSelect: document.getElementById("finalRoundCountSelect"),
       examRoundSelect: document.getElementById("examRoundSelect"),
       examAnswerModeSelect: document.getElementById("examAnswerModeSelect"),
       previewExamButton: document.getElementById("previewExamButton"),
@@ -1702,6 +1714,47 @@
       } catch (error) {
         console.warn("Failed to write stored textbooks", error);
       }
+    }
+
+    function readStoredLogoSettings() {
+      try {
+        const raw = window.localStorage.getItem(SHARED_LOGO_STORAGE_KEY);
+        if (!raw) {
+          return null;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+          return null;
+        }
+        const logoSrc = typeof parsed.logoSrc === "string" ? parsed.logoSrc : "";
+        const logoLabel = typeof parsed.logoLabel === "string"
+          ? parsed.logoLabel
+          : (logoSrc ? "저장된 로고" : "로고 없음");
+        return { logoSrc, logoLabel };
+      } catch (error) {
+        console.warn("Failed to read stored logo settings", error);
+        return null;
+      }
+    }
+
+    function writeStoredLogoSettings(logoSrc, logoLabel) {
+      try {
+        window.localStorage.setItem(SHARED_LOGO_STORAGE_KEY, JSON.stringify({
+          logoSrc: String(logoSrc || ""),
+          logoLabel: String(logoLabel || "")
+        }));
+      } catch (error) {
+        console.warn("Failed to write stored logo settings", error);
+      }
+    }
+
+    function applyStoredLogoSettings() {
+      const storedLogo = readStoredLogoSettings();
+      if (!storedLogo) {
+        return;
+      }
+      state.logoSrc = storedLogo.logoSrc;
+      state.logoLabel = storedLogo.logoLabel || (storedLogo.logoSrc ? "저장된 로고" : "로고 없음");
     }
 
     function normalizeSchoolName(value) {
@@ -3796,6 +3849,56 @@
       return `${Number(roundIndex || 0) + 1}차`;
     }
 
+    function normalizeFinalExamRoundCount(value) {
+      const numeric = Number.parseInt(value, 10);
+      if (!Number.isFinite(numeric)) {
+        return DEFAULT_FINAL_EXAM_ROUND_COUNT;
+      }
+      return Math.max(1, Math.min(FINAL_EXAM_ROUND_COUNT, numeric));
+    }
+
+    function getFinalExamRoundCount() {
+      const normalized = normalizeFinalExamRoundCount(state.schoolWorkflow.finalRoundCount);
+      state.schoolWorkflow.finalRoundCount = normalized;
+      return normalized;
+    }
+
+    function getFinalExamRoundRangeLabel(roundCount = getFinalExamRoundCount()) {
+      const normalized = normalizeFinalExamRoundCount(roundCount);
+      return normalized === 1 ? "1차" : `1~${normalized}차`;
+    }
+
+    function syncFinalRoundCountSelect() {
+      const roundCount = getFinalExamRoundCount();
+      if (elements.finalRoundCountSelect) {
+        elements.finalRoundCountSelect.value = String(roundCount);
+      }
+      if (elements.generateSchoolDraftButton) {
+        elements.generateSchoolDraftButton.textContent = `${getFinalExamRoundRangeLabel(roundCount)} 생성`;
+      }
+    }
+
+    function inferFinalExamRoundCountFromSlots(slots = state.examBuilder.slots) {
+      const roundIndexes = Array.isArray(slots)
+        ? slots
+            .map((slot) => Number(slot.roundIndex || 0))
+            .filter((roundIndex) => Number.isFinite(roundIndex) && roundIndex >= 0)
+        : [];
+      if (!roundIndexes.length) {
+        return getFinalExamRoundCount();
+      }
+      return normalizeFinalExamRoundCount(Math.max(...roundIndexes) + 1);
+    }
+
+    function syncFinalRoundCountFromSlots(slots = state.examBuilder.slots) {
+      if (!Array.isArray(slots) || !slots.length) {
+        syncFinalRoundCountSelect();
+        return;
+      }
+      state.schoolWorkflow.finalRoundCount = inferFinalExamRoundCountFromSlots(slots);
+      syncFinalRoundCountSelect();
+    }
+
     function normalizeTypeTargetCount(value) {
       const numeric = Number.parseInt(value, 10);
       if (!Number.isFinite(numeric) || numeric <= 0) {
@@ -3819,6 +3922,7 @@
         normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || ""),
         getSchoolSourceFilterKey(),
         normalizeTextbookName(state.schoolWorkflow.passageTextbookName || ""),
+        getFinalExamRoundCount(),
         [...state.schoolWorkflow.selectedPassageKeys].sort((left, right) => String(left).localeCompare(String(right), "ko")).join("|")
       ].join("::");
     }
@@ -3864,9 +3968,7 @@
       const nextTargets = {};
       availableTypes.forEach((typeLabel) => {
         const currentCount = normalizeTypeTargetCount(state.schoolWorkflow.typeTargets?.[typeLabel] || 0);
-        nextTargets[typeLabel] = state.schoolWorkflow.typeSelectionCustomized
-          ? currentCount
-          : (currentCount || 1);
+        nextTargets[typeLabel] = currentCount;
       });
       state.schoolWorkflow.typeTargets = nextTargets;
       state.schoolWorkflow.selectedTypeLabels = availableTypes.filter((typeLabel) => nextTargets[typeLabel] > 0);
@@ -3955,7 +4057,7 @@
       const passageSummaries = getSchoolPassageSummaries();
       ensureSchoolPassageTextbookSelection(passageSummaries);
       const availablePassageKeys = new Set(
-        getSchoolPassageSummariesForSelectedTextbook(passageSummaries).map((entry) => entry.passageKey)
+        passageSummaries.map((entry) => entry.passageKey)
       );
       state.schoolWorkflow.selectedPassageKeys = state.schoolWorkflow.selectedPassageKeys.filter((key) => availablePassageKeys.has(key));
       syncSelectedSchoolTypes();
@@ -4023,7 +4125,7 @@
       }
 
       if (pendingTailPlan && typedQuestionCount !== pendingTailPlan.requiredTypedCount) {
-        elements.schoolTypeSummary.textContent = `꼬리문제 계획은 먼저 잡혔습니다. 일반 유형 합을 ${pendingTailPlan.requiredTypedCount}문항으로 다시 맞춘 뒤 1차~3차 생성을 눌러주세요.`;
+        elements.schoolTypeSummary.textContent = `꼬리문제 계획은 먼저 잡혔습니다. 일반 유형 합을 ${pendingTailPlan.requiredTypedCount}문항으로 다시 맞춘 뒤 ${getFinalExamRoundRangeLabel()} 생성을 눌러주세요.`;
         return;
       }
 
@@ -4331,7 +4433,14 @@
 
       const selectedPassageSummaries = getSelectedSchoolPassageSummaries();
       const typedQuestionCount = getSelectedSchoolTargetQuestionCount();
+      const roundCount = getFinalExamRoundCount();
+      const roundRangeLabel = getFinalExamRoundRangeLabel(roundCount);
       let pendingTailPlan = getCurrentPendingTailPlan();
+
+      if (pendingTailPlan && normalizeFinalExamRoundCount(pendingTailPlan.roundCount || pendingTailPlan.rounds?.length) !== roundCount) {
+        clearPendingTailPlan();
+        pendingTailPlan = null;
+      }
 
       if (pendingTailPlan && typedQuestionCount > selectedPassageSummaries.length && typedQuestionCount !== pendingTailPlan.requiredTypedCount) {
         clearPendingTailPlan();
@@ -4358,7 +4467,7 @@
         }
         state.schoolWorkflow.pendingTailPlan = plannedTail.plan;
         state.schoolWorkflow.warnings = [
-          `꼬리문제 세트를 먼저 잡았습니다. 일반 유형 합을 ${plannedTail.plan.requiredTypedCount}문항으로 다시 맞춘 뒤 1차~3차 생성을 한 번 더 눌러주세요.`
+          `꼬리문제 세트를 먼저 잡았습니다. 일반 유형 합을 ${plannedTail.plan.requiredTypedCount}문항으로 다시 맞춘 뒤 ${roundRangeLabel} 생성을 한 번 더 눌러주세요.`
         ];
         renderExamSlots();
         updateFinalExamDraftText(plannedTail.plan);
@@ -4404,8 +4513,8 @@
 
       if (!state.examBuilder.slots.length) {
         const warningMessage = pendingTailPlan
-          ? "현재 꼬리문제 계획과 유형 조합으로는 1차~3차를 모두 맞출 수 없습니다. 유형 수를 다시 조정하거나 지문 범위를 넓혀주세요."
-          : "현재 유형별 문제 수와 지문 범위로는 1차~3차를 모두 맞출 수 없습니다. 유형 수를 다시 조정하거나 지문 범위를 넓혀주세요.";
+          ? `현재 꼬리문제 계획과 유형 조합으로는 ${roundRangeLabel}를 모두 맞출 수 없습니다. 유형 수를 다시 조정하거나 지문 범위를 넓혀주세요.`
+          : `현재 유형별 문제 수와 지문 범위로는 ${roundRangeLabel}를 모두 맞출 수 없습니다. 유형 수를 다시 조정하거나 지문 범위를 넓혀주세요.`;
         state.schoolWorkflow.warnings = [warningMessage];
         renderExamSlots();
         setStatus(warningMessage, "error", "생성 실패");
@@ -4413,11 +4522,11 @@
         return;
       }
 
-      const roundSummaryText = Array.from({ length: FINAL_EXAM_ROUND_COUNT }, (_, roundIndex) => {
+      const roundSummaryText = Array.from({ length: roundCount }, (_, roundIndex) => {
         const roundSlots = state.examBuilder.slots.filter((slot) => Number(slot.roundIndex || 0) === roundIndex);
         return `${getExamRoundLabel(roundIndex)} ${roundSlots.reduce((total, slot) => total + (slot.category === "tail" ? (slot.assignedProblemIds?.length || 0) : 1), 0)}문항`;
       }).join(" · ");
-      setStatus(`${schoolProfile.name} 기준 1차~3차 파이널테스트를 만들었습니다. ${roundSummaryText}`, "idle", "1차~3차 생성");
+      setStatus(`${schoolProfile.name} 기준 ${roundRangeLabel} 파이널테스트를 만들었습니다. ${roundSummaryText}`, "idle", `${roundRangeLabel} 생성`);
       revealSchoolDraftResult();
     }
 
@@ -4648,13 +4757,14 @@
       const historyBlockedProblemIds = state.schoolWorkflow.excludeUsedProblems ? getSchoolUsedProblemIds() : new Set();
       const historyBlockedPassageTypes = state.schoolWorkflow.excludeUsedPassageTypes ? getSchoolUsedPassageTypeKeys() : new Set();
       const maxPackCount = Math.min(baseCandidates.length, overflowCount);
+      const roundCount = getFinalExamRoundCount();
 
       for (let packCountTarget = 1; packCountTarget <= maxPackCount; packCountTarget += 1) {
         const blockedProblemIds = new Set(historyBlockedProblemIds);
         const blockedPassageTypes = new Set(historyBlockedPassageTypes);
         const rounds = [];
         let success = true;
-        for (let roundIndex = 0; roundIndex < FINAL_EXAM_ROUND_COUNT; roundIndex += 1) {
+        for (let roundIndex = 0; roundIndex < roundCount; roundIndex += 1) {
           const candidates = baseCandidates.filter((candidate) =>
             !blockedPassageTypes.has(createPassageTypeKey(candidate.passageKey, PROBLEM_TYPE_TAIL)) &&
             candidate.problemIds.every((problemId) => !blockedProblemIds.has(problemId))
@@ -4690,12 +4800,13 @@
             }))
           });
         }
-        if (success && rounds.length === FINAL_EXAM_ROUND_COUNT) {
+        if (success && rounds.length === roundCount) {
           const tailQuestionCount = rounds[0]?.tailQuestionCount || 0;
           return {
             ok: true,
             plan: {
               contextKey: getSchoolGenerationContextKey(),
+              roundCount,
               originalRequestedCount: totalRequestedCount,
               overflowCount,
               tailPackCount: packCountTarget,
@@ -4831,14 +4942,15 @@
       const recordIndex = buildSchoolProblemRecordIndex(selectedPassageSummaries.map((entry) => entry.passageKey));
       const baseBlockedProblemIds = state.schoolWorkflow.excludeUsedProblems ? getSchoolUsedProblemIds() : new Set();
       const baseBlockedPassageTypes = state.schoolWorkflow.excludeUsedPassageTypes ? getSchoolUsedPassageTypeKeys() : new Set();
-      const roundPlans = pendingTailPlan?.rounds || Array.from({ length: FINAL_EXAM_ROUND_COUNT }, (_, roundIndex) => ({
+      const roundCount = normalizeFinalExamRoundCount(pendingTailPlan?.roundCount || pendingTailPlan?.rounds?.length || getFinalExamRoundCount());
+      const roundPlans = pendingTailPlan?.rounds || Array.from({ length: roundCount }, (_, roundIndex) => ({
         roundIndex,
         tailPassageKeys: [],
         packs: []
       }));
 
       function buildRound(roundIndex, blockedProblemIds, blockedPassageTypes, accumulatedSlots) {
-        if (roundIndex >= FINAL_EXAM_ROUND_COUNT) {
+        if (roundIndex >= roundCount) {
           return accumulatedSlots;
         }
         const roundPlan = roundPlans[roundIndex] || { tailPassageKeys: [], packs: [] };
@@ -4905,7 +5017,7 @@
         const tailText = pendingTailPlan?.tailQuestionCount
           ? ` · 꼬리문제 ${pendingTailPlan.tailQuestionCount}문항 포함`
           : "";
-        elements.examSubtitleInput.value = `선택 지문 ${passageCount}개 기준 1차~3차 자동 생성 · 일반 유형 ${typedQuestionCount}문항${tailText}`;
+        elements.examSubtitleInput.value = `선택 지문 ${passageCount}개 기준 ${getFinalExamRoundRangeLabel()} 자동 생성 · 일반 유형 ${typedQuestionCount}문항${tailText}`;
       }
       if (!elements.examWorkNameInput.value.trim()) {
         elements.examWorkNameInput.value = normalizeProblemTypeToken(`${schoolName}-final-set`).toLowerCase();
@@ -5628,7 +5740,10 @@
     function syncExamRoundControls() {
       const roundIndices = getGeneratedExamRoundIndices();
       if (elements.examRoundSelect) {
-        elements.examRoundSelect.innerHTML = Array.from({ length: FINAL_EXAM_ROUND_COUNT }, (_, roundIndex) =>
+        const selectRoundIndices = roundIndices.length
+          ? roundIndices
+          : Array.from({ length: getFinalExamRoundCount() }, (_, roundIndex) => roundIndex);
+        elements.examRoundSelect.innerHTML = selectRoundIndices.map((roundIndex) =>
           `<option value="${roundIndex}">${escapeHtml(getExamRoundLabel(roundIndex))}</option>`
         ).join("");
         elements.examRoundSelect.value = String(getActiveGeneratedExamRoundIndex());
@@ -5663,7 +5778,7 @@
       return `
         <article class="school-draft-more-card exam-round-plan-card">
           <strong>꼬리문제 선배치 완료</strong>
-          <p>현재 꼬리문제 계획 기준 최종 목표는 ${pendingTailPlan.originalRequestedCount}문항입니다. 일반 유형 합을 ${pendingTailPlan.requiredTypedCount}문항으로 다시 맞춘 뒤 1차~3차 생성을 눌러주세요.</p>
+          <p>현재 꼬리문제 계획 기준 최종 목표는 ${pendingTailPlan.originalRequestedCount}문항입니다. 일반 유형 합을 ${pendingTailPlan.requiredTypedCount}문항으로 다시 맞춘 뒤 ${getFinalExamRoundRangeLabel(pendingTailPlan.roundCount || pendingTailPlan.rounds?.length)} 생성을 눌러주세요.</p>
           <div class="exam-round-plan-list">
             ${pendingTailPlan.rounds.map((roundPlan) => `
               <article class="exam-round-plan-item">
@@ -5706,7 +5821,7 @@
         elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getExamRoundLabel(activeRoundIndex)} ${countExamQuestionsForSlots(roundSlots)}문항 배정 완료${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
         return;
       }
-      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · 1차~3차 자동 생성 대기${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
+      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getFinalExamRoundRangeLabel()} 자동 생성 대기${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
     }
 
     function updateExamActionButtons() {
@@ -6116,6 +6231,7 @@
         typeSelectionCustomized: Boolean(state.schoolWorkflow.typeSelectionCustomized),
         passageTextbookName: state.schoolWorkflow.passageTextbookName || "",
         passageQuery: state.schoolWorkflow.passageQuery || "",
+        finalRoundCount: getFinalExamRoundCount(),
         excludeUsedProblems: Boolean(state.schoolWorkflow.excludeUsedProblems),
         excludeUsedPassageTypes: Boolean(state.schoolWorkflow.excludeUsedPassageTypes),
         pendingTailPlan: state.schoolWorkflow.pendingTailPlan ? JSON.parse(JSON.stringify(state.schoolWorkflow.pendingTailPlan)) : null,
@@ -6134,6 +6250,7 @@
       state.schoolWorkflow.typeSelectionCustomized = Boolean(snapshot.typeSelectionCustomized);
       state.schoolWorkflow.passageTextbookName = normalizeTextbookName(snapshot.passageTextbookName || "");
       state.schoolWorkflow.passageQuery = snapshot.passageQuery || "";
+      state.schoolWorkflow.finalRoundCount = normalizeFinalExamRoundCount(snapshot.finalRoundCount || snapshot.pendingTailPlan?.roundCount || snapshot.pendingTailPlan?.rounds?.length);
       state.schoolWorkflow.excludeUsedProblems = snapshot.excludeUsedProblems !== false;
       state.schoolWorkflow.excludeUsedPassageTypes = Boolean(snapshot.excludeUsedPassageTypes);
       state.schoolWorkflow.pendingTailPlan = snapshot.pendingTailPlan && typeof snapshot.pendingTailPlan === "object"
@@ -6152,6 +6269,7 @@
       if (elements.schoolPassageTextbookSelect) {
         elements.schoolPassageTextbookSelect.value = state.schoolWorkflow.passageTextbookName;
       }
+      syncFinalRoundCountSelect();
       if (elements.passageSearchInput) {
         elements.passageSearchInput.value = state.schoolWorkflow.passageQuery;
       }
@@ -6382,6 +6500,7 @@
             errorMessage: slot.errorMessage || ""
           }))
         : [];
+      syncFinalRoundCountFromSlots(state.examBuilder.slots);
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
       const availableProblemIds = new Set(getProblemRecordsOnly().map((record) => record.recordId));
       state.examBuilder.slots.forEach((slot) => {
@@ -6671,8 +6790,9 @@
       if (window.location.protocol === "file:") {
         return "";
       }
+      const stylesheetCandidates = ["final_test.css", "pdf_problem_template_repacker.css"];
       const styleSheet = Array.from(document.styleSheets)
-        .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
+        .find((sheet) => sheet.href && stylesheetCandidates.some((fileName) => sheet.href.endsWith(fileName)));
       if (!styleSheet) {
         return "";
       }
@@ -6685,8 +6805,9 @@
     }
 
     function getStandaloneStylesheetHref() {
+      const stylesheetCandidates = ["final_test.css", "pdf_problem_template_repacker.css"];
       const stylesheetLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .find((node) => (node.getAttribute("href") || "").endsWith("pdf_problem_template_repacker.css"));
+        .find((node) => stylesheetCandidates.some((fileName) => (node.getAttribute("href") || "").endsWith(fileName)));
       if (!stylesheetLink) {
         return "";
       }
@@ -6701,7 +6822,8 @@
     function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
       const cssText = getCssTextForStandaloneDocument();
       const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
-      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      const baseHref = new URL(window.location.href).toString();
+      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
     }
 
     function createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount) {
@@ -8489,6 +8611,19 @@
       `;
     }
 
+    function resolveStandaloneAssetSrc(src) {
+      const raw = String(src || "").trim();
+      if (!raw || /^(data:|blob:|https?:|file:)/i.test(raw)) {
+        return raw;
+      }
+      try {
+        return new URL(raw, window.location.href).toString();
+      } catch (error) {
+        console.warn("Failed to resolve asset path", error);
+        return raw;
+      }
+    }
+
     function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta) {
       const pageNumber = sheetIndex + 1;
       const isOddPage = pageNumber % 2 === 1;
@@ -8497,8 +8632,9 @@
       const contentCenterOffsetMm = (extraLeftMm - extraRightMm) / 2;
       const kickerMarkup = settings.kicker ? `<p class="sheet-kicker">${escapeHtml(settings.kicker)}</p>` : "";
       const subtitleMarkup = settings.subtitle ? `<p class="sheet-subtitle">${escapeHtml(settings.subtitle)}</p>` : "";
-      const logoMarkup = settings.logoSrc
-        ? `<img class="sheet-logo-image" src="${escapeHtml(settings.logoSrc)}" alt="학원 로고">`
+      const logoSrc = resolveStandaloneAssetSrc(settings.logoSrc);
+      const logoMarkup = logoSrc
+        ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
       const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
@@ -8509,7 +8645,7 @@
               <h2 class="sheet-title">${escapeHtml(settings.title)}</h2>
               ${subtitleMarkup}
             </div>
-            <div class="sheet-brand${settings.logoSrc ? "" : " is-empty"}">
+            <div class="sheet-brand${logoSrc ? "" : " is-empty"}">
               ${logoMarkup}
             </div>
           </header>
@@ -8830,6 +8966,7 @@
     function setLogoState(src, label) {
       state.logoSrc = src;
       state.logoLabel = label;
+      writeStoredLogoSettings(src, label);
       updateLogoUi();
       if (state.problems.length) {
         renderPreview();
@@ -8966,6 +9103,7 @@
     }
 
     async function wireEvents() {
+      applyStoredLogoSettings();
       applySettingsToUi();
       updateLogoUi();
       updateWorkspaceNavigationUi();
@@ -9309,19 +9447,19 @@
       if (elements.schoolPassageTextbookSelect) {
         elements.schoolPassageTextbookSelect.addEventListener("change", () => {
           state.schoolWorkflow.passageTextbookName = normalizeTextbookName(elements.schoolPassageTextbookSelect.value || "");
-          state.schoolWorkflow.selectedPassageKeys = [];
-          state.schoolWorkflow.selectedTypeLabels = [];
-          state.schoolWorkflow.typeSelectionCustomized = false;
           renderExamLibraryList();
-          clearGeneratedSchoolDraft();
+          updateExamBuilderSummary();
         });
       }
       if (elements.selectAllPassagesButton) {
         elements.selectAllPassagesButton.addEventListener("click", () => {
           const passageSummaries = getSchoolPassageSummaries();
           ensureSchoolPassageTextbookSelection(passageSummaries);
-          state.schoolWorkflow.selectedPassageKeys = filterSchoolPassageSummariesForUi(passageSummaries)
-            .map((entry) => entry.passageKey);
+          const selected = new Set(state.schoolWorkflow.selectedPassageKeys);
+          filterSchoolPassageSummariesForUi(passageSummaries).forEach((entry) => {
+            selected.add(entry.passageKey);
+          });
+          state.schoolWorkflow.selectedPassageKeys = Array.from(selected);
           state.schoolWorkflow.typeSelectionCustomized = false;
           syncSelectedSchoolTypes();
           renderExamLibraryList();
@@ -9330,9 +9468,14 @@
       }
       if (elements.clearSelectedPassagesButton) {
         elements.clearSelectedPassagesButton.addEventListener("click", () => {
-          state.schoolWorkflow.selectedPassageKeys = [];
+          const passageSummaries = getSchoolPassageSummaries();
+          ensureSchoolPassageTextbookSelection(passageSummaries);
+          const visiblePassageKeys = new Set(filterSchoolPassageSummariesForUi(passageSummaries).map((entry) => entry.passageKey));
+          state.schoolWorkflow.selectedPassageKeys = state.schoolWorkflow.selectedPassageKeys
+            .filter((passageKey) => !visiblePassageKeys.has(passageKey));
           state.schoolWorkflow.selectedTypeLabels = [];
           state.schoolWorkflow.typeSelectionCustomized = false;
+          syncSelectedSchoolTypes();
           renderExamLibraryList();
           clearGeneratedSchoolDraft();
         });
@@ -9480,11 +9623,14 @@
         elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getExamRoundLabel(activeRoundIndex)} ${countExamQuestionsForSlots(roundSlots)}문항 생성 완료${warningSuffix}`;
         return;
       }
-      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · 1차~3차 자동 생성 대기${warningSuffix}`;
+      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getFinalExamRoundRangeLabel()} 자동 생성 대기${warningSuffix}`;
     };
 
     setBusy = function setBusyOverride(isBusy) {
       setBusyBase(isBusy);
+      if (elements.finalRoundCountSelect) {
+        elements.finalRoundCountSelect.disabled = isBusy;
+      }
       if (elements.examRoundSelect) {
         elements.examRoundSelect.disabled = isBusy || !getGeneratedExamRoundIndices().length;
       }
@@ -9527,12 +9673,12 @@
         elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getExamRoundLabel(activeRoundIndex)} ${countExamQuestionsForSlots(roundSlots)}문항 생성 완료${warningSuffix}`;
         return;
       }
-      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · 1차~3차 자동 생성 대기${warningSuffix}`;
+      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 선택 지문 ${selectedPassageCount}개 · 일반 유형 ${typedQuestionCount}문항 · ${getFinalExamRoundRangeLabel()} 자동 생성 대기${warningSuffix}`;
     };
 
     saveCurrentExamWork = async function saveCurrentExamWorkOverride() {
       if (!state.examBuilder.slots.length) {
-        throw new Error("먼저 1차~3차 생성 결과를 만든 뒤 저장해주세요.");
+        throw new Error(`먼저 ${getFinalExamRoundRangeLabel()} 생성 결과를 만든 뒤 저장해주세요.`);
       }
 
       setBusy(true);
@@ -9656,6 +9802,7 @@
             generationRole: slot.generationRole || ""
           }))
         : [];
+      syncFinalRoundCountFromSlots(state.examBuilder.slots);
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
       const availableProblemIds = new Set(getProblemRecordsOnly().map((record) => record.recordId));
       state.examBuilder.slots.forEach((slot) => {
@@ -10008,6 +10155,21 @@
           });
         });
       }
+      if (elements.finalRoundCountSelect && !elements.finalRoundCountSelect.dataset.finalRoundCountWired) {
+        elements.finalRoundCountSelect.dataset.finalRoundCountWired = "true";
+        elements.finalRoundCountSelect.addEventListener("change", () => {
+          const nextRoundCount = normalizeFinalExamRoundCount(elements.finalRoundCountSelect.value);
+          if (nextRoundCount === getFinalExamRoundCount()) {
+            syncFinalRoundCountSelect();
+            return;
+          }
+          state.schoolWorkflow.finalRoundCount = nextRoundCount;
+          clearPendingTailPlan();
+          clearGeneratedSchoolDraft();
+          syncFinalRoundCountSelect();
+          updateExamBuilderSummary();
+        });
+      }
       if (elements.examRoundSelect && !elements.examRoundSelect.dataset.finalTestRoundWired) {
         elements.examRoundSelect.dataset.finalTestRoundWired = "true";
         elements.examRoundSelect.addEventListener("change", () => {
@@ -10030,6 +10192,7 @@
           renderExamSlots();
         });
       }
+      syncFinalRoundCountSelect();
       if (elements.fillAllTypeTargetsButton) {
         elements.fillAllTypeTargetsButton.disabled = state.isBusy || !getAvailableTypeLabelsForSchoolSelection().length;
       }
