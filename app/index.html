@@ -449,11 +449,66 @@
             <div class="exam-answer-editor-root" id="examAnswerEditorRoot" role="dialog" aria-modal="true" aria-label="답안 수정" hidden></div>
           </section>
 
+          <section class="panel-card student-retry-panel">
+            <div class="school-section-header">
+              <h2 class="panel-title">7. 오답유형 다시 풀기</h2>
+              <div class="school-inline-actions">
+                <button class="ghost-button" type="button" id="startStudentRetryButton">현재 draft를 1차 공통으로 시작</button>
+                <button class="solid-button" type="button" id="generateStudentRetryButton">다음 오답 차수 생성</button>
+              </div>
+            </div>
+            <p class="small-note" id="studentRetrySummary">학생을 등록하고 1차 공통 세트를 시작하면, 학생별 오답 유형만 같은 지문/유형의 다른 문제로 다시 낼 수 있습니다.</p>
+            <div class="field-grid compact-field-grid">
+              <label class="field-row">
+                <span class="field-label">학생 추가</span>
+                <div class="inline-action-field">
+                  <input class="text-input" id="studentNameInput" type="text" placeholder="예: 김민준">
+                  <button class="ghost-button" type="button" id="addStudentButton">학생 등록</button>
+                </div>
+              </label>
+              <label class="field-row">
+                <span class="field-label">학생 선택</span>
+                <div class="student-retry-select-actions">
+                  <select class="select-input" id="studentRetryStudentSelect" disabled>
+                    <option value="">등록된 학생 없음</option>
+                  </select>
+                  <button class="ghost-button" type="button" id="renameStudentRetryButton">이름 수정</button>
+                  <button class="ghost-button" type="button" id="deleteStudentRetryButton">학생 삭제</button>
+                </div>
+              </label>
+              <label class="field-row">
+                <span class="field-label">오답 세트</span>
+                <div class="student-retry-select-actions">
+                  <select class="select-input" id="studentRetrySessionSelect" disabled>
+                    <option value="">시작된 세트 없음</option>
+                  </select>
+                  <button class="ghost-button" type="button" id="renameStudentRetrySessionButton">이름 수정</button>
+                  <button class="ghost-button" type="button" id="deleteStudentRetrySessionButton">세트 삭제</button>
+                </div>
+              </label>
+            </div>
+            <div class="student-retry-root" id="studentRetryRoot">
+              <div class="exam-empty-state">
+                <h3>오답 재출제 세트가 없습니다</h3>
+                <p>먼저 각 지문별 유형당 1문제 draft를 만들고, 현재 draft를 1차 공통으로 시작하세요.</p>
+              </div>
+            </div>
+            <div class="student-retry-history-block">
+              <h3 class="student-retry-history-title">학생별 출력 이력</h3>
+              <p class="small-note">학생별 오답 재출제 출력은 학교 공통 출제 이력과 분리되어, 공통 시험의 이전 출제 제외 규칙에 섞이지 않습니다.</p>
+              <div class="exam-history-empty" id="studentRetryHistoryEmptyState">
+                <h3>저장된 학생별 출력 이력이 없습니다</h3>
+                <p>오답 재출제 draft에서 출제 이력 저장 + PDF 출력을 누르면 현재 학생 기준 출력 이력이 여기에 쌓입니다.</p>
+              </div>
+              <div class="exam-history-list" id="studentRetryHistoryList"></div>
+            </div>
+          </section>
+
           <section class="panel-card">
-            <h2 class="panel-title">학교별 출제 이력</h2>
+            <h2 class="panel-title">학교 공통 출제 이력</h2>
             <div class="exam-history-empty" id="examHistoryEmptyState">
-              <h3>저장된 출제 이력이 없습니다</h3>
-              <p>출제 이력 저장 + PDF 출력을 누르면 현재 학교 기준 이력이 여기에 쌓입니다.</p>
+              <h3>저장된 공통 출제 이력이 없습니다</h3>
+              <p>학교 공통 draft에서 출제 이력 저장 + PDF 출력을 누르면 현재 학교 기준 공통 이력이 여기에 쌓입니다.</p>
             </div>
             <div class="exam-history-list" id="examHistoryList"></div>
           </section>
@@ -530,6 +585,7 @@
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
     const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
+    const STUDENT_RETRY_STORAGE_KEY = "pdfProblemTemplateRepacker.studentRetry.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
     const LIBRARY_DB_VERSION = 7;
     const LIBRARY_SETTINGS_STORE = "settings";
@@ -540,7 +596,7 @@
     const LIBRARY_EXAM_STORE = "examSets";
     const LIBRARY_EXAM_ITEM_STORE = "examItems";
     const LIBRARY_WORK_STORE = "savedWorks";
-    const LIBRARY_SNAPSHOT_VERSION = 2;
+    const LIBRARY_SNAPSHOT_VERSION = 3;
     const LIBRARY_META_FILE = "pdflab_library_meta.json";
     const LIBRARY_TEXTBOOKS_FILE = "pdflab_textbooks.json";
     const LIBRARY_SCHOOLS_FILE = "pdflab_school_profiles.json";
@@ -550,6 +606,9 @@
     const LIBRARY_EXAM_SETS_FILE = "pdflab_exam_sets.json";
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
+    const LIBRARY_STUDENT_RETRY_FILE = "pdflab_student_retry.json";
+    const EXAM_HISTORY_SCOPE_SCHOOL = "school";
+    const EXAM_HISTORY_SCOPE_STUDENT_RETRY = "student-retry";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
     const WORKSPACE_MODE_EXAM = "exam";
     const WORKSPACE_MODE_LIBRARY = "library";
@@ -998,6 +1057,7 @@
         excludeUsedPassageTypes: false,
         warnings: []
       },
+      studentRetry: createStudentRetryState(),
       renderScale: DEFAULT_RENDER_SCALE,
       renderedSheetIndices: new Set(),
       previewSheetCount: 0,
@@ -1116,7 +1176,21 @@
       schoolTypeList: document.getElementById("schoolTypeList"),
       schoolTypeSummary: document.getElementById("schoolTypeSummary"),
       generateSchoolDraftButton: document.getElementById("generateSchoolDraftButton"),
-      clearSchoolDraftButton: document.getElementById("clearSchoolDraftButton")
+      clearSchoolDraftButton: document.getElementById("clearSchoolDraftButton"),
+      studentNameInput: document.getElementById("studentNameInput"),
+      addStudentButton: document.getElementById("addStudentButton"),
+      studentRetryStudentSelect: document.getElementById("studentRetryStudentSelect"),
+      studentRetrySessionSelect: document.getElementById("studentRetrySessionSelect"),
+      renameStudentRetryButton: document.getElementById("renameStudentRetryButton"),
+      deleteStudentRetryButton: document.getElementById("deleteStudentRetryButton"),
+      renameStudentRetrySessionButton: document.getElementById("renameStudentRetrySessionButton"),
+      deleteStudentRetrySessionButton: document.getElementById("deleteStudentRetrySessionButton"),
+      startStudentRetryButton: document.getElementById("startStudentRetryButton"),
+      generateStudentRetryButton: document.getElementById("generateStudentRetryButton"),
+      studentRetrySummary: document.getElementById("studentRetrySummary"),
+      studentRetryRoot: document.getElementById("studentRetryRoot"),
+      studentRetryHistoryEmptyState: document.getElementById("studentRetryHistoryEmptyState"),
+      studentRetryHistoryList: document.getElementById("studentRetryHistoryList")
     };
 
     function setOptionalText(element, value) {
@@ -1738,6 +1812,128 @@
       state.logoLabel = storedLogo.logoLabel || (storedLogo.logoSrc ? "저장된 로고" : "로고 없음");
     }
 
+    function createRetryId(prefix = "retry") {
+      return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function normalizeStudentRetryRound(round = {}, fallbackIndex = 1) {
+      const roundIndex = Math.max(1, Number.parseInt(round.roundIndex, 10) || fallbackIndex);
+      const items = Array.isArray(round.items) ? round.items : [];
+      return {
+        roundIndex,
+        label: normalizeProblemText(round.label || `${roundIndex}차`),
+        createdAt: Number(round.createdAt) || Date.now(),
+        items: items
+          .map((item, index) => ({
+            itemId: String(item?.itemId || createRetryId("retry-item")),
+            problemRecordId: String(item?.problemRecordId || ""),
+            sourceProblemId: String(item?.sourceProblemId || item?.problemRecordId || ""),
+            passageKey: String(item?.passageKey || ""),
+            passageLabel: normalizeProblemText(item?.passageLabel || item?.passageKey || ""),
+            typeLabel: String(item?.typeLabel || PROBLEM_TYPE_OTHER),
+            displayNumber: Number.parseInt(item?.displayNumber, 10) || index + 1,
+            result: item?.result === "wrong" ? "wrong" : "correct",
+            exhausted: Boolean(item?.exhausted),
+            note: normalizeProblemText(item?.note || "")
+          }))
+          .filter((item) => item.problemRecordId && item.passageKey && item.typeLabel)
+      };
+    }
+
+    function createStudentRetryState() {
+      try {
+        const raw = window.localStorage.getItem(STUDENT_RETRY_STORAGE_KEY);
+        return normalizeStudentRetryState(raw ? JSON.parse(raw) : {});
+      } catch (error) {
+        console.warn("Failed to read student retry state", error);
+        return normalizeStudentRetryState();
+      }
+    }
+
+    function normalizeStudentRetryState(rawState = {}) {
+      const students = Array.isArray(rawState?.students) ? rawState.students : [];
+      const sessions = Array.isArray(rawState?.sessions) ? rawState.sessions : [];
+      return {
+        selectedStudentId: String(rawState?.selectedStudentId || ""),
+        selectedSessionId: String(rawState?.selectedSessionId || ""),
+        students: students
+          .map((student) => {
+            const name = normalizeProblemText(student?.name || "");
+            const schoolKey = normalizeSchoolKey(student?.schoolKey || "");
+            if (!name || !schoolKey) {
+              return null;
+            }
+            return {
+              studentId: String(student?.studentId || createRetryId("student")),
+              schoolKey,
+              name,
+              createdAt: Number(student?.createdAt) || Date.now(),
+              updatedAt: Number(student?.updatedAt) || Date.now()
+            };
+          })
+          .filter(Boolean),
+        sessions: sessions
+          .map((session) => {
+            const schoolKey = normalizeSchoolKey(session?.schoolKey || "");
+            const sourceKey = normalizeLibrarySourceKey(session?.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+            const baseItems = Array.isArray(session?.baseItems) ? session.baseItems : [];
+            if (!schoolKey || !baseItems.length) {
+              return null;
+            }
+            const studentStates = session?.studentStates && typeof session.studentStates === "object"
+              ? Object.fromEntries(Object.entries(session.studentStates).map(([studentId, stateValue]) => [
+                  String(studentId),
+                  {
+                    rounds: (Array.isArray(stateValue?.rounds) ? stateValue.rounds : [])
+                      .map((round, index) => normalizeStudentRetryRound(round, index + 1))
+                      .filter((round) => round.items.length)
+                  }
+                ]))
+              : {};
+            return {
+              sessionId: String(session?.sessionId || createRetryId("retry-session")),
+              schoolKey,
+              sourceKey,
+              name: normalizeProblemText(session?.name || "오답 재출제 세트"),
+              createdAt: Number(session?.createdAt) || Date.now(),
+              updatedAt: Number(session?.updatedAt) || Date.now(),
+              baseTitle: normalizeProblemText(session?.baseTitle || ""),
+              baseItems: normalizeStudentRetryRound({ roundIndex: 1, items: baseItems }, 1).items,
+              studentStates
+            };
+          })
+          .filter(Boolean)
+      };
+    }
+
+    function captureStudentRetryState() {
+      return JSON.parse(JSON.stringify(normalizeStudentRetryState(state.studentRetry)));
+    }
+
+    function writeStudentRetryState(options = {}) {
+      const { syncFolder = true } = options;
+      try {
+        window.localStorage.setItem(STUDENT_RETRY_STORAGE_KEY, JSON.stringify(captureStudentRetryState()));
+      } catch (error) {
+        console.warn("Failed to write student retry state", error);
+      }
+      if (!syncFolder) {
+        return;
+      }
+      syncLibraryFolderFromStateIfConnected().catch((error) => {
+        console.warn("Failed to sync student retry state to library folder", error);
+      });
+    }
+
+    function applyStudentRetryState(rawState = {}) {
+      state.studentRetry = normalizeStudentRetryState(rawState);
+      try {
+        window.localStorage.setItem(STUDENT_RETRY_STORAGE_KEY, JSON.stringify(captureStudentRetryState()));
+      } catch (error) {
+        console.warn("Failed to persist loaded student retry state", error);
+      }
+    }
+
     function normalizeSchoolName(value) {
       return normalizeProblemText(value);
     }
@@ -1963,6 +2159,13 @@
         await idbTransactionDone(transaction);
 
         writeStoredSchools(getSchoolProfiles().filter((school) => school.key !== normalizedSchoolKey));
+        state.studentRetry.students = (state.studentRetry.students || [])
+          .filter((student) => normalizeSchoolKey(student.schoolKey || "") !== normalizedSchoolKey);
+        state.studentRetry.sessions = (state.studentRetry.sessions || [])
+          .filter((session) => normalizeSchoolKey(session.schoolKey || "") !== normalizedSchoolKey);
+        state.studentRetry.selectedStudentId = "";
+        state.studentRetry.selectedSessionId = "";
+        writeStudentRetryState();
         if (state.schoolWorkflow.selectedSchoolKey === normalizedSchoolKey) {
           state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
           state.schoolWorkflow.selectedPassageKeys = [];
@@ -2771,7 +2974,9 @@
         (snapshot.problemAssets || []).length ||
         (snapshot.examSets || []).length ||
         (snapshot.examItems || []).length ||
-        (snapshot.savedWorks || []).length
+        (snapshot.savedWorks || []).length ||
+        (snapshot.studentRetry?.students || []).length ||
+        (snapshot.studentRetry?.sessions || []).length
       );
     }
 
@@ -2788,7 +2993,8 @@
         problemAssetsRaw,
         examSetsRaw,
         examItemsRaw,
-        savedWorksRaw
+        savedWorksRaw,
+        studentRetryRaw
       ] = await Promise.all([
         readJsonFileFromDirectory(directoryHandle, LIBRARY_META_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_TEXTBOOKS_FILE, null),
@@ -2798,9 +3004,10 @@
         readJsonFileFromDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
-        readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null)
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, null)
       ]);
-      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, savedWorksRaw].some((value) => value != null)) {
+      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, savedWorksRaw, studentRetryRaw].some((value) => value != null)) {
         return null;
       }
 
@@ -2839,7 +3046,8 @@
         problemAssets,
         examSets: Array.isArray(examSetsRaw) ? examSetsRaw : [],
         examItems: Array.isArray(examItemsRaw) ? examItemsRaw : [],
-        savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : [])
+        savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : []),
+        studentRetry: studentRetryRaw == null ? null : normalizeStudentRetryState(studentRetryRaw)
       };
     }
 
@@ -2855,6 +3063,7 @@
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, snapshot.examSets || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, normalizeStudentRetryState(snapshot.studentRetry || {}));
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
         version: LIBRARY_SNAPSHOT_VERSION,
         updatedAt
@@ -2871,7 +3080,8 @@
         problemAssets: await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
-        savedWorks: [...(state.libraryCache.savedWorks || [])]
+        savedWorks: [...(state.libraryCache.savedWorks || [])],
+        studentRetry: captureStudentRetryState()
       };
     }
 
@@ -2953,6 +3163,9 @@
       state.libraryLastSyncedAt = Number(snapshot?.meta?.updatedAt) || 0;
       writeStoredTextbooks(snapshot.textbooks || []);
       writeStoredSchools(snapshot.schools || []);
+      if (snapshot.studentRetry) {
+        applyStudentRetryState(snapshot.studentRetry);
+      }
       populateStoredTextbookOptions();
       syncTextbookModeUi();
       await replaceLibraryStoresFromSnapshot(snapshot);
@@ -2976,10 +3189,14 @@
         state.libraryLastSyncedAt = Number(snapshot?.meta?.updatedAt) || 0;
         writeStoredTextbooks(snapshot.textbooks || []);
         writeStoredSchools(snapshot.schools || []);
+        if (snapshot.studentRetry) {
+          applyStudentRetryState(snapshot.studentRetry);
+        }
         populateStoredTextbookOptions();
         syncTextbookModeUi();
         await replaceLibraryStoresFromSnapshot(snapshot);
         await refreshLibrarySummary();
+        renderStudentRetryPanel();
         setStatus(`${handle.name} 폴더의 라이브러리를 불러왔습니다.`, "idle", "폴더 연결");
       } else {
         await syncLibraryFolderFromState();
@@ -3595,11 +3812,50 @@
       return kind ? records.filter((record) => record.kind === kind) : records;
     }
 
-    function getActiveHistoryExamItems() {
-      if (!state.examBuilder.loadedExamId) {
-        return getExamItems();
+    function getExamSetHistoryScope(examSet = {}) {
+      if (String(examSet?.historyScope || "") === EXAM_HISTORY_SCOPE_STUDENT_RETRY ||
+          String(examSet?.workflowMode || "") === EXAM_HISTORY_SCOPE_STUDENT_RETRY) {
+        return EXAM_HISTORY_SCOPE_STUDENT_RETRY;
       }
-      return getExamItems().filter((item) => item.examId !== state.examBuilder.loadedExamId);
+      return EXAM_HISTORY_SCOPE_SCHOOL;
+    }
+
+    function isStudentRetryDraftSlot(slot = {}) {
+      return Boolean(slot?.studentRetrySessionId && slot?.studentRetryStudentId);
+    }
+
+    function getCurrentStudentRetryDraftContext() {
+      const firstRetrySlot = state.examBuilder.slots.find((slot) => isStudentRetryDraftSlot(slot));
+      if (!firstRetrySlot) {
+        return null;
+      }
+      const sessionId = String(firstRetrySlot.studentRetrySessionId || "");
+      const studentId = String(firstRetrySlot.studentRetryStudentId || "");
+      const roundIndex = Math.max(1, Number.parseInt(firstRetrySlot.studentRetryRoundIndex, 10) || 1);
+      const session = (state.studentRetry.sessions || []).find((entry) => String(entry.sessionId || "") === sessionId) || null;
+      const student = (state.studentRetry.students || []).find((entry) => String(entry.studentId || "") === studentId) || null;
+      return {
+        sessionId,
+        studentId,
+        roundIndex,
+        session,
+        student
+      };
+    }
+
+    function isStudentRetryDraftActive() {
+      return Boolean(getCurrentStudentRetryDraftContext());
+    }
+
+    function getActiveHistoryExamItems() {
+      const targetExamIds = new Set(
+        getExamSets()
+          .filter((examSet) => getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_SCHOOL)
+          .filter((examSet) => examSet.examId !== state.examBuilder.loadedExamId)
+          .map((examSet) => examSet.examId)
+          .filter(Boolean)
+      );
+      return getExamItems().filter((item) => targetExamIds.has(item.examId));
     }
 
     function createPassageTypeKey(passageKey, typeLabel) {
@@ -3654,10 +3910,12 @@
       };
     }
 
-    function getExamSetsForSelectedSchool() {
+    function getExamSetsForSelectedSchool(scope = EXAM_HISTORY_SCOPE_SCHOOL) {
       const schoolKey = normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
       const sourceKey = getSchoolSourceFilterKey();
-      const matchesSource = (examSet) => normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey;
+      const matchesSource = (examSet) =>
+        getExamSetHistoryScope(examSet) === scope &&
+        normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey;
       if (!schoolKey) {
         return getExamSets().filter(matchesSource);
       }
@@ -3665,6 +3923,10 @@
         matchesSource(examSet) &&
         normalizeSchoolKey(examSet.schoolKey || "") === schoolKey
       );
+    }
+
+    function getStudentRetryExamSetsForSelectedSchool() {
+      return getExamSetsForSelectedSchool(EXAM_HISTORY_SCOPE_STUDENT_RETRY);
     }
 
     function getSchoolHistoryExamItems() {
@@ -3694,6 +3956,495 @@
           .filter((item) => item.category === "tail")
           .map((item) => item.tailPackKey)
           .filter(Boolean)
+      );
+    }
+
+    function getStudentRetrySchoolKey() {
+      return normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
+    }
+
+    function getStudentRetrySourceKey() {
+      return getSchoolSourceFilterKey();
+    }
+
+    function getRetryStudentsForSelectedSchool() {
+      const schoolKey = getStudentRetrySchoolKey();
+      return (state.studentRetry.students || [])
+        .filter((student) => normalizeSchoolKey(student.schoolKey || "") === schoolKey)
+        .sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    }
+
+    function getRetrySessionsForSelectedSchool() {
+      const schoolKey = getStudentRetrySchoolKey();
+      const sourceKey = getStudentRetrySourceKey();
+      return (state.studentRetry.sessions || [])
+        .filter((session) =>
+          normalizeSchoolKey(session.schoolKey || "") === schoolKey &&
+          normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey
+        )
+        .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
+    }
+
+    function getSelectedRetryStudent() {
+      const students = getRetryStudentsForSelectedSchool();
+      return students.find((student) => student.studentId === state.studentRetry.selectedStudentId) || null;
+    }
+
+    function getSelectedRetrySession() {
+      const sessions = getRetrySessionsForSelectedSchool();
+      return sessions.find((session) => session.sessionId === state.studentRetry.selectedSessionId) || null;
+    }
+
+    function ensureStudentRetrySelection() {
+      const students = getRetryStudentsForSelectedSchool();
+      if (!students.some((student) => student.studentId === state.studentRetry.selectedStudentId)) {
+        state.studentRetry.selectedStudentId = students[0]?.studentId || "";
+      }
+      const sessions = getRetrySessionsForSelectedSchool();
+      if (!sessions.some((session) => session.sessionId === state.studentRetry.selectedSessionId)) {
+        state.studentRetry.selectedSessionId = sessions[0]?.sessionId || "";
+      }
+    }
+
+    function getRetryRecordById(recordId) {
+      return getProblemRecordsOnly().find((record) => record.recordId === recordId) || null;
+    }
+
+    function createRetryItemFromRecord(record, displayNumber, sourceProblemId = "") {
+      const typeLabel = record.selectableType || record.problemType || PROBLEM_TYPE_OTHER;
+      return {
+        itemId: createRetryId("retry-item"),
+        problemRecordId: record.recordId,
+        sourceProblemId: sourceProblemId || record.recordId,
+        passageKey: record.passageKey || "",
+        passageLabel: record.passageLabel || record.passageKey || "",
+        typeLabel,
+        displayNumber,
+        result: "correct",
+        exhausted: false,
+        note: ""
+      };
+    }
+
+    function getCurrentDraftRetryBaseItems() {
+      return state.examBuilder.slots
+        .map((slot, index) => {
+          if (slot.category === "tail") {
+            return null;
+          }
+          const record = getExamSlotAssignedRecord(slot);
+          if (!record || !record.passageKey) {
+            return null;
+          }
+          return createRetryItemFromRecord(record, index + 1);
+        })
+        .filter(Boolean);
+    }
+
+    function getStudentRetryState(session, studentId) {
+      if (!session || !studentId) {
+        return null;
+      }
+      if (!session.studentStates || typeof session.studentStates !== "object") {
+        session.studentStates = {};
+      }
+      if (!session.studentStates[studentId]) {
+        session.studentStates[studentId] = {
+          rounds: [{
+            roundIndex: 1,
+            label: "1차 공통",
+            createdAt: session.createdAt || Date.now(),
+            items: session.baseItems.map((item) => ({
+              ...item,
+              itemId: item.itemId || createRetryId("retry-item"),
+              result: item.result === "wrong" ? "wrong" : "correct"
+            }))
+          }]
+        };
+      }
+      if (!Array.isArray(session.studentStates[studentId].rounds) || !session.studentStates[studentId].rounds.length) {
+        session.studentStates[studentId].rounds = [{
+          roundIndex: 1,
+          label: "1차 공통",
+          createdAt: session.createdAt || Date.now(),
+          items: session.baseItems.map((item) => ({ ...item, result: "correct" }))
+        }];
+      }
+      return session.studentStates[studentId];
+    }
+
+    function getStudentRetryUsedProblemIds(studentState) {
+      return new Set(
+        (studentState?.rounds || [])
+          .flatMap((round) => round.items || [])
+          .map((item) => item.problemRecordId)
+          .filter(Boolean)
+      );
+    }
+
+    function findNextRetryCandidateForItem(item, usedProblemIds) {
+      const sourceKey = getStudentRetrySourceKey();
+      const candidates = getProblemRecordsOnly()
+        .filter((record) => getRecordSourceKey(record) === sourceKey)
+        .filter((record) => record.problemType !== PROBLEM_TYPE_TAIL)
+        .filter((record) => record.passageKey === item.passageKey)
+        .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === item.typeLabel)
+        .filter((record) => !usedProblemIds.has(record.recordId));
+      return chooseSchoolDraftCandidate(candidates, new Set(), new Map());
+    }
+
+    function addRetryStudent() {
+      const name = normalizeProblemText(elements.studentNameInput?.value || "");
+      const schoolKey = getStudentRetrySchoolKey();
+      if (!schoolKey) {
+        throw new Error("먼저 학교를 선택해주세요.");
+      }
+      if (!name) {
+        throw new Error("학생 이름을 입력해주세요.");
+      }
+      const existing = getRetryStudentsForSelectedSchool().find((student) => student.name === name);
+      if (existing) {
+        state.studentRetry.selectedStudentId = existing.studentId;
+      } else {
+        const now = Date.now();
+        const student = {
+          studentId: createRetryId("student"),
+          schoolKey,
+          name,
+          createdAt: now,
+          updatedAt: now
+        };
+        state.studentRetry.students.push(student);
+        state.studentRetry.selectedStudentId = student.studentId;
+      }
+      if (elements.studentNameInput) {
+        elements.studentNameInput.value = "";
+      }
+      writeStudentRetryState();
+      renderStudentRetryPanel();
+    }
+
+    async function renameRetryStudent() {
+      const student = getSelectedRetryStudent();
+      if (!student) {
+        throw new Error("먼저 이름을 수정할 학생을 선택해주세요.");
+      }
+      const nextName = normalizeProblemText(window.prompt("학생 이름을 수정하세요.", student.name) || "");
+      if (!nextName || nextName === student.name) {
+        return;
+      }
+      const duplicate = getRetryStudentsForSelectedSchool().find((entry) =>
+        entry.studentId !== student.studentId &&
+        entry.name === nextName
+      );
+      if (duplicate) {
+        throw new Error("같은 학교에 같은 이름의 학생이 이미 있습니다.");
+      }
+      setBusy(true);
+      setStatus(`${student.name} 학생 이름을 수정하는 중입니다...`, "working", "학생 수정");
+      try {
+        student.name = nextName;
+        student.updatedAt = Date.now();
+        writeStudentRetryState({ syncFolder: false });
+        await updateExamSetMetadataByPredicate(
+          (examSet) =>
+            getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+            String(examSet.studentRetryStudentId || "") === student.studentId,
+          (examSet) => ({
+            ...examSet,
+            studentRetryStudentName: nextName,
+            updatedAt: Date.now()
+          })
+        );
+        await refreshLibrarySummary();
+        renderStudentRetryPanel();
+        renderExamHistoryList();
+        await syncLibraryFolderFromStateIfConnected();
+        setStatus(`${nextName} 학생 이름으로 수정했습니다.`, "idle", "학생 수정");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteRetryStudent() {
+      const student = getSelectedRetryStudent();
+      if (!student) {
+        throw new Error("먼저 삭제할 학생을 선택해주세요.");
+      }
+      const retryExamCount = getExamSets()
+        .filter((examSet) =>
+          getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+          String(examSet.studentRetryStudentId || "") === student.studentId
+        )
+        .length;
+      const confirmed = window.confirm([
+        `${student.name} 학생을 삭제할까요?`,
+        "",
+        `오답 세트 기록 ${(state.studentRetry.sessions || []).filter((session) =>
+          normalizeSchoolKey(session.schoolKey || "") === normalizeSchoolKey(student.schoolKey || "") &&
+          session.studentStates?.[student.studentId]
+        ).length}개`,
+        `학생별 출력 이력 ${retryExamCount}개`,
+        "",
+        "이 학생의 오답 체크 기록과 학생별 출력 이력이 함께 삭제됩니다."
+      ].join(String.fromCharCode(10)));
+      if (!confirmed) {
+        return;
+      }
+
+      setBusy(true);
+      setStatus(`${student.name} 학생 정보를 삭제하는 중입니다...`, "working", "학생 삭제");
+      try {
+        state.studentRetry.students = (state.studentRetry.students || [])
+          .filter((entry) => entry.studentId !== student.studentId);
+        state.studentRetry.sessions = (state.studentRetry.sessions || []).map((session) => {
+          if (!session.studentStates || typeof session.studentStates !== "object") {
+            return session;
+          }
+          const nextStates = { ...session.studentStates };
+          delete nextStates[student.studentId];
+          return {
+            ...session,
+            studentStates: nextStates,
+            updatedAt: Date.now()
+          };
+        });
+        state.studentRetry.selectedStudentId = "";
+        writeStudentRetryState({ syncFolder: false });
+        await deleteExamHistoriesByPredicate((examSet) =>
+          getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+          String(examSet.studentRetryStudentId || "") === student.studentId
+        );
+        if (state.examBuilder.slots.some((slot) => String(slot.studentRetryStudentId || "") === student.studentId)) {
+          clearGeneratedSchoolDraft();
+        }
+        await refreshLibrarySummary();
+        renderStudentRetryPanel();
+        renderExamHistoryList();
+        await syncLibraryFolderFromStateIfConnected();
+        setStatus(`${student.name} 학생을 삭제했습니다.`, "idle", "학생 삭제");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function renameRetrySession() {
+      const session = getSelectedRetrySession();
+      if (!session) {
+        throw new Error("먼저 이름을 수정할 오답 세트를 선택해주세요.");
+      }
+      const nextName = normalizeProblemText(window.prompt("오답 세트 이름을 수정하세요.", session.name) || "");
+      if (!nextName || nextName === session.name) {
+        return;
+      }
+      const duplicate = getRetrySessionsForSelectedSchool().find((entry) =>
+        entry.sessionId !== session.sessionId &&
+        entry.name === nextName
+      );
+      if (duplicate) {
+        throw new Error("같은 학교/출처에 같은 이름의 오답 세트가 이미 있습니다.");
+      }
+      setBusy(true);
+      setStatus(`${session.name} 세트 이름을 수정하는 중입니다...`, "working", "세트 수정");
+      try {
+        session.name = nextName;
+        session.updatedAt = Date.now();
+        writeStudentRetryState({ syncFolder: false });
+        await updateExamSetMetadataByPredicate(
+          (examSet) =>
+            getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+            String(examSet.studentRetrySessionId || "") === session.sessionId,
+          (examSet) => ({
+            ...examSet,
+            studentRetrySessionName: nextName,
+            updatedAt: Date.now()
+          })
+        );
+        await refreshLibrarySummary();
+        renderStudentRetryPanel();
+        renderExamHistoryList();
+        await syncLibraryFolderFromStateIfConnected();
+        setStatus(`${nextName} 세트 이름으로 수정했습니다.`, "idle", "세트 수정");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteRetrySession() {
+      const session = getSelectedRetrySession();
+      if (!session) {
+        throw new Error("먼저 삭제할 오답 세트를 선택해주세요.");
+      }
+      const retryExamCount = getExamSets()
+        .filter((examSet) =>
+          getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+          String(examSet.studentRetrySessionId || "") === session.sessionId
+        )
+        .length;
+      const confirmed = window.confirm([
+        `${session.name} 세트를 삭제할까요?`,
+        "",
+        `기준 공통 문항 ${session.baseItems.length}개`,
+        `학생별 출력 이력 ${retryExamCount}개`,
+        "",
+        "이 세트의 학생별 오답 차수 기록과 출력 이력이 함께 삭제됩니다."
+      ].join(String.fromCharCode(10)));
+      if (!confirmed) {
+        return;
+      }
+
+      setBusy(true);
+      setStatus(`${session.name} 세트를 삭제하는 중입니다...`, "working", "세트 삭제");
+      try {
+        state.studentRetry.sessions = (state.studentRetry.sessions || [])
+          .filter((entry) => entry.sessionId !== session.sessionId);
+        state.studentRetry.selectedSessionId = "";
+        writeStudentRetryState({ syncFolder: false });
+        await deleteExamHistoriesByPredicate((examSet) =>
+          getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY &&
+          String(examSet.studentRetrySessionId || "") === session.sessionId
+        );
+        if (state.examBuilder.slots.some((slot) => String(slot.studentRetrySessionId || "") === session.sessionId)) {
+          clearGeneratedSchoolDraft();
+        }
+        await refreshLibrarySummary();
+        renderStudentRetryPanel();
+        renderExamHistoryList();
+        await syncLibraryFolderFromStateIfConnected();
+        setStatus(`${session.name} 세트를 삭제했습니다.`, "idle", "세트 삭제");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function startStudentRetrySessionFromCurrentDraft() {
+      const schoolProfile = getSelectedSchoolProfile();
+      if (!schoolProfile) {
+        throw new Error("먼저 학교를 선택해주세요.");
+      }
+      if (state.examBuilder.slots.some((slot) => slot.studentRetrySessionId)) {
+        throw new Error("오답 재출제 draft가 아니라 1차 공통으로 쓸 학교별 draft를 먼저 생성해주세요.");
+      }
+      const baseItems = getCurrentDraftRetryBaseItems();
+      if (!baseItems.length) {
+        throw new Error("먼저 1차 공통으로 쓸 학교별 draft를 생성해주세요.");
+      }
+      const now = Date.now();
+      const session = {
+        sessionId: createRetryId("retry-session"),
+        schoolKey: getStudentRetrySchoolKey(),
+        sourceKey: getStudentRetrySourceKey(),
+        name: `${schoolProfile.name} 오답유형 ${formatTimestamp(now) || ""}`.trim(),
+        createdAt: now,
+        updatedAt: now,
+        baseTitle: elements.examTitleInput?.value.trim() || "1차 공통 세트",
+        baseItems,
+        studentStates: {}
+      };
+      state.studentRetry.sessions.unshift(session);
+      state.studentRetry.selectedSessionId = session.sessionId;
+      writeStudentRetryState();
+      renderStudentRetryPanel();
+      setStatus(`${session.name} 세트를 시작했습니다. 학생별 오답을 체크한 뒤 다음 차수를 생성하세요.`, "idle", "오답유형");
+    }
+
+    function updateStudentRetryResult(studentId, roundIndex, itemId, isWrong) {
+      const session = getSelectedRetrySession();
+      if (!session) {
+        return;
+      }
+      const studentState = getStudentRetryState(session, studentId);
+      const round = studentState?.rounds?.find((entry) => Number(entry.roundIndex) === Number(roundIndex));
+      const item = round?.items?.find((entry) => entry.itemId === itemId);
+      if (!item) {
+        return;
+      }
+      item.result = isWrong ? "wrong" : "correct";
+      session.updatedAt = Date.now();
+      writeStudentRetryState();
+      renderStudentRetryPanel();
+    }
+
+    function generateNextStudentRetryRound() {
+      const student = getSelectedRetryStudent();
+      const session = getSelectedRetrySession();
+      if (!student) {
+        throw new Error("오답 재출제를 만들 학생을 선택해주세요.");
+      }
+      if (!session) {
+        throw new Error("먼저 1차 공통 오답 세트를 시작해주세요.");
+      }
+      const studentState = getStudentRetryState(session, student.studentId);
+      const rounds = studentState.rounds.sort((left, right) => Number(left.roundIndex) - Number(right.roundIndex));
+      const previousRound = rounds[rounds.length - 1];
+      const wrongItems = (previousRound.items || []).filter((item) => item.result === "wrong");
+      if (!wrongItems.length) {
+        throw new Error(`${student.name} 학생의 ${previousRound.label || `${previousRound.roundIndex}차`} 오답이 없습니다.`);
+      }
+
+      const usedProblemIds = getStudentRetryUsedProblemIds(studentState);
+      const nextItems = [];
+      const exhaustedItems = [];
+      wrongItems.forEach((item) => {
+        const candidate = findNextRetryCandidateForItem(item, usedProblemIds);
+        if (!candidate) {
+          item.exhausted = true;
+          item.note = "남은 대체 문제가 없습니다.";
+          exhaustedItems.push(item);
+          return;
+        }
+        usedProblemIds.add(candidate.recordId);
+        nextItems.push(createRetryItemFromRecord(candidate, nextItems.length + 1, item.problemRecordId));
+      });
+
+      if (!nextItems.length) {
+        throw new Error("오답 유형에 남은 대체 문제가 없습니다. 해당 지문/유형은 더 이상 반복 출제할 수 없습니다.");
+      }
+
+      const nextRoundIndex = Number(previousRound.roundIndex || rounds.length) + 1;
+      const nextRound = {
+        roundIndex: nextRoundIndex,
+        label: `${nextRoundIndex}차 개인 오답`,
+        createdAt: Date.now(),
+        items: nextItems
+      };
+      rounds.push(nextRound);
+      session.updatedAt = Date.now();
+      writeStudentRetryState();
+
+      cleanupExamPreviewUrls();
+      cleanupExamExportUrls();
+      state.examBuilder.loadedExamId = "";
+      state.examBuilder.loadedWorkId = "";
+      state.examBuilder.slots = nextItems
+        .map((item, index) => getRetryRecordById(item.problemRecordId))
+        .filter(Boolean)
+        .map((record, index) => {
+          const slot = createSchoolDraftSlotFromRecord(record, index + 1);
+          slot.studentRetrySessionId = session.sessionId;
+          slot.studentRetryStudentId = student.studentId;
+          slot.studentRetryRoundIndex = nextRoundIndex;
+          slot.schoolDraftMode = "student-retry";
+          return slot;
+        });
+      state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
+      clearExamAnswerEditorState();
+      state.schoolWorkflow.warnings = exhaustedItems.map((item) =>
+        `${item.passageLabel || item.passageKey} / ${item.typeLabel}: 남은 대체 문제가 없습니다.`
+      );
+      elements.examObjectiveCountInput.value = String(state.examBuilder.slots.filter((slot) => slot.category === "objective").length);
+      elements.examSubjectiveCountInput.value = String(state.examBuilder.slots.filter((slot) => slot.category === "subjective").length);
+      elements.examTailCountInput.value = "0";
+      elements.examKickerInput.value = "WRONG TYPE RETRY";
+      elements.examTitleInput.value = `${student.name} 오답유형 ${nextRoundIndex}차`;
+      elements.examSubtitleInput.value = `${session.baseTitle || session.name} 기준 · ${previousRound.label || `${previousRound.roundIndex}차`} 오답 재출제`;
+      renderExamSlots();
+      renderStudentRetryPanel();
+      revealSchoolDraftResult();
+      setStatus(
+        `${student.name} 학생 ${nextRoundIndex}차 오답유형 ${nextItems.length}문항을 만들었습니다.${exhaustedItems.length ? ` 남은 문제 없음 ${exhaustedItems.length}개도 확인하세요.` : ""}`,
+        "idle",
+        `${nextRoundIndex}차`
       );
     }
 
@@ -3885,6 +4636,7 @@
       clearExamAnswerEditorState();
       state.schoolWorkflow.warnings = [];
       renderExamSlots();
+      renderStudentRetryPanel();
     }
 
     function setSelectedSchoolKey(schoolKey) {
@@ -3893,6 +4645,8 @@
       state.schoolWorkflow.selectedTypeLabels = [];
       state.schoolWorkflow.typeSelectionCustomized = false;
       state.schoolWorkflow.passageTextbookName = "";
+      state.studentRetry.selectedStudentId = "";
+      state.studentRetry.selectedSessionId = "";
       clearGeneratedSchoolDraft();
       renderExamLibraryList();
       renderExamHistoryList();
@@ -3908,6 +4662,7 @@
       state.schoolWorkflow.selectedTypeLabels = [];
       state.schoolWorkflow.typeSelectionCustomized = false;
       state.schoolWorkflow.passageTextbookName = "";
+      state.studentRetry.selectedSessionId = "";
       clearGeneratedSchoolDraft();
       renderExamLibraryList();
       renderExamHistoryList();
@@ -3969,6 +4724,197 @@
       elements.schoolTypeSummary.textContent = `선택 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개에서 유형 ${availableTypes.length}개를 찾았습니다. 현재 ${selectedSet.size}개 유형이 출제 대상입니다.`;
     }
 
+    function createStudentRetryRoundMarkup(round, isLatestRound) {
+      const wrongCount = (round.items || []).filter((item) => item.result === "wrong").length;
+      return `
+        <article class="student-retry-round${isLatestRound ? " is-latest" : ""}">
+          <header class="student-retry-round-header">
+            <div>
+              <h3>${escapeHtml(round.label || `${round.roundIndex}차`)}</h3>
+              <p>${escapeHtml(formatTimestamp(round.createdAt) || "")} · 오답 ${wrongCount}/${round.items.length}</p>
+            </div>
+            ${isLatestRound ? `<span class="student-retry-badge">다음 생성 기준</span>` : ""}
+          </header>
+          <div class="student-retry-item-list">
+            ${(round.items || []).map((item) => `
+              <label class="student-retry-item${item.result === "wrong" ? " is-wrong" : ""}">
+                <input class="student-retry-checkbox" type="checkbox" data-retry-round="${escapeHtml(round.roundIndex)}" data-retry-item="${escapeHtml(item.itemId)}"${item.result === "wrong" ? " checked" : ""}>
+                <span class="student-retry-item-main">
+                  <strong>${escapeHtml(item.displayNumber)}번 · ${escapeHtml(item.typeLabel)}</strong>
+                  <small>${escapeHtml(item.passageLabel || item.passageKey)}${item.exhausted ? " · 남은 문제 없음" : ""}</small>
+                </span>
+                <span class="student-retry-result">${item.result === "wrong" ? "틀림" : "맞음"}</span>
+              </label>
+            `).join("")}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderStudentRetryHistoryList() {
+      if (!elements.studentRetryHistoryList || !elements.studentRetryHistoryEmptyState) {
+        return;
+      }
+      const selectedStudent = getSelectedRetryStudent();
+      const selectedSession = getSelectedRetrySession();
+      let examSets = getStudentRetryExamSetsForSelectedSchool();
+      if (selectedStudent) {
+        examSets = examSets.filter((examSet) => String(examSet.studentRetryStudentId || "") === selectedStudent.studentId);
+      }
+      if (selectedSession) {
+        examSets = examSets.filter((examSet) => String(examSet.studentRetrySessionId || "") === selectedSession.sessionId);
+      }
+      elements.studentRetryHistoryEmptyState.hidden = examSets.length > 0;
+      if (!examSets.length) {
+        const studentLabel = selectedStudent ? `${selectedStudent.name} 학생` : "선택한 학생";
+        const sessionLabel = selectedSession ? `${selectedSession.name} 세트` : "오답 세트";
+        elements.studentRetryHistoryEmptyState.innerHTML = `
+          <h3>저장된 학생별 출력 이력이 없습니다</h3>
+          <p>${escapeHtml(studentLabel)}의 ${escapeHtml(sessionLabel)} 출력 이력은 아직 없습니다. 오답 재출제 draft에서 출제 이력 저장 + PDF 출력을 누르면 여기에 쌓입니다.</p>
+        `;
+        elements.studentRetryHistoryList.innerHTML = "";
+        return;
+      }
+      const examItems = getExamItems();
+      elements.studentRetryHistoryList.innerHTML = examSets.map((examSet) => {
+        const items = examItems.filter((item) => item.examId === examSet.examId);
+        const typeSummary = Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko"));
+        const sourceLabel = getLibrarySourceLabel(examSet.librarySourceKey || examSet.librarySourceName || items[0]?.librarySourceKey || items[0]?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY);
+        const answerModeLabel = getExamAnswerModeLabel(examSet.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+        const studentLabel = examSet.studentRetryStudentName || selectedStudent?.name || "학생";
+        const sessionLabel = examSet.studentRetrySessionName || selectedSession?.name || "오답 세트";
+        const roundLabel = examSet.studentRetryRoundIndex ? `${examSet.studentRetryRoundIndex}차` : "오답";
+        return `
+          <article class="exam-history-card">
+            <header class="exam-history-card-header">
+              <div>
+                <h3>${escapeHtml(examSet.title || `${studentLabel} ${roundLabel}`)}</h3>
+                <p>${escapeHtml(formatTimestamp(examSet.createdAt) || "-")}</p>
+              </div>
+              <div class="exam-history-actions">
+                <button class="ghost-button exam-history-load-button" type="button" data-exam-load="${escapeHtml(examSet.examId)}">불러오기</button>
+                <button class="ghost-button exam-history-delete-button" type="button" data-exam-delete="${escapeHtml(examSet.examId)}">이력 삭제</button>
+              </div>
+            </header>
+            <p class="exam-history-school">${escapeHtml(studentLabel)} · ${escapeHtml(sessionLabel)} · ${escapeHtml(sourceLabel)}</p>
+            <p class="exam-history-meta">${escapeHtml(roundLabel)} · 총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0}</p>
+            <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderStudentRetryPanel() {
+      if (!elements.studentRetryRoot) {
+        return;
+      }
+      ensureStudentRetrySelection();
+      const students = getRetryStudentsForSelectedSchool();
+      const sessions = getRetrySessionsForSelectedSchool();
+      const selectedStudent = getSelectedRetryStudent();
+      const selectedSession = getSelectedRetrySession();
+
+      if (elements.studentRetryStudentSelect) {
+        elements.studentRetryStudentSelect.disabled = state.isBusy || !students.length;
+        elements.studentRetryStudentSelect.innerHTML = students.length
+          ? students.map((student) => `<option value="${escapeHtml(student.studentId)}">${escapeHtml(student.name)}</option>`).join("")
+          : `<option value="">등록된 학생 없음</option>`;
+        elements.studentRetryStudentSelect.value = selectedStudent?.studentId || "";
+      }
+      if (elements.studentRetrySessionSelect) {
+        elements.studentRetrySessionSelect.disabled = state.isBusy || !sessions.length;
+        elements.studentRetrySessionSelect.innerHTML = sessions.length
+          ? sessions.map((session) => `<option value="${escapeHtml(session.sessionId)}">${escapeHtml(session.name)} · ${session.baseItems.length}문항</option>`).join("")
+          : `<option value="">시작된 세트 없음</option>`;
+        elements.studentRetrySessionSelect.value = selectedSession?.sessionId || "";
+      }
+      if (elements.renameStudentRetryButton) {
+        elements.renameStudentRetryButton.disabled = state.isBusy || !selectedStudent;
+      }
+      if (elements.deleteStudentRetryButton) {
+        elements.deleteStudentRetryButton.disabled = state.isBusy || !selectedStudent;
+      }
+      if (elements.renameStudentRetrySessionButton) {
+        elements.renameStudentRetrySessionButton.disabled = state.isBusy || !selectedSession;
+      }
+      if (elements.deleteStudentRetrySessionButton) {
+        elements.deleteStudentRetrySessionButton.disabled = state.isBusy || !selectedSession;
+      }
+      if (elements.startStudentRetryButton) {
+        elements.startStudentRetryButton.disabled = state.isBusy ||
+          !state.examBuilder.slots.some((slot) => slot.assignedProblemId) ||
+          state.examBuilder.slots.some((slot) => slot.studentRetrySessionId);
+      }
+      if (elements.generateStudentRetryButton) {
+        elements.generateStudentRetryButton.disabled = state.isBusy || !selectedStudent || !selectedSession;
+      }
+
+      const sourceLabel = getLibrarySourceLabel(getStudentRetrySourceKey());
+      if (elements.studentRetrySummary) {
+        elements.studentRetrySummary.textContent = `${getSelectedSchoolProfile()?.name || "학교 미지정"} · 출처 ${sourceLabel} · 학생 ${students.length}명 · 오답 세트 ${sessions.length}개`;
+      }
+      renderStudentRetryHistoryList();
+
+      if (!students.length) {
+        elements.studentRetryRoot.innerHTML = `
+          <div class="exam-empty-state">
+            <h3>등록된 학생이 없습니다</h3>
+            <p>학생 이름을 입력하고 학생 등록을 누르면 오답 재출제를 학생별로 관리할 수 있습니다.</p>
+          </div>
+        `;
+        return;
+      }
+      if (!selectedSession) {
+        elements.studentRetryRoot.innerHTML = `
+          <div class="exam-empty-state">
+            <h3>오답 재출제 세트가 없습니다</h3>
+            <p>먼저 1차 공통 draft를 생성한 뒤 현재 draft를 1차 공통으로 시작하세요.</p>
+          </div>
+        `;
+        return;
+      }
+      if (!selectedStudent) {
+        elements.studentRetryRoot.innerHTML = `
+          <div class="exam-empty-state">
+            <h3>학생을 선택해주세요</h3>
+            <p>학생별로 틀린 문항이 달라서 학생 선택 후 오답을 체크해야 합니다.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const studentState = getStudentRetryState(selectedSession, selectedStudent.studentId);
+      const rounds = [...studentState.rounds].sort((left, right) => Number(left.roundIndex) - Number(right.roundIndex));
+      const latestRound = rounds[rounds.length - 1];
+      const latestWrongCount = (latestRound?.items || []).filter((item) => item.result === "wrong").length;
+      const usedProblemCount = getStudentRetryUsedProblemIds(studentState).size;
+      elements.studentRetryRoot.innerHTML = `
+        <div class="student-retry-overview">
+          <article class="student-retry-stat">
+            <span>학생</span>
+            <strong>${escapeHtml(selectedStudent.name)}</strong>
+          </article>
+          <article class="student-retry-stat">
+            <span>현재 세트</span>
+            <strong>${escapeHtml(selectedSession.name)}</strong>
+          </article>
+          <article class="student-retry-stat">
+            <span>진행 차수</span>
+            <strong>${rounds.length}차</strong>
+          </article>
+          <article class="student-retry-stat">
+            <span>이미 낸 문제</span>
+            <strong>${usedProblemCount}문항</strong>
+          </article>
+        </div>
+        <p class="small-note">체크된 항목만 “틀림”으로 저장됩니다. 다음 오답 차수는 마지막 차수의 틀린 항목 ${latestWrongCount}개를 같은 지문/유형의 다른 문제로 다시 냅니다.</p>
+        <div class="student-retry-round-list">
+          ${rounds.map((round) => createStudentRetryRoundMarkup(round, round.roundIndex === latestRound.roundIndex)).join("")}
+        </div>
+      `;
+      writeStudentRetryState({ syncFolder: false });
+    }
+
     function renderExamLibraryList() {
       ensureSchoolWorkflowSelection();
       renderSchoolList();
@@ -3998,6 +4944,7 @@
           </div>
         `;
         renderSchoolTypeList();
+        renderStudentRetryPanel();
         return;
       }
 
@@ -4024,6 +4971,7 @@
         </article>
       `).join("");
       renderSchoolTypeList();
+      renderStudentRetryPanel();
     }
 
     function createExamSlot(category, order) {
@@ -4281,6 +5229,7 @@
       elements.examTailCountInput.value = String(result.slots.filter((slot) => slot.category === "tail").length);
       updateSchoolDraftText();
       renderExamSlots();
+      renderStudentRetryPanel();
       const assignedCount = result.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const warningCount = result.warnings.length;
       if (assignedCount) {
@@ -5072,6 +6021,13 @@
       }
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const warningCount = state.schoolWorkflow.warnings.length;
+      const retryContext = getCurrentStudentRetryDraftContext();
+      if (retryContext) {
+        const studentLabel = retryContext.student?.name || "학생";
+        const sessionLabel = retryContext.session?.name || "오답 세트";
+        elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · ${studentLabel} · ${retryContext.roundIndex}차 오답유형 · ${sessionLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
+        return;
+      }
       const modeLabel = state.schoolWorkflow.draftMode === "distinct" ? "각 지문별 유형당 1문제" : "선택 유형 전부";
       elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
     }
@@ -5084,6 +6040,9 @@
       elements.previewExamButton.disabled = state.isBusy || !isReady;
       elements.printExamButton.disabled = state.isBusy || !isReady;
       elements.commitExamButton.disabled = state.isBusy || !isReady;
+      elements.commitExamButton.textContent = isStudentRetryDraftActive()
+        ? "학생 출력 이력 저장 + PDF 출력"
+        : "출제 이력 저장 + PDF 출력";
     }
 
     function buildExamSlotAnswerButton(slot, answerSummary = "", explanationSummary = "") {
@@ -5399,6 +6358,7 @@
       elements.examHistoryEmptyState.hidden = examSets.length > 0;
       if (!examSets.length) {
         elements.examHistoryList.innerHTML = "";
+        renderStudentRetryHistoryList();
         return;
       }
       const examItems = getExamItems();
@@ -5425,6 +6385,7 @@
           </article>
         `;
       }).join("");
+      renderStudentRetryHistoryList();
     }
 
     function renderSavedWorkCards(kind, currentWorkId = "") {
@@ -5600,6 +6561,7 @@
           : null;
         const workId = existingRecord?.workId || createSavedWorkId("exam");
         const now = Date.now();
+        const retryContext = getCurrentStudentRetryDraftContext();
         const slots = state.examBuilder.slots.map((slot) => ({
           id: slot.id,
           category: slot.category,
@@ -5611,7 +6573,11 @@
           selectedType: slot.selectedType,
           assignedProblemId: slot.assignedProblemId,
           assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
-          errorMessage: slot.errorMessage || ""
+          errorMessage: slot.errorMessage || "",
+          schoolDraftMode: slot.schoolDraftMode || "",
+          studentRetrySessionId: slot.studentRetrySessionId || "",
+          studentRetryStudentId: slot.studentRetryStudentId || "",
+          studentRetryRoundIndex: Number.parseInt(slot.studentRetryRoundIndex, 10) || 0
         }));
         const workName = getDefaultExamWorkName();
         const assignedCount = slots.filter((slot) => slot.assignedProblemId).length;
@@ -5626,6 +6592,15 @@
           loadedExamId: state.examBuilder.loadedExamId || "",
           layoutSettings: captureSharedLayoutSettings(),
           schoolWorkflow: captureSchoolWorkflowSnapshot(),
+          studentRetry: retryContext
+            ? {
+                sessionId: retryContext.sessionId,
+                sessionName: retryContext.session?.name || "",
+                studentId: retryContext.studentId,
+                studentName: retryContext.student?.name || "",
+                roundIndex: retryContext.roundIndex
+              }
+            : null,
           slots
         };
         const selectedSchoolName = getSelectedSchoolProfile()?.name || "학교 미지정";
@@ -5636,7 +6611,9 @@
           name: workName,
           createdAt: existingRecord?.createdAt || now,
           updatedAt: now,
-          summaryLine: `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
+          summaryLine: retryContext
+            ? `${selectedSchoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} · ${retryContext.roundIndex}차 오답유형 · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length}`
+            : `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
           payload
         };
 
@@ -5737,6 +6714,12 @@
       applyExamAnswerModeToUi(payload.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
       state.examBuilder.loadedExamId = payload.loadedExamId || "";
       state.examBuilder.loadedWorkId = workId;
+      if (payload.studentRetry?.studentId) {
+        state.studentRetry.selectedStudentId = String(payload.studentRetry.studentId);
+      }
+      if (payload.studentRetry?.sessionId) {
+        state.studentRetry.selectedSessionId = String(payload.studentRetry.sessionId);
+      }
       state.examBuilder.slots = Array.isArray(payload.slots)
         ? payload.slots.map((slot, index) => ({
             id: slot.id || `${slot.category || "objective"}-${index + 1}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -5749,7 +6732,11 @@
             selectedType: slot.selectedType || "",
             assignedProblemId: slot.assignedProblemId || "",
             assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
-            errorMessage: slot.errorMessage || ""
+            errorMessage: slot.errorMessage || "",
+            schoolDraftMode: slot.schoolDraftMode || "",
+            studentRetrySessionId: slot.studentRetrySessionId || "",
+            studentRetryStudentId: slot.studentRetryStudentId || "",
+            studentRetryRoundIndex: Number.parseInt(slot.studentRetryRoundIndex, 10) || 0
           }))
         : [];
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
@@ -5798,6 +6785,7 @@
       if (!examSet) {
         throw new Error("불러올 시험지 이력을 찾을 수 없습니다.");
       }
+      const isRetryHistory = getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY;
 
       const examItems = getExamItems()
         .filter((item) => item.examId === examId)
@@ -5820,6 +6808,14 @@
 
       state.examBuilder.loadedExamId = examId;
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
+      if (isRetryHistory) {
+        if (examSet.studentRetryStudentId) {
+          state.studentRetry.selectedStudentId = String(examSet.studentRetryStudentId);
+        }
+        if (examSet.studentRetrySessionId) {
+          state.studentRetry.selectedSessionId = String(examSet.studentRetrySessionId);
+        }
+      }
       applySchoolWorkflowSnapshot({
         selectedSchoolKey: examSet.schoolKey || state.schoolWorkflow.selectedSchoolKey,
         sourceFilterKey: examSet.librarySourceKey || examItems[0]?.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY,
@@ -5852,6 +6848,10 @@
         slot.librarySourceName = getLibrarySourceLabel(slot.librarySourceKey);
         slot.textbookName = seedItem.textbookName || "";
         slot.errorMessage = "";
+        slot.schoolDraftMode = isRetryHistory ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : (examSet.workflowMode || state.schoolWorkflow.draftMode);
+        slot.studentRetrySessionId = isRetryHistory ? String(examSet.studentRetrySessionId || "") : "";
+        slot.studentRetryStudentId = isRetryHistory ? String(examSet.studentRetryStudentId || "") : "";
+        slot.studentRetryRoundIndex = isRetryHistory ? (Number.parseInt(examSet.studentRetryRoundIndex, 10) || 1) : 0;
         if (slot.category === "tail") {
           slot.tailPackKey = seedItem.tailPackKey || "";
           slot.selectedType = PROBLEM_TYPE_TAIL;
@@ -5866,7 +6866,12 @@
       renderExamLibraryList();
       renderExamSlots();
       setActiveTab("exam");
-      setOptionalText(elements.examHistorySummary, `${examSet.title || "시험지"} 이력을 불러왔습니다. 제목과 부제를 수정한 뒤 바로 다시 PDF로 출력할 수 있습니다.`);
+      setOptionalText(
+        elements.examHistorySummary,
+        isRetryHistory
+          ? `${examSet.studentRetryStudentName || "학생"} ${examSet.studentRetryRoundIndex || ""}차 출력 이력을 불러왔습니다. 다시 PDF로 출력해도 학교 공통 출제 이력과는 분리됩니다.`
+          : `${examSet.title || "시험지"} 이력을 불러왔습니다. 제목과 부제를 수정한 뒤 바로 다시 PDF로 출력할 수 있습니다.`
+      );
     }
 
     function cleanupExamUrls(bucketName = "previewUrls") {
@@ -6226,17 +7231,113 @@
       });
     }
 
+    async function updateExamSetMetadataByPredicate(predicate, transform) {
+      if (typeof predicate !== "function" || typeof transform !== "function") {
+        return 0;
+      }
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_EXAM_STORE, "readwrite");
+      const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
+      let updatedCount = 0;
+      await new Promise((resolve, reject) => {
+        const request = examStore.openCursor();
+        request.addEventListener("success", () => {
+          const cursor = request.result;
+          if (!cursor) {
+            resolve();
+            return;
+          }
+          const examSet = cursor.value || {};
+          if (predicate(examSet)) {
+            cursor.update(transform(examSet));
+            updatedCount += 1;
+          }
+          cursor.continue();
+        });
+        request.addEventListener("error", () => reject(request.error || new Error("시험지 이력 메타데이터를 업데이트하지 못했습니다.")));
+      });
+      await idbTransactionDone(transaction);
+      return updatedCount;
+    }
+
+    async function deleteExamHistoriesByPredicate(predicate) {
+      if (typeof predicate !== "function") {
+        return new Set();
+      }
+      const deletedExamIds = new Set();
+      const db = await openLibraryDb();
+      const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE], "readwrite");
+      const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
+      const examItemStore = transaction.objectStore(LIBRARY_EXAM_ITEM_STORE);
+
+      await new Promise((resolve, reject) => {
+        const request = examStore.openCursor();
+        request.addEventListener("success", () => {
+          const cursor = request.result;
+          if (!cursor) {
+            resolve();
+            return;
+          }
+          if (predicate(cursor.value || {})) {
+            if (cursor.value?.examId) {
+              deletedExamIds.add(cursor.value.examId);
+            }
+            cursor.delete();
+          }
+          cursor.continue();
+        });
+        request.addEventListener("error", () => reject(request.error || new Error("시험지 이력을 삭제하지 못했습니다.")));
+      });
+
+      if (deletedExamIds.size) {
+        await new Promise((resolve, reject) => {
+          const request = examItemStore.openCursor();
+          request.addEventListener("success", () => {
+            const cursor = request.result;
+            if (!cursor) {
+              resolve();
+              return;
+            }
+            if (deletedExamIds.has(cursor.value?.examId)) {
+              cursor.delete();
+            }
+            cursor.continue();
+          });
+          request.addEventListener("error", () => reject(request.error || new Error("시험지 이력 항목을 삭제하지 못했습니다.")));
+        });
+      }
+
+      await idbTransactionDone(transaction);
+      if (deletedExamIds.has(state.examBuilder.loadedExamId)) {
+        state.examBuilder.loadedExamId = "";
+      }
+      return deletedExamIds;
+    }
+
     async function persistExamHistory() {
       validateExamBuilderForExport();
       const entries = getExamSlotAssignedRecords();
       const settings = readExamExportSettings();
       const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}`;
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const historyScope = retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL;
       if (getExamSets().some((examSet) =>
         examSet.signature === signature &&
         normalizeSchoolKey(examSet.schoolKey || "") === normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "") &&
+        getExamSetHistoryScope(examSet) === historyScope &&
+        (
+          historyScope !== EXAM_HISTORY_SCOPE_STUDENT_RETRY ||
+          (
+            String(examSet.studentRetryStudentId || "") === retryContext?.studentId &&
+            String(examSet.studentRetrySessionId || "") === retryContext?.sessionId &&
+            Number(examSet.studentRetryRoundIndex || 0) === Number(retryContext?.roundIndex || 0)
+          )
+        ) &&
         examSet.examId !== state.examBuilder.loadedExamId
       )) {
-        throw new Error("같은 시험지 구성은 이미 확정 저장되어 있습니다.");
+        throw new Error(historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
+          ? "같은 학생의 같은 오답 차수 구성은 이미 확정 저장되어 있습니다."
+          : "같은 시험지 구성은 이미 확정 저장되어 있습니다.");
       }
 
       const existingExam = state.examBuilder.loadedExamId
@@ -6256,9 +7357,23 @@
         schoolName: getSelectedSchoolProfile()?.name || "",
         librarySourceKey,
         librarySourceName,
+        historyScope,
         workflowMode: state.schoolWorkflow.draftMode,
-        selectedPassageKeys: [...state.schoolWorkflow.selectedPassageKeys],
-        selectedTypeLabels: [...state.schoolWorkflow.selectedTypeLabels],
+        selectedPassageKeys: retryContext
+          ? Array.from(new Set(entries.map((entry) => entry.record.passageKey).filter(Boolean)))
+          : [...state.schoolWorkflow.selectedPassageKeys],
+        selectedTypeLabels: retryContext
+          ? Array.from(new Set(entries.map((entry) =>
+              entry.slot.category === "tail"
+                ? PROBLEM_TYPE_TAIL
+                : (entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER)
+            ).filter(Boolean)))
+          : [...state.schoolWorkflow.selectedTypeLabels],
+        studentRetrySessionId: retryContext?.sessionId || "",
+        studentRetrySessionName: retryContext?.session?.name || "",
+        studentRetryStudentId: retryContext?.studentId || "",
+        studentRetryStudentName: retryContext?.student?.name || "",
+        studentRetryRoundIndex: retryContext?.roundIndex || 0,
         createdAt,
         updatedAt: Date.now(),
         signature,
@@ -6270,6 +7385,7 @@
       const examItems = entries.map((entry) => ({
         entryId: `${examId}-${entry.slotIndex + 1}-${entry.record.recordId}`,
         examId,
+        historyScope,
         slotIndex: entry.slotIndex + 1,
         problemRecordId: entry.record.recordId,
         librarySourceKey: getRecordSourceKey(entry.record),
@@ -6283,7 +7399,10 @@
           : (entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER),
         textbookName: entry.record.textbookName,
         category: entry.slot.category,
-        tailPackKey: entry.slot.category === "tail" ? entry.slot.tailPackKey : ""
+        tailPackKey: entry.slot.category === "tail" ? entry.slot.tailPackKey : "",
+        studentRetrySessionId: retryContext?.sessionId || "",
+        studentRetryStudentId: retryContext?.studentId || "",
+        studentRetryRoundIndex: retryContext?.roundIndex || 0
       }));
 
       const db = await openLibraryDb();
@@ -6314,9 +7433,14 @@
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
       state.examBuilder.loadedExamId = examId;
-      setOptionalText(elements.examHistorySummary, existingExam
-        ? `${examSet.title} 이력을 업데이트했습니다. 제목과 부제를 바꾼 뒤 다시 출력해도 됩니다.`
-        : `${examSet.title} · ${formatTimestamp(createdAt)} 기준으로 시험 이력을 저장했습니다. 이후 같은 문제와 같은 지문 유형은 자동 차단됩니다.`);
+      setOptionalText(
+        elements.examHistorySummary,
+        existingExam
+          ? `${examSet.title} 이력을 업데이트했습니다. 제목과 부제를 바꾼 뒤 다시 출력해도 됩니다.`
+          : (historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
+              ? `${retryContext?.student?.name || "학생"} ${retryContext?.roundIndex || ""}차 출력 이력을 저장했습니다. 학교 공통 출제 이력과 분리되어 이전 출제 제외에 반영되지 않습니다.`
+              : `${examSet.title} · ${formatTimestamp(createdAt)} 기준으로 시험 이력을 저장했습니다. 이후 같은 문제와 같은 지문 유형은 자동 차단됩니다.`)
+      );
     }
 
     async function deleteExamHistory(examId) {
@@ -6324,31 +7448,17 @@
         return;
       }
       const targetExam = getExamSets().find((examSet) => examSet.examId === examId);
-      const db = await openLibraryDb();
-      const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE], "readwrite");
-      const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
-      const examItemStore = transaction.objectStore(LIBRARY_EXAM_ITEM_STORE);
-      examStore.delete(examId);
-      const examItemIndex = examItemStore.index("examId");
-      await new Promise((resolve, reject) => {
-        const request = examItemIndex.openCursor(IDBKeyRange.only(examId));
-        request.addEventListener("success", () => {
-          const cursor = request.result;
-          if (!cursor) {
-            resolve();
-            return;
-          }
-          cursor.delete();
-          cursor.continue();
-        });
-        request.addEventListener("error", () => reject(request.error || new Error("시험지 이력 항목을 삭제하지 못했습니다.")));
-      });
-      await idbTransactionDone(transaction);
+      await deleteExamHistoriesByPredicate((examSet) => examSet.examId === examId);
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
-      setOptionalText(elements.examHistorySummary, targetExam
-        ? `${targetExam.title} 이력을 삭제했습니다. 같은 문제와 같은 지문 유형을 다시 사용할 수 있습니다.`
-        : "시험지 이력을 삭제했습니다.");
+      setOptionalText(
+        elements.examHistorySummary,
+        targetExam
+          ? (getExamSetHistoryScope(targetExam) === EXAM_HISTORY_SCOPE_STUDENT_RETRY
+              ? `${targetExam.studentRetryStudentName || "학생"} 출력 이력을 삭제했습니다. 학교 공통 출제 차단에는 영향이 없습니다.`
+              : `${targetExam.title} 이력을 삭제했습니다. 같은 문제와 같은 지문 유형을 다시 사용할 수 있습니다.`)
+          : "시험지 이력을 삭제했습니다."
+      );
     }
 
     async function previewExamLayout() {
@@ -6373,8 +7483,15 @@
       setBusy(true);
       try {
         cleanupExamExportUrls();
+        const retryContext = getCurrentStudentRetryDraftContext();
         if (commitHistory) {
-          setStatus("시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...", "working", "시험지 확정");
+          setStatus(
+            retryContext
+              ? "학생 출력 이력을 저장하고 PDF 출력을 준비하는 중입니다..."
+              : "시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...",
+            "working",
+            retryContext ? "학생 출력" : "시험지 확정"
+          );
           await persistExamHistory();
         } else {
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
@@ -6382,7 +7499,7 @@
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
         await printStandaloneHtml(html);
         setOptionalText(elements.examExportSummary, commitHistory
-          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"} 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
       } finally {
@@ -7037,9 +8154,16 @@
       if (elements.clearSelectedPassagesButton) {
         elements.clearSelectedPassagesButton.disabled = isBusy;
       }
+      if (elements.studentNameInput) {
+        elements.studentNameInput.disabled = isBusy;
+      }
+      if (elements.addStudentButton) {
+        elements.addStudentButton.disabled = isBusy;
+      }
       if (!isBusy) {
         updateExamActionButtons();
       }
+      renderStudentRetryPanel();
       updateDeleteTextbookUi();
     }
 
@@ -8650,6 +9774,25 @@
           deleteExamHistory(target.dataset.examDelete).catch(handleError);
         }
       });
+      if (elements.studentRetryHistoryList) {
+        elements.studentRetryHistoryList.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLButtonElement)) {
+            return;
+          }
+          if (target.dataset.examLoad) {
+            try {
+              loadExamHistory(target.dataset.examLoad);
+            } catch (error) {
+              handleError(error);
+            }
+            return;
+          }
+          if (target.dataset.examDelete) {
+            deleteExamHistory(target.dataset.examDelete).catch(handleError);
+          }
+        });
+      }
       if (elements.saveSchoolButton) {
         elements.saveSchoolButton.addEventListener("click", () => {
           const schoolName = normalizeSchoolName(elements.schoolNameInput.value);
@@ -8807,6 +9950,93 @@
       if (elements.clearSchoolDraftButton) {
         elements.clearSchoolDraftButton.addEventListener("click", () => {
           clearGeneratedSchoolDraft();
+        });
+      }
+      if (elements.addStudentButton) {
+        elements.addStudentButton.addEventListener("click", () => {
+          try {
+            addRetryStudent();
+          } catch (error) {
+            handleError(error);
+          }
+        });
+      }
+      if (elements.studentNameInput) {
+        elements.studentNameInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") {
+            return;
+          }
+          event.preventDefault();
+          try {
+            addRetryStudent();
+          } catch (error) {
+            handleError(error);
+          }
+        });
+      }
+      if (elements.studentRetryStudentSelect) {
+        elements.studentRetryStudentSelect.addEventListener("change", () => {
+          state.studentRetry.selectedStudentId = elements.studentRetryStudentSelect.value || "";
+          writeStudentRetryState();
+          renderStudentRetryPanel();
+        });
+      }
+      if (elements.renameStudentRetryButton) {
+        elements.renameStudentRetryButton.addEventListener("click", () => {
+          renameRetryStudent().catch(handleError);
+        });
+      }
+      if (elements.deleteStudentRetryButton) {
+        elements.deleteStudentRetryButton.addEventListener("click", () => {
+          deleteRetryStudent().catch(handleError);
+        });
+      }
+      if (elements.studentRetrySessionSelect) {
+        elements.studentRetrySessionSelect.addEventListener("change", () => {
+          state.studentRetry.selectedSessionId = elements.studentRetrySessionSelect.value || "";
+          writeStudentRetryState();
+          renderStudentRetryPanel();
+        });
+      }
+      if (elements.renameStudentRetrySessionButton) {
+        elements.renameStudentRetrySessionButton.addEventListener("click", () => {
+          renameRetrySession().catch(handleError);
+        });
+      }
+      if (elements.deleteStudentRetrySessionButton) {
+        elements.deleteStudentRetrySessionButton.addEventListener("click", () => {
+          deleteRetrySession().catch(handleError);
+        });
+      }
+      if (elements.startStudentRetryButton) {
+        elements.startStudentRetryButton.addEventListener("click", () => {
+          try {
+            startStudentRetrySessionFromCurrentDraft();
+          } catch (error) {
+            handleError(error);
+          }
+        });
+      }
+      if (elements.generateStudentRetryButton) {
+        elements.generateStudentRetryButton.addEventListener("click", () => {
+          try {
+            generateNextStudentRetryRound();
+          } catch (error) {
+            handleError(error);
+          }
+        });
+      }
+      if (elements.studentRetryRoot) {
+        elements.studentRetryRoot.addEventListener("change", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLInputElement) || !target.dataset.retryItem) {
+            return;
+          }
+          const student = getSelectedRetryStudent();
+          if (!student) {
+            return;
+          }
+          updateStudentRetryResult(student.studentId, target.dataset.retryRound, target.dataset.retryItem, target.checked);
         });
       }
       ["dragenter", "dragover"].forEach((name) => {
