@@ -274,7 +274,7 @@
                 <div class="choice-chip-row">
                   <label class="choice-chip">
                     <input class="choice-chip-input" type="radio" name="schoolDraftMode" id="schoolModeDistinct" value="distinct" checked>
-                    <span class="choice-chip-label">유형당 1문제</span>
+                    <span class="choice-chip-label">각 지문별 유형당 1문제</span>
                   </label>
                   <label class="choice-chip">
                     <input class="choice-chip-input" type="radio" name="schoolDraftMode" id="schoolModeFull" value="full">
@@ -446,7 +446,7 @@
             <div class="exam-slot-list school-draft-list" id="examSlotList"></div>
             <p class="small-note" id="examAnswerEditorSummary" hidden>생성 결과에서 틀린 정답이나 해설만 골라서 수정하면, 현재 draft와 공용 라이브러리 원본이 함께 갱신됩니다.</p>
             <div class="exam-answer-editor-empty" id="examAnswerEditorEmptyState" hidden></div>
-            <div class="exam-answer-editor-root" id="examAnswerEditorRoot" hidden></div>
+            <div class="exam-answer-editor-root" id="examAnswerEditorRoot" role="dialog" aria-modal="true" aria-label="답안 수정" hidden></div>
           </section>
 
           <section class="panel-card">
@@ -4064,51 +4064,61 @@
       const usedPassageTypeKeys = state.schoolWorkflow.excludeUsedPassageTypes ? getSchoolUsedPassageTypeKeys() : new Set();
       const usedTailPackKeys = state.schoolWorkflow.excludeUsedPassageTypes ? getSchoolUsedTailPackKeys() : new Set();
       const chosenProblemIds = new Set();
-      const chosenPassageKeys = new Set();
+      const chosenTailPackKeys = new Set();
       const passageUsageCounts = getSchoolPassageUsageCounts();
       const slots = [];
       const warnings = [];
+      const summaries = getSchoolPassageSummaries();
+      const summariesByPassage = new Map(summaries.map((entry) => [entry.passageKey, entry]));
+      const selectedPassageOrder = summaries.filter((entry) => selectedPassageKeys.has(entry.passageKey)).map((entry) => entry.passageKey);
 
-      selectedTypes.forEach((typeLabel, index) => {
-        if (typeLabel === PROBLEM_TYPE_TAIL) {
-          const tailCandidates = getSchoolTailProblemRecordsOnly()
-            .filter((record) => selectedPassageKeys.has(record.passageKey))
-            .filter((record) => {
-              const tailPackKey = createTailPackKey(record);
-              if (usedTailPackKeys.has(tailPackKey)) {
-                return false;
-              }
-              const tailProblems = getTailPackRecordsByKey(tailPackKey).filter((entry) => entry.kind === "problem");
-              return !tailProblems.some((entry) => usedProblemIds.has(entry.recordId) || chosenProblemIds.has(entry.recordId));
-            });
-          const candidate = chooseSchoolDraftCandidate(tailCandidates, chosenPassageKeys, passageUsageCounts);
-          if (!candidate) {
-            warnings.push(`${typeLabel} 유형은 현재 조건에서 배정 가능한 문제가 없습니다.`);
+      selectedPassageOrder.forEach((passageKey) => {
+        const summary = summariesByPassage.get(passageKey);
+        selectedTypes.forEach((typeLabel) => {
+          if (summary?.availableTypes && !summary.availableTypes.includes(typeLabel)) {
+            warnings.push(`${summary?.passageLabel || passageKey} · ${typeLabel} 조합은 해당 지문에 유형이 없습니다.`);
             return;
           }
-          const slot = createSchoolDraftSlotFromRecord(candidate, index + 1);
+
+          if (typeLabel === PROBLEM_TYPE_TAIL) {
+            const tailCandidates = getSchoolTailProblemRecordsOnly()
+              .filter((record) => record.passageKey === passageKey)
+              .filter((record) => {
+                const tailPackKey = createTailPackKey(record);
+                if (usedTailPackKeys.has(tailPackKey) || chosenTailPackKeys.has(tailPackKey)) {
+                  return false;
+                }
+                const tailProblems = getTailPackRecordsByKey(tailPackKey).filter((entry) => entry.kind === "problem");
+                return !tailProblems.some((entry) => usedProblemIds.has(entry.recordId) || chosenProblemIds.has(entry.recordId));
+              });
+            const candidate = chooseSchoolDraftCandidate(tailCandidates, new Set(), passageUsageCounts);
+            if (!candidate) {
+              warnings.push(`${summary?.passageLabel || passageKey} · ${typeLabel} 조합은 현재 조건에서 배정 가능한 문제가 없습니다.`);
+              return;
+            }
+            const slot = createSchoolDraftSlotFromRecord(candidate, slots.length + 1);
+            slots.push(slot);
+            chosenTailPackKeys.add(createTailPackKey(candidate));
+            slot.assignedProblemIds.forEach((problemId) => chosenProblemIds.add(problemId));
+            return;
+          }
+
+          const candidates = getSchoolProblemRecordsOnly()
+            .filter((record) => record.passageKey === passageKey)
+            .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeLabel)
+            .filter((record) => !usedProblemIds.has(record.recordId))
+            .filter((record) => !chosenProblemIds.has(record.recordId))
+            .filter((record) => !usedPassageTypeKeys.has(createPassageTypeKey(record.passageKey, typeLabel)));
+
+          const candidate = chooseSchoolDraftCandidate(candidates, new Set(), passageUsageCounts);
+          if (!candidate) {
+            warnings.push(`${summary?.passageLabel || passageKey} · ${typeLabel} 조합은 현재 조건에서 배정 가능한 문제가 없습니다.`);
+            return;
+          }
+          const slot = createSchoolDraftSlotFromRecord(candidate, slots.length + 1);
           slots.push(slot);
-          chosenPassageKeys.add(candidate.passageKey);
-          slot.assignedProblemIds.forEach((problemId) => chosenProblemIds.add(problemId));
-          return;
-        }
-
-        const candidates = getSchoolProblemRecordsOnly()
-          .filter((record) => selectedPassageKeys.has(record.passageKey))
-          .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeLabel)
-          .filter((record) => !usedProblemIds.has(record.recordId))
-          .filter((record) => !chosenProblemIds.has(record.recordId))
-          .filter((record) => !usedPassageTypeKeys.has(createPassageTypeKey(record.passageKey, typeLabel)));
-
-        const candidate = chooseSchoolDraftCandidate(candidates, chosenPassageKeys, passageUsageCounts);
-        if (!candidate) {
-          warnings.push(`${typeLabel} 유형은 현재 조건에서 배정 가능한 문제가 없습니다.`);
-          return;
-        }
-        const slot = createSchoolDraftSlotFromRecord(candidate, index + 1);
-        slots.push(slot);
-        chosenPassageKeys.add(candidate.passageKey);
-        chosenProblemIds.add(candidate.recordId);
+          chosenProblemIds.add(candidate.recordId);
+        });
       });
 
       return { slots, warnings };
@@ -4184,7 +4194,7 @@
       }
       if (!elements.examSubtitleInput.value.trim()) {
         elements.examSubtitleInput.value = state.schoolWorkflow.draftMode === "distinct"
-          ? `선택 지문 ${passageCount}개 · 유형 ${typeCount}개 기준 유형당 1문제`
+          ? `선택 지문 ${passageCount}개 · 선택 유형 ${typeCount}개를 각 지문마다 1문제씩 출제`
           : `선택 지문 ${passageCount}개 · 선택 유형 ${typeCount}개 전부 출제`;
       }
       if (!elements.examWorkNameInput.value.trim()) {
@@ -4228,12 +4238,6 @@
       elements.examSubjectiveCountInput.value = String(result.slots.filter((slot) => slot.category === "subjective").length);
       elements.examTailCountInput.value = String(result.slots.filter((slot) => slot.category === "tail").length);
       updateSchoolDraftText();
-      const firstAssignedSlot = result.slots.find((slot) => slot.assignedProblemId || (Array.isArray(slot.assignedProblemIds) && slot.assignedProblemIds.length));
-      if (firstAssignedSlot) {
-        state.examBuilder.answerEditSlotId = firstAssignedSlot.id;
-        state.examBuilder.answerEditBaseText = buildExamAnswerEditText(getEditableExamRecordsForSlot(firstAssignedSlot));
-        state.examBuilder.answerEditDraftText = state.examBuilder.answerEditBaseText;
-      }
       renderExamSlots();
       const assignedCount = result.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const warningCount = result.warnings.length;
@@ -5026,7 +5030,7 @@
       }
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const warningCount = state.schoolWorkflow.warnings.length;
-      const modeLabel = state.schoolWorkflow.draftMode === "distinct" ? "유형당 1문제" : "선택 유형 전부";
+      const modeLabel = state.schoolWorkflow.draftMode === "distinct" ? "각 지문별 유형당 1문제" : "선택 유형 전부";
       elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
     }
 
@@ -5038,6 +5042,17 @@
       elements.previewExamButton.disabled = state.isBusy || !isReady;
       elements.printExamButton.disabled = state.isBusy || !isReady;
       elements.commitExamButton.disabled = state.isBusy || !isReady;
+    }
+
+    function buildExamSlotAnswerButton(slot, answerSummary = "", explanationSummary = "") {
+      const hasContent = Boolean(normalizeProblemText(`${answerSummary} ${explanationSummary}`));
+      return `
+        <button class="exam-slot-answer-button${hasContent ? "" : " is-empty"}" type="button" data-answer-edit-slot="${escapeHtml(slot.id)}" aria-label="답안 수정 창 열기">
+          <span class="exam-slot-answer-label">${hasContent ? "답안/해설 수정" : "답안/해설 입력"}</span>
+          <span class="exam-slot-answer-main">${escapeHtml(answerSummary || "정답 정보 없음")}</span>
+          ${explanationSummary ? `<span class="exam-slot-answer-detail">${escapeHtml(explanationSummary)}</span>` : `<span class="exam-slot-answer-detail">클릭해서 번호-정답-해설을 바로 수정하세요.</span>`}
+        </button>
+      `;
     }
 
     function renderExamSlots() {
@@ -5101,15 +5116,18 @@
         const passageLabel = representativeRecord?.passageLabel || representativeRecord?.passageKey || slot.passageKey || slot.tailPackKey || "지문 정보 없음";
         const textbookName = representativeRecord?.textbookName || representativeRecord?.worksheetFamily || slot.textbookName || "공용 라이브러리";
         const sourceLabel = representativeRecord ? getRecordSourceLabel(representativeRecord) : getLibrarySourceLabel(getSchoolSourceFilterKey());
-        const representativeAnswerMarkup = representativeRecord?.answerText || representativeRecord?.explanationText
-          ? `<p class="exam-slot-answer"><span>정답 ${escapeHtml(representativeRecord.answerText || "-")}</span>${representativeRecord.explanationText ? ` · ${escapeHtml(truncateText(representativeRecord.explanationText, 90))}` : ""}</p>`
+        const representativeAnswerMarkup = representativeRecord
+          ? buildExamSlotAnswerButton(
+              slot,
+              `정답 ${representativeRecord.answerText || "-"}`,
+              representativeRecord.explanationText ? truncateText(representativeRecord.explanationText, 120) : ""
+            )
           : "";
         const tailAnswerSummary = assignedRecords
           .filter((record) => record.kind === "problem" && (record.answerText || record.explanationText))
           .map((record) => `문항 ${record.number}: ${record.answerText || "-"}`)
           .join(" · ");
         const actionButtons = [
-          `<button class="ghost-button exam-slot-edit-button" type="button" data-answer-edit-slot="${escapeHtml(slot.id)}">${isSelected ? "수정 중" : "답안 수정"}</button>`,
           state.schoolWorkflow.draftMode === "distinct"
             ? `<button class="ghost-button exam-slot-reroll-button" type="button" data-school-reroll="${escapeHtml(slot.id)}">다른 후보</button>`
             : ""
@@ -5119,7 +5137,7 @@
               <strong>꼬리문항 ${assignedRecords.filter((record) => record.kind === "problem").map((record) => record.number).join(", ") || "-"}</strong>
               <p>${escapeHtml(sourceLabel)} · ${escapeHtml(textbookName)}</p>
               <p>${escapeHtml(passageLabel)}</p>
-              ${tailAnswerSummary ? `<p class="exam-slot-answer">${escapeHtml(tailAnswerSummary)}</p>` : ""}
+              ${assignedRecords.length ? buildExamSlotAnswerButton(slot, tailAnswerSummary || "정답 정보 없음") : ""}
             `
           : `
               <strong>문항 ${representativeRecord?.number || "-"}</strong>
@@ -5703,12 +5721,6 @@
         }
       });
       clearExamAnswerEditorState();
-      const firstAssignedSlot = state.examBuilder.slots.find((slot) => slot.assignedProblemId || (Array.isArray(slot.assignedProblemIds) && slot.assignedProblemIds.length));
-      if (firstAssignedSlot) {
-        state.examBuilder.answerEditSlotId = firstAssignedSlot.id;
-        state.examBuilder.answerEditBaseText = buildExamAnswerEditText(getEditableExamRecordsForSlot(firstAssignedSlot));
-        state.examBuilder.answerEditDraftText = state.examBuilder.answerEditBaseText;
-      }
       elements.examWorkNameInput.value = record.name || "";
       renderExamLibraryList();
       renderExamSlots();
@@ -5809,12 +5821,6 @@
       }
 
       clearExamAnswerEditorState();
-      const firstAssignedSlot = state.examBuilder.slots.find((slot) => slot.assignedProblemId || (Array.isArray(slot.assignedProblemIds) && slot.assignedProblemIds.length));
-      if (firstAssignedSlot) {
-        state.examBuilder.answerEditSlotId = firstAssignedSlot.id;
-        state.examBuilder.answerEditBaseText = buildExamAnswerEditText(getEditableExamRecordsForSlot(firstAssignedSlot));
-        state.examBuilder.answerEditDraftText = state.examBuilder.answerEditBaseText;
-      }
       renderExamLibraryList();
       renderExamSlots();
       setActiveTab("exam");
@@ -8499,10 +8505,6 @@
           renderExamSlots();
           return;
         }
-        const slotCard = target.closest("[data-slot-id]");
-        if (slotCard instanceof HTMLElement && slotCard.dataset.slotId) {
-          openExamAnswerEditor(slotCard.dataset.slotId);
-        }
       });
       if (elements.examAnswerEditorRoot) {
         elements.examAnswerEditorRoot.addEventListener("input", (event) => {
@@ -8515,6 +8517,10 @@
         elements.examAnswerEditorRoot.addEventListener("click", (event) => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) {
+            return;
+          }
+          if (target === elements.examAnswerEditorRoot) {
+            closeExamAnswerEditor();
             return;
           }
           const button = target.closest("button");

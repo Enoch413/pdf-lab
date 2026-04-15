@@ -1229,6 +1229,55 @@ button:disabled {
   color: var(--accent);
 }
 
+.exam-slot-answer-button {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(24, 107, 99, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.exam-slot-answer-button:hover,
+.exam-slot-answer-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(24, 107, 99, 0.36);
+  background: #fffef9;
+  box-shadow: 0 12px 26px rgba(24, 107, 99, 0.12);
+  outline: none;
+}
+
+.exam-slot-answer-button.is-empty {
+  border-style: dashed;
+}
+
+.exam-slot-answer-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.exam-slot-answer-main {
+  color: #174c47;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.exam-slot-answer-detail {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .exam-slot-result.is-error {
   background: rgba(184, 59, 59, 0.06);
   border-color: rgba(184, 59, 59, 0.18);
@@ -1567,17 +1616,32 @@ button:disabled {
 }
 
 .exam-answer-editor-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   display: grid;
-  gap: 14px;
+  place-items: center;
+  padding: 28px;
+  overflow: auto;
+  background: rgba(20, 32, 33, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.exam-answer-editor-root[hidden] {
+  display: none !important;
 }
 
 .exam-answer-editor-card {
   display: grid;
   gap: 16px;
+  width: min(1120px, calc(100vw - 40px));
+  max-height: calc(100vh - 56px);
+  overflow: auto;
   padding: 20px;
   border-radius: 22px;
   border: 1px solid rgba(24, 107, 99, 0.14);
-  background: rgba(24, 107, 99, 0.04);
+  background: #fbfaf5;
+  box-shadow: 0 28px 70px rgba(20, 32, 33, 0.22);
 }
 
 .exam-answer-editor-header {
@@ -2457,6 +2521,15 @@ body[data-workspace-mode] .app-tab-shell {
 
   .exam-answer-editor-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .exam-answer-editor-root {
+    padding: 14px;
+  }
+
+  .exam-answer-editor-card {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100vh - 28px);
   }
 
   .exam-answer-editor-image-panel {
