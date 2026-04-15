@@ -264,6 +264,12 @@ button:disabled {
   border: 1px solid rgba(24, 33, 38, 0.12);
 }
 
+.ghost-button-danger {
+  color: #9a2f2f;
+  border-color: rgba(154, 47, 47, 0.22);
+  background: rgba(255, 244, 244, 0.96);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -349,6 +355,13 @@ button:disabled {
 .color-wrap,
 .action-row {
   display: grid;
+  gap: 10px;
+  align-items: center;
+}
+
+.inline-action-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
 }
@@ -503,6 +516,137 @@ button:disabled {
   display: flex;
   gap: 10px;
   margin: -4px 0 16px;
+}
+
+.library-progress-board {
+  width: min(1040px, 100%);
+  display: grid;
+  gap: 18px;
+  padding-bottom: 30px;
+}
+
+.library-progress-hero {
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(24, 71, 72, 0.08);
+  background:
+    linear-gradient(135deg, rgba(24, 107, 99, 0.12), rgba(255, 255, 255, 0.96) 48%),
+    radial-gradient(circle at top right, rgba(214, 172, 96, 0.18), transparent 34%);
+  box-shadow: 0 22px 40px rgba(30, 42, 39, 0.08);
+}
+
+.library-progress-eyebrow-row,
+.library-progress-headline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.library-progress-eyebrow-row {
+  margin-bottom: 18px;
+}
+
+.library-progress-eyebrow {
+  font-family: "Lexend", "Plus Jakarta Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #53706e;
+}
+
+.library-progress-phase {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1b5752;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.library-progress-headline-row {
+  margin-bottom: 14px;
+}
+
+.library-progress-percent {
+  font-family: "Lexend", "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+  color: #173f43;
+}
+
+.library-progress-count {
+  color: #60716f;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.library-progress-bar-track {
+  position: relative;
+  height: 14px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(24, 71, 72, 0.1);
+}
+
+.library-progress-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1d746c, #4aa288);
+  box-shadow: 0 10px 20px rgba(24, 107, 99, 0.18);
+}
+
+.library-progress-message {
+  margin: 0;
+  color: #53615f;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.library-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.library-progress-card {
+  padding: 20px 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(24, 71, 72, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 34px rgba(30, 42, 39, 0.06);
+}
+
+.library-progress-card-label {
+  display: block;
+  margin-bottom: 10px;
+  color: #758380;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.library-progress-card-value {
+  display: block;
+  margin-bottom: 8px;
+  color: #173f43;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+.library-progress-card-note {
+  margin: 0;
+  color: #71817e;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .empty-state {
@@ -1027,6 +1171,13 @@ button:disabled {
   min-width: 96px;
 }
 
+.exam-slot-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .exam-library-card-header span,
 .exam-slot-label {
   color: var(--accent);
@@ -1060,6 +1211,17 @@ button:disabled {
   font-size: 14px;
 }
 
+.exam-slot-answer {
+  margin-top: 8px;
+  color: #1d5c55;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exam-slot-answer span {
+  color: var(--accent);
+}
+
 .exam-slot-result.is-error {
   background: rgba(184, 59, 59, 0.06);
   border-color: rgba(184, 59, 59, 0.18);
@@ -1067,6 +1229,14 @@ button:disabled {
 
 .legacy-exam-controls {
   display: none !important;
+}
+
+.legacy-library-controls {
+  display: none !important;
+}
+
+.storage-path-note {
+  line-height: 1.5;
 }
 
 .school-section-header {
@@ -1301,8 +1471,188 @@ button:disabled {
   gap: 14px;
 }
 
+.school-draft-card.is-selected {
+  border-color: rgba(24, 107, 99, 0.26);
+  box-shadow: 0 18px 32px rgba(24, 107, 99, 0.1);
+}
+
 .school-draft-card .exam-slot-result {
   margin-top: 10px;
+}
+
+.school-draft-more-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px dashed rgba(24, 107, 99, 0.22);
+  background: rgba(24, 107, 99, 0.05);
+}
+
+.school-draft-more-card strong {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.school-draft-more-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.school-draft-more-card button {
+  justify-self: start;
+}
+
+.exam-answer-editor-empty {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px dashed rgba(24, 107, 99, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.exam-answer-editor-empty h3,
+.exam-answer-editor-copy h3 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.exam-answer-editor-empty p,
+.exam-answer-editor-note,
+.exam-answer-editor-reference {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.exam-answer-editor-root {
+  display: grid;
+  gap: 14px;
+}
+
+.exam-answer-editor-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(24, 107, 99, 0.14);
+  background: rgba(24, 107, 99, 0.04);
+}
+
+.exam-answer-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.exam-answer-editor-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.exam-answer-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.exam-answer-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.exam-answer-editor-text-field {
+  min-width: 0;
+}
+
+.exam-answer-editor-textarea {
+  min-height: 240px;
+  font-family: "IBM Plex Sans KR", "Pretendard", sans-serif;
+}
+
+.exam-answer-editor-image-panel {
+  display: grid;
+  gap: 12px;
+  max-height: 560px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(24, 107, 99, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.exam-answer-editor-image-panel-head,
+.exam-answer-editor-image-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.exam-answer-editor-image-panel-head {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  padding: 2px 0 10px;
+  background: linear-gradient(180deg, #fbfaf5 70%, rgba(251, 250, 245, 0));
+}
+
+.exam-answer-editor-image-panel-head strong,
+.exam-answer-editor-image-card-head strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.exam-answer-editor-image-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 107, 99, 0.1);
+  background: #fffef9;
+}
+
+.exam-answer-editor-image-card-head span,
+.exam-answer-editor-image-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.exam-answer-editor-image-list {
+  display: grid;
+  gap: 8px;
+}
+
+.exam-answer-editor-image-frame {
+  margin: 0;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(24, 71, 72, 0.12);
+  background: #ffffff;
+}
+
+.exam-answer-editor-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.exam-answer-editor-image-empty {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.exam-answer-editor-footer {
+  display: grid;
+  gap: 6px;
 }
 
 .exam-mini-preview-root {
@@ -1348,6 +1698,108 @@ button:disabled {
 
 .exam-mini-preview-root .problem-squash-control {
   display: none !important;
+}
+
+.answer-key-section {
+  width: var(--screen-page-width);
+  max-width: calc(100vw - 40px);
+  min-height: var(--screen-page-height);
+  margin: 22px auto 0;
+  padding: 18mm 16mm;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(24, 71, 72, 0.08);
+  box-shadow: 0 22px 42px rgba(30, 42, 39, 0.08);
+  page-break-before: always;
+  break-before: page;
+}
+
+.exam-preview-limit-notice {
+  width: var(--screen-page-width);
+  max-width: calc(100vw - 40px);
+  margin: 0 auto 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 107, 99, 0.16);
+  background: rgba(24, 107, 99, 0.08);
+  color: #173f43;
+  box-shadow: 0 16px 30px rgba(30, 42, 39, 0.06);
+}
+
+.exam-preview-limit-notice strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.exam-preview-limit-notice p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.answer-key-header {
+  margin-bottom: 10mm;
+  border-bottom: 1px solid rgba(24, 71, 72, 0.12);
+  padding-bottom: 6mm;
+}
+
+.answer-key-header p {
+  margin: 0 0 2mm;
+  color: var(--accent);
+  font-family: "Lexend", "Plus Jakarta Sans", sans-serif;
+  font-size: 3mm;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.answer-key-header h2 {
+  margin: 0;
+  color: #173f43;
+  font-size: 8mm;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.answer-key-list {
+  column-count: 2;
+  column-gap: 7mm;
+}
+
+.answer-key-card {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 6mm;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.answer-key-number {
+  margin: 0 0 2mm;
+  color: #173f43;
+  font-size: 4.2mm;
+  line-height: 1.2;
+}
+
+.answer-key-answer {
+  margin: 0 0 1.5mm;
+  color: var(--accent);
+  font-size: 3.5mm;
+  line-height: 1.45;
+}
+
+.answer-key-answer strong,
+.answer-key-explanation strong {
+  font-weight: 900;
+}
+
+.answer-key-explanation {
+  margin: 0;
+  color: #3e4b48;
+  font-size: 3.2mm;
+  line-height: 1.58;
 }
 
 .exam-history-delete-button {
@@ -1485,6 +1937,19 @@ button:disabled {
     margin: 0;
     overflow: hidden;
   }
+
+  .answer-key-section {
+    width: 210mm;
+    max-width: none;
+    min-height: 296.8mm;
+    margin: 0;
+    padding: 18mm 16mm 20mm;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
 }
 
 :root {
@@ -1521,7 +1986,7 @@ body {
   top: auto;
   left: auto;
   transform: none;
-  width: min(560px, calc(100% - 36px));
+  width: min(1040px, calc(100% - 36px));
   margin: 0 auto;
   padding: 14px 18px;
   display: flex;
@@ -1579,6 +2044,37 @@ body {
   white-space: nowrap;
 }
 
+.app-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.app-topbar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 71, 72, 0.1);
+  background: rgba(255, 255, 255, 0.84);
+  color: #4b5d66;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  box-shadow: 0 8px 16px rgba(30, 42, 39, 0.04);
+}
+
+.app-topbar-link.is-active {
+  border-color: rgba(24, 107, 99, 0.28);
+  background: rgba(24, 107, 99, 0.12);
+  color: var(--accent);
+}
+
 .app-tab-shell {
   position: absolute;
   top: 96px;
@@ -1587,6 +2083,10 @@ body {
   width: max-content;
   max-width: calc(100% - 40px);
   pointer-events: none;
+}
+
+body[data-workspace-mode] .app-tab-shell {
+  display: none;
 }
 
 .app-tab-row {
@@ -1917,6 +2417,18 @@ body {
   .exam-preview-panel {
     margin-top: 0;
   }
+
+  .exam-answer-editor-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-answer-editor-image-panel {
+    max-height: none;
+  }
+
+  .library-progress-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1935,6 +2447,12 @@ body {
     padding: 12px 14px;
     border-radius: 0 0 16px 16px;
     gap: 12px;
+  }
+
+  .app-topbar-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .app-topbar-title {
@@ -1964,5 +2482,16 @@ body {
   .status-bar,
   .preview-root .empty-state {
     border-radius: 20px;
+  }
+
+  .library-progress-hero,
+  .library-progress-card {
+    padding: 20px;
+  }
+
+  .library-progress-eyebrow-row,
+  .library-progress-headline-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
