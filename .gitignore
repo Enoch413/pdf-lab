@@ -1,2 +1,5 @@
 app/generated/
 app/hybrid_samples/
+__pycache__/
+*.pyc
+.edge-headless-*/
