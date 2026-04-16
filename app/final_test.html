@@ -541,7 +541,7 @@
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
     const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
-    const LIBRARY_DB_VERSION = 7;
+    const LIBRARY_DB_VERSION = 8;
     const LIBRARY_SETTINGS_STORE = "settings";
     const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
     const LIBRARY_IMPORT_STORE = "imports";
@@ -549,8 +549,9 @@
     const LIBRARY_PROBLEM_ASSET_STORE = "problemAssets";
     const LIBRARY_EXAM_STORE = "examSets";
     const LIBRARY_EXAM_ITEM_STORE = "examItems";
+    const LIBRARY_CHECK_SET_STORE = "checkSetRecords";
     const LIBRARY_WORK_STORE = "savedWorks";
-    const LIBRARY_SNAPSHOT_VERSION = 2;
+    const LIBRARY_SNAPSHOT_VERSION = 4;
     const LIBRARY_META_FILE = "pdflab_library_meta.json";
     const LIBRARY_TEXTBOOKS_FILE = "pdflab_textbooks.json";
     const LIBRARY_SCHOOLS_FILE = "pdflab_school_profiles.json";
@@ -559,6 +560,7 @@
     const LIBRARY_PROBLEM_ASSETS_FILE = "pdflab_problem_assets.json";
     const LIBRARY_EXAM_SETS_FILE = "pdflab_exam_sets.json";
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
+    const LIBRARY_CHECK_SETS_FILE = "pdflab_check_sets.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
     const WORKSPACE_MODE_EXAM = "exam";
@@ -976,6 +978,7 @@
         problemAssetCache: {},
         examSets: [],
         examItems: [],
+        checkSetRecords: [],
         savedWorks: []
       },
       loadedRepackWorkId: "",
@@ -2270,6 +2273,19 @@
             examItemStore.createIndex("passageTypeKey", "passageTypeKey", { unique: false });
           }
 
+          const checkSetStore = db.objectStoreNames.contains(LIBRARY_CHECK_SET_STORE)
+            ? request.transaction.objectStore(LIBRARY_CHECK_SET_STORE)
+            : db.createObjectStore(LIBRARY_CHECK_SET_STORE, { keyPath: "checkSetRecordId" });
+          if (!checkSetStore.indexNames.contains("checkSetId")) {
+            checkSetStore.createIndex("checkSetId", "checkSetId", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("createdAt")) {
+            checkSetStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("schoolKey")) {
+            checkSetStore.createIndex("schoolKey", "schoolKey", { unique: false });
+          }
+
           const workStore = db.objectStoreNames.contains(LIBRARY_WORK_STORE)
             ? request.transaction.objectStore(LIBRARY_WORK_STORE)
             : db.createObjectStore(LIBRARY_WORK_STORE, { keyPath: "workId" });
@@ -2767,6 +2783,7 @@
         (snapshot.problemAssets || []).length ||
         (snapshot.examSets || []).length ||
         (snapshot.examItems || []).length ||
+        (snapshot.checkSetRecords || []).length ||
         (snapshot.savedWorks || []).length
       );
     }
@@ -2784,6 +2801,7 @@
         problemAssetsRaw,
         examSetsRaw,
         examItemsRaw,
+        checkSetRecordsRaw,
         savedWorksRaw
       ] = await Promise.all([
         readJsonFileFromDirectory(directoryHandle, LIBRARY_META_FILE, null),
@@ -2794,9 +2812,10 @@
         readJsonFileFromDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null)
       ]);
-      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, savedWorksRaw].some((value) => value != null)) {
+      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, checkSetRecordsRaw, savedWorksRaw].some((value) => value != null)) {
         return null;
       }
 
@@ -2835,6 +2854,7 @@
         problemAssets,
         examSets: Array.isArray(examSetsRaw) ? examSetsRaw : [],
         examItems: Array.isArray(examItemsRaw) ? examItemsRaw : [],
+        checkSetRecords: Array.isArray(checkSetRecordsRaw) ? checkSetRecordsRaw : [],
         savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : [])
       };
     }
@@ -2850,6 +2870,7 @@
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, problemAssets);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, snapshot.examSets || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, snapshot.checkSetRecords || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
         version: LIBRARY_SNAPSHOT_VERSION,
@@ -2867,6 +2888,7 @@
         problemAssets: await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
+        checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
         savedWorks: [...(state.libraryCache.savedWorks || [])]
       };
     }
@@ -2879,6 +2901,7 @@
         LIBRARY_PROBLEM_ASSET_STORE,
         LIBRARY_EXAM_STORE,
         LIBRARY_EXAM_ITEM_STORE,
+        LIBRARY_CHECK_SET_STORE,
         LIBRARY_WORK_STORE
       ], "readwrite");
       const storeEntries = [
@@ -2891,6 +2914,7 @@
         [LIBRARY_PROBLEM_ASSET_STORE, snapshot.problemAssets || []],
         [LIBRARY_EXAM_STORE, snapshot.examSets || []],
         [LIBRARY_EXAM_ITEM_STORE, snapshot.examItems || []],
+        [LIBRARY_CHECK_SET_STORE, snapshot.checkSetRecords || []],
         [LIBRARY_WORK_STORE, snapshot.savedWorks || []]
       ];
       storeEntries.forEach(([storeName, records]) => {
@@ -2937,14 +2961,13 @@
       updateLibraryStorageUi();
     }
 
-    async function initializeLibraryFolderStorage() {
-      await restoreLibraryDirectoryHandle();
+    async function restoreLibrarySnapshotFromConnectedFolder() {
       if (!state.libraryDirectoryHandle || state.libraryDirectoryPermission !== "granted") {
-        return;
+        return false;
       }
       const snapshot = await readLibrarySnapshotFromDirectory(state.libraryDirectoryHandle);
       if (!hasLibrarySnapshotData(snapshot)) {
-        return;
+        return false;
       }
       state.libraryLastSyncedAt = Number(snapshot?.meta?.updatedAt) || 0;
       writeStoredTextbooks(snapshot.textbooks || []);
@@ -2953,6 +2976,12 @@
       syncTextbookModeUi();
       await replaceLibraryStoresFromSnapshot(snapshot);
       updateLibraryStorageUi();
+      return true;
+    }
+
+    async function initializeLibraryFolderStorage() {
+      await restoreLibraryDirectoryHandle();
+      await restoreLibrarySnapshotFromConnectedFolder();
     }
 
     async function chooseLibraryFolder() {
@@ -6015,11 +6044,12 @@
     }
 
     async function refreshLibrarySummary() {
-      const [imports, problemRecords, examSets, examItems, savedWorks] = await Promise.all([
+      const [imports, problemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
         loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
         loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_ITEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
@@ -6029,6 +6059,7 @@
         problemAssetCache: state.libraryCache.problemAssetCache || {},
         examSets: examSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         examItems,
+        checkSetRecords: checkSetRecords.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         savedWorks: savedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
       };
       const summary = buildLibrarySummary(state.libraryCache.imports, state.libraryCache.problemRecords);
@@ -6065,6 +6096,41 @@
       if (isLibraryWorkspaceMode()) {
         renderLibraryWorkspaceDashboard();
       }
+    }
+
+    let sharedLibraryResumeSyncPromise = null;
+    let sharedLibraryResumeSyncTimer = 0;
+
+    async function refreshSharedLibraryStateFromStorage() {
+      if (sharedLibraryResumeSyncPromise) {
+        return sharedLibraryResumeSyncPromise;
+      }
+      sharedLibraryResumeSyncPromise = (async () => {
+        if (state.libraryDirectoryHandle && state.libraryDirectoryPermission === "granted") {
+          await restoreLibrarySnapshotFromConnectedFolder();
+        }
+        await refreshLibrarySummary();
+      })();
+      try {
+        await sharedLibraryResumeSyncPromise;
+      } finally {
+        sharedLibraryResumeSyncPromise = null;
+      }
+    }
+
+    function scheduleSharedLibraryResumeSync(reason = "") {
+      if (sharedLibraryResumeSyncTimer) {
+        window.clearTimeout(sharedLibraryResumeSyncTimer);
+      }
+      sharedLibraryResumeSyncTimer = window.setTimeout(() => {
+        sharedLibraryResumeSyncTimer = 0;
+        if (state.isBusy) {
+          return;
+        }
+        refreshSharedLibraryStateFromStorage().catch((error) => {
+          console.warn(`Failed to refresh shared library state on ${reason || "resume"}`, error);
+        });
+      }, 180);
     }
 
     async function deleteSelectedTextbookFromLibrary() {
@@ -9514,6 +9580,27 @@
           setSchoolSourceFilter(elements.schoolSourceFilterSelect.value);
         });
       }
+      window.addEventListener("focus", () => {
+        scheduleSharedLibraryResumeSync("focus");
+      });
+      window.addEventListener("pageshow", () => {
+        scheduleSharedLibraryResumeSync("pageshow");
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          scheduleSharedLibraryResumeSync("visibility");
+        }
+      });
+      window.addEventListener("storage", (event) => {
+        if (
+          !event ||
+          event.key == null ||
+          event.key === TEXTBOOK_LIBRARY_STORAGE_KEY ||
+          event.key === SCHOOL_PROFILE_STORAGE_KEY
+        ) {
+          scheduleSharedLibraryResumeSync("storage");
+        }
+      });
       if (elements.schoolExcludeUsedProblems) {
         elements.schoolExcludeUsedProblems.addEventListener("change", () => {
           state.schoolWorkflow.excludeUsedProblems = elements.schoolExcludeUsedProblems.checked;
