@@ -6980,17 +6980,93 @@
       }
     }
 
-    function openStandaloneHtmlPreview(htmlText) {
+    function openPendingStandaloneWindow(message = "출력 문서를 준비하는 중입니다...") {
+      const popup = window.open("", "_blank");
+      if (!popup) {
+        throw new Error("출력 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+      }
+      popup.document.open();
+      popup.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>PDF LAB</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#153f3b;font-family:Georgia,'Times New Roman',serif}.pending{padding:36px 42px;border:1px solid rgba(21,63,59,.14);border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(24,35,30,.12);letter-spacing:.08em;text-transform:uppercase}</style></head><body><div class="pending">${escapeHtml(message)}</div></body></html>`);
+      popup.document.close();
+      popup.focus();
+      return popup;
+    }
+
+    function waitForDocumentImages(targetDocument) {
+      const images = Array.from(targetDocument?.images || []);
+      return Promise.all(images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+        }
+        return new Promise((imageResolve) => {
+          image.addEventListener("load", () => imageResolve(), { once: true });
+          image.addEventListener("error", () => imageResolve(), { once: true });
+        });
+      }));
+    }
+
+    function openStandaloneHtmlPreview(htmlText, popup = null) {
+      if (popup && !popup.closed) {
+        popup.document.open();
+        popup.document.write(htmlText);
+        popup.document.close();
+        popup.focus();
+        return;
+      }
       const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       state.examBuilder.exportUrls.push(url);
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!popup) {
+      const previewPopup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!previewPopup) {
         throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
       }
     }
 
-    function printStandaloneHtml(htmlText) {
+    function printStandaloneHtml(htmlText, printWindow = null) {
+      if (printWindow && !printWindow.closed) {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (closeWindow = true) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            setTimeout(() => {
+              if (closeWindow) {
+                try {
+                  printWindow.close();
+                } catch (error) {
+                  console.warn("Failed to close print window", error);
+                }
+              }
+              resolve();
+            }, 250);
+          };
+          const runPrint = async () => {
+            try {
+              await waitForDocumentImages(printWindow.document);
+              printWindow.focus();
+              printWindow.addEventListener("afterprint", () => finish(true), { once: true });
+              printWindow.print();
+              setTimeout(() => finish(false), 5000);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          try {
+            printWindow.document.open();
+            printWindow.document.write(htmlText);
+            printWindow.document.close();
+            if (printWindow.document.readyState === "complete") {
+              setTimeout(runPrint, 50);
+            } else {
+              printWindow.addEventListener("load", runPrint, { once: true });
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
       return new Promise((resolve, reject) => {
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
@@ -7014,16 +7090,7 @@
               reject(new Error("인쇄용 프레임을 열지 못했습니다."));
               return;
             }
-            const images = Array.from(iframe.contentDocument?.images || []);
-            await Promise.all(images.map((image) => {
-              if (image.complete && image.naturalWidth > 0) {
-                return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-              }
-              return new Promise((imageResolve) => {
-                image.addEventListener("load", () => imageResolve(), { once: true });
-                image.addEventListener("error", () => imageResolve(), { once: true });
-              });
-            }));
+            await waitForDocumentImages(iframe.contentDocument);
             targetWindow.focus();
             targetWindow.print();
             cleanup();
@@ -7172,6 +7239,7 @@
 
     async function previewExamLayout() {
       validateExamBuilderForExport();
+      const previewWindow = openPendingStandaloneWindow("HTML 미리보기를 준비하는 중입니다...");
       setBusy(true);
       setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
       try {
@@ -7179,9 +7247,14 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html);
+        openStandaloneHtmlPreview(html, previewWindow);
         setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
         setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+      } catch (error) {
+        if (previewWindow && !previewWindow.closed) {
+          previewWindow.close();
+        }
+        throw error;
       } finally {
         setBusy(false);
       }
@@ -7189,6 +7262,7 @@
 
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
+      const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -7199,11 +7273,16 @@
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html);
+        await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+      } catch (error) {
+        if (printWindow && !printWindow.closed) {
+          printWindow.close();
+        }
+        throw error;
       } finally {
         cleanupExamExportUrls();
         setBusy(false);

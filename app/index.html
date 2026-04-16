@@ -541,6 +541,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -633,6 +634,9 @@
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
     const LIBRARY_CHECK_SETS_FILE = "pdflab_check_sets.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
+    const FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION = "pdfLabSharedLibraryImports";
+    const FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION = "pdfLabSharedLibraryProblems";
+    const FIREBASE_SHARED_LIBRARY_ASSET_ROOT = "pdf-lab/shared-library";
     const LIBRARY_STUDENT_RETRY_FILE = "pdflab_student_retry.json";
     const EXAM_HISTORY_SCOPE_SCHOOL = "school";
     const EXAM_HISTORY_SCOPE_STUDENT_RETRY = "student-retry";
@@ -1060,6 +1064,7 @@
         enabled: false,
         auth: null,
         db: null,
+        storage: null,
         currentUser: null,
         currentProfile: null,
         currentProfileUid: "",
@@ -1071,7 +1076,10 @@
         classCatalog: [],
         schoolCatalog: [],
         lastSyncedAt: 0,
-        syncError: ""
+        syncError: "",
+        sharedLibraryEnabled: false,
+        sharedLibraryError: "",
+        sharedLibraryLastSyncedAt: 0
       },
       libraryCache: {
         imports: [],
@@ -2254,7 +2262,8 @@
       state.firebaseSchoolBridge.enabled = true;
       state.firebaseSchoolBridge.auth = firebase.auth();
       state.firebaseSchoolBridge.db = firebase.firestore();
-      return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db);
+      state.firebaseSchoolBridge.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
+      return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db && state.firebaseSchoolBridge.storage);
     }
 
     function getPdfLabFirebaseAccountLabel(user = state.firebaseSchoolBridge.currentUser, profile = state.firebaseSchoolBridge.currentProfile) {
@@ -2345,6 +2354,345 @@
       }
     }
 
+    function getSharedFirebaseLibraryAccessState() {
+      if (!isPdfLabFirebaseConfigured() || !ensurePdfLabFirebaseServices()) {
+        return {
+          enabled: false,
+          reason: "Firebase 설정이 없어 공용 문제 라이브러리를 사용할 수 없습니다."
+        };
+      }
+      const bridge = state.firebaseSchoolBridge || {};
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      if (!user) {
+        return {
+          enabled: false,
+          reason: "Firebase 관리자 로그인 후 공용 문제 라이브러리를 사용할 수 있습니다."
+        };
+      }
+      if (String(bridge.currentProfile?.role || "").toLowerCase() !== "admin") {
+        return {
+          enabled: false,
+          reason: "공용 문제 라이브러리는 관리자 계정에서만 사용할 수 있습니다."
+        };
+      }
+      if (!bridge.db || !bridge.storage) {
+        return {
+          enabled: false,
+          reason: "Firebase Firestore/Storage 초기화에 실패했습니다."
+        };
+      }
+      return { enabled: true, reason: "" };
+    }
+
+    function isSharedFirebaseLibraryActive() {
+      return Boolean(state.firebaseSchoolBridge?.sharedLibraryEnabled);
+    }
+
+    function getSharedLibraryProblemAssetExtension(blob) {
+      const type = String(blob?.type || "").toLowerCase();
+      if (type.includes("png")) {
+        return ".png";
+      }
+      if (type.includes("jpeg") || type.includes("jpg")) {
+        return ".jpg";
+      }
+      if (type.includes("gif")) {
+        return ".gif";
+      }
+      if (type.includes("webp")) {
+        return ".webp";
+      }
+      return ".bin";
+    }
+
+    function buildSharedLibraryAssetPath(recordId, kind, index, blob) {
+      const safeRecordId = encodeURIComponent(normalizeProblemText(recordId) || `record-${Date.now()}`);
+      return `${FIREBASE_SHARED_LIBRARY_ASSET_ROOT}/${safeRecordId}/${kind}-${index}${getSharedLibraryProblemAssetExtension(blob)}`;
+    }
+
+    function normalizeSharedFirebaseImportRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return {
+        ...normalized,
+        sourceId: normalizeProblemText(normalized.sourceId || fallbackId)
+      };
+    }
+
+    function normalizeSharedFirebaseProblemRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return cloneProblemRecordWithRepairedOcrAnswer({
+        ...normalized,
+        recordId: normalizeProblemText(normalized.recordId || fallbackId),
+        sourceId: normalizeProblemText(normalized.sourceId || ""),
+        segmentStoragePaths: Array.isArray(normalized.segmentStoragePaths)
+          ? normalized.segmentStoragePaths.filter((value) => typeof value === "string")
+          : [],
+        answerSegmentStoragePaths: Array.isArray(normalized.answerSegmentStoragePaths)
+          ? normalized.answerSegmentStoragePaths.filter((value) => typeof value === "string")
+          : []
+      });
+    }
+
+    async function uploadBlobListToSharedLibraryStorage(recordId, kind, blobs = []) {
+      const storage = state.firebaseSchoolBridge?.storage;
+      if (!storage) {
+        throw new Error("Firebase Storage가 준비되지 않았습니다.");
+      }
+      const rows = Array.isArray(blobs) ? blobs : [];
+      const uploadedPaths = [];
+      for (const [index, blob] of rows.entries()) {
+        if (!(blob instanceof Blob)) {
+          uploadedPaths.push("");
+          continue;
+        }
+        const storagePath = buildSharedLibraryAssetPath(recordId, kind, index, blob);
+        const storageRef = storage.ref(storagePath);
+        await storageRef.put(blob, blob.type ? { contentType: blob.type } : undefined);
+        uploadedPaths.push(storagePath);
+      }
+      return uploadedPaths;
+    }
+
+    async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
+      const normalizedPath = normalizeProblemText(storagePath);
+      if (!normalizedPath) {
+        return null;
+      }
+      const storage = state.firebaseSchoolBridge?.storage;
+      if (!storage) {
+        throw new Error("Firebase Storage가 준비되지 않았습니다.");
+      }
+      const downloadUrl = await storage.ref(normalizedPath).getDownloadURL();
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`공용 라이브러리 이미지를 불러오지 못했습니다. (${response.status})`);
+      }
+      return await response.blob();
+    }
+
+    async function deleteSharedLibraryAssetPaths(paths = []) {
+      const storage = state.firebaseSchoolBridge?.storage;
+      if (!storage) {
+        return;
+      }
+      const uniquePaths = [...new Set((Array.isArray(paths) ? paths : []).map((value) => normalizeProblemText(value)).filter(Boolean))];
+      for (const storagePath of uniquePaths) {
+        try {
+          await storage.ref(storagePath).delete();
+        } catch (error) {
+          if (String(error?.code || "").includes("object-not-found")) {
+            continue;
+          }
+          console.warn("Failed to delete shared library asset", storagePath, error);
+        }
+      }
+    }
+
+    async function loadSharedLibraryProblemDocsBySourceId(sourceId) {
+      const normalizedSourceId = normalizeProblemText(sourceId);
+      if (!normalizedSourceId || !state.firebaseSchoolBridge?.db) {
+        return [];
+      }
+      const snapshot = await state.firebaseSchoolBridge.db
+        .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
+        .where("sourceId", "==", normalizedSourceId)
+        .get();
+      return snapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id));
+    }
+
+    async function deleteSharedLibrarySourceInFirebase(sourceId) {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled) {
+        return {
+          deleted: false,
+          importCount: 0,
+          problemCount: 0,
+          passageCount: 0,
+          reason: access.reason
+        };
+      }
+      try {
+        const normalizedSourceId = normalizeProblemText(sourceId);
+        const problemRecords = await loadSharedLibraryProblemDocsBySourceId(normalizedSourceId);
+        await Promise.all(problemRecords.map((record) =>
+          state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId).delete()
+        ));
+        await deleteSharedLibraryAssetPaths(problemRecords.flatMap((record) => [
+          ...(Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []),
+          ...(Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
+        ]));
+        if (normalizedSourceId) {
+          await state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).doc(normalizedSourceId).delete();
+        }
+        state.firebaseSchoolBridge.sharedLibraryEnabled = true;
+        state.firebaseSchoolBridge.sharedLibraryError = "";
+        state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
+        return {
+          deleted: true,
+          importCount: normalizedSourceId ? 1 : 0,
+          problemCount: problemRecords.filter((record) => record.kind === "problem").length,
+          passageCount: new Set(problemRecords.map((record) => record.passageKey).filter(Boolean)).size,
+          reason: ""
+        };
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 공용 문제 라이브러리 삭제에 실패했습니다.";
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        console.warn("Failed to delete shared library source", sourceId, error);
+        return {
+          deleted: false,
+          importCount: 0,
+          problemCount: 0,
+          passageCount: 0,
+          reason: message
+        };
+      }
+    }
+
+    async function syncSourceRecordToSharedFirebaseLibrary(sourceRecord, problemRecords = []) {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled) {
+        return { synced: false, uploadedCount: 0, reason: access.reason };
+      }
+      try {
+        const existingRecords = await loadSharedLibraryProblemDocsBySourceId(sourceRecord?.sourceId);
+        const existingMap = new Map(existingRecords.map((record) => [record.recordId, record]));
+        const nextRecordIds = new Set();
+        const staleAssetPaths = [];
+        for (const record of Array.isArray(problemRecords) ? problemRecords : []) {
+          const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
+          const segmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "segment", assetRecord.segmentBlobs);
+          const answerSegmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "answer", assetRecord.answerSegmentBlobs);
+          nextRecordIds.add(metadataRecord.recordId);
+          const existingRecord = existingMap.get(metadataRecord.recordId);
+          const nextRemoteRecord = {
+            ...metadataRecord,
+            segmentStoragePaths,
+            answerSegmentStoragePaths,
+            updatedAt: Number(metadataRecord.updatedAt || sourceRecord?.importedAt || Date.now())
+          };
+          await state.firebaseSchoolBridge.db
+            .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
+            .doc(metadataRecord.recordId)
+            .set(nextRemoteRecord, { merge: true });
+          staleAssetPaths.push(
+            ...[
+              ...(Array.isArray(existingRecord?.segmentStoragePaths) ? existingRecord.segmentStoragePaths : []),
+              ...(Array.isArray(existingRecord?.answerSegmentStoragePaths) ? existingRecord.answerSegmentStoragePaths : [])
+            ].filter((path) => path && !segmentStoragePaths.includes(path) && !answerSegmentStoragePaths.includes(path))
+          );
+        }
+        const nextSourceRecord = {
+          ...(sourceRecord && typeof sourceRecord === "object" ? sourceRecord : {}),
+          sourceId: normalizeProblemText(sourceRecord?.sourceId || ""),
+          updatedAt: Date.now()
+        };
+        await state.firebaseSchoolBridge.db
+          .collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION)
+          .doc(nextSourceRecord.sourceId)
+          .set(nextSourceRecord, { merge: true });
+
+        const staleProblemRecords = existingRecords.filter((record) => !nextRecordIds.has(record.recordId));
+        await Promise.all(staleProblemRecords.map((record) =>
+          state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId).delete()
+        ));
+        staleAssetPaths.push(...staleProblemRecords.flatMap((record) => [
+          ...(Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []),
+          ...(Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
+        ]));
+        await deleteSharedLibraryAssetPaths(staleAssetPaths);
+
+        state.firebaseSchoolBridge.sharedLibraryEnabled = true;
+        state.firebaseSchoolBridge.sharedLibraryError = "";
+        state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
+        return {
+          synced: true,
+          uploadedCount: Array.isArray(problemRecords) ? problemRecords.length : 0,
+          reason: ""
+        };
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 공용 문제 라이브러리 저장에 실패했습니다.";
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        console.warn("Failed to sync shared library source", sourceRecord, error);
+        return {
+          synced: false,
+          uploadedCount: 0,
+          reason: message
+        };
+      }
+    }
+
+    async function saveProblemMetadataRecordsToSharedFirebaseLibrary(problemRecords = [], importRecords = []) {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled) {
+        return { synced: false, updatedCount: 0, reason: access.reason };
+      }
+      try {
+        for (const record of Array.isArray(problemRecords) ? problemRecords : []) {
+          const metadataRecord = splitProblemRecordStorage(record).metadataRecord;
+          await state.firebaseSchoolBridge.db
+            .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
+            .doc(metadataRecord.recordId)
+            .set(metadataRecord, { merge: true });
+        }
+        for (const record of Array.isArray(importRecords) ? importRecords : []) {
+          await state.firebaseSchoolBridge.db
+            .collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION)
+            .doc(record.sourceId)
+            .set(record, { merge: true });
+        }
+        state.firebaseSchoolBridge.sharedLibraryEnabled = true;
+        state.firebaseSchoolBridge.sharedLibraryError = "";
+        state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
+        return {
+          synced: true,
+          updatedCount: (Array.isArray(problemRecords) ? problemRecords.length : 0) + (Array.isArray(importRecords) ? importRecords.length : 0),
+          reason: ""
+        };
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 공용 문제 라이브러리 메타데이터 저장에 실패했습니다.";
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        console.warn("Failed to save shared library metadata", error);
+        return {
+          synced: false,
+          updatedCount: 0,
+          reason: message
+        };
+      }
+    }
+
+    async function loadSharedLibrarySnapshotFromFirebase() {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled) {
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = access.reason;
+        return null;
+      }
+      try {
+        const [importsSnapshot, problemSnapshot] = await Promise.all([
+          state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).get(),
+          state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).get()
+        ]);
+        const imports = importsSnapshot.docs.map((doc) => normalizeSharedFirebaseImportRecord(doc.data(), doc.id));
+        const problemRecords = problemSnapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id));
+        state.firebaseSchoolBridge.sharedLibraryEnabled = true;
+        state.firebaseSchoolBridge.sharedLibraryError = "";
+        state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
+        return {
+          imports,
+          problemRecords
+        };
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 공용 문제 라이브러리를 불러오지 못했습니다.";
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        console.warn("Failed to load shared library snapshot", error);
+        return null;
+      }
+    }
+
     async function signInPdfLabFirebaseWithGoogle() {
       if (!ensurePdfLabFirebaseServices()) {
         state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
@@ -2360,7 +2708,9 @@
         const credential = await state.firebaseSchoolBridge.auth.signInWithPopup(provider);
         state.firebaseSchoolBridge.currentUser = credential?.user || state.firebaseSchoolBridge.auth.currentUser || null;
         renderPdfLabFirebaseAuthUi();
-        return syncSchoolCatalogFromFirebase(true);
+        await syncSchoolCatalogFromFirebase(true);
+        await refreshLibrarySummary();
+        return true;
       } catch (error) {
         const message = getFriendlyFirebaseAuthMessage(error);
         state.firebaseSchoolBridge.syncError = message;
@@ -2390,7 +2740,9 @@
           elements.firebasePasswordInput.value = "";
         }
         renderPdfLabFirebaseAuthUi();
-        return syncSchoolCatalogFromFirebase(true);
+        await syncSchoolCatalogFromFirebase(true);
+        await refreshLibrarySummary();
+        return true;
       } catch (error) {
         const message = getFriendlyFirebaseAuthMessage(error);
         state.firebaseSchoolBridge.syncError = message;
@@ -2413,6 +2765,9 @@
       state.firebaseSchoolBridge.classCatalog = [];
       state.firebaseSchoolBridge.schoolCatalog = [];
       state.firebaseSchoolBridge.syncError = "Firebase에서 로그아웃했습니다. 기존 로컬 반 목록은 계속 사용할 수 있습니다.";
+      state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+      state.firebaseSchoolBridge.sharedLibraryError = "Firebase에서 로그아웃했습니다. 공용 문제 라이브러리는 관리자 로그인 후 사용할 수 있습니다.";
+      state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = 0;
       writeStoredSchools(getSchoolProfiles().filter((entry) => entry.source !== "firebase"));
       state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
       applySelectedSchoolClassIdsToCheckSetInput(true);
@@ -2420,6 +2775,7 @@
       renderExamHistoryList();
       renderStudentRetryPanel();
       renderPdfLabFirebaseAuthUi();
+      await refreshLibrarySummary();
       return true;
     }
 
@@ -3189,12 +3545,17 @@
     }
 
     function populateStoredTextbookOptions() {
+      const availableTextbooks = Array.from(new Set([
+        ...(Array.isArray(state.storedTextbooks) ? state.storedTextbooks : []),
+        ...(Array.isArray(state.libraryCache.imports) ? state.libraryCache.imports.map((record) => record?.textbookName) : []),
+        ...(Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords.map((record) => record?.textbookName) : [])
+      ].map((value) => normalizeTextbookName(value)).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko-KR"));
       const previousValue = elements.existingTextbookSelect.value;
       elements.existingTextbookSelect.innerHTML = [
         '<option value="">등록된 교재를 선택하세요</option>',
-        ...state.storedTextbooks.map((textbookName) => `<option value="${escapeHtml(textbookName)}">${escapeHtml(textbookName)}</option>`)
+        ...availableTextbooks.map((textbookName) => `<option value="${escapeHtml(textbookName)}">${escapeHtml(textbookName)}</option>`)
       ].join("");
-      if (state.storedTextbooks.includes(previousValue)) {
+      if (availableTextbooks.includes(previousValue)) {
         elements.existingTextbookSelect.value = previousValue;
       }
       updateDeleteTextbookUi();
@@ -3213,9 +3574,14 @@
         return;
       }
       const selected = getSelectedTextbookName();
+      const availableTextbooks = Array.from(new Set([
+        ...(Array.isArray(state.storedTextbooks) ? state.storedTextbooks : []),
+        ...(Array.isArray(state.libraryCache.imports) ? state.libraryCache.imports.map((record) => record?.textbookName) : []),
+        ...(Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords.map((record) => record?.textbookName) : [])
+      ].map((value) => normalizeTextbookName(value)).filter(Boolean)));
       if (selected) {
         elements.textbookSummary.textContent = `현재 선택 교재: ${selected}`;
-      } else if (elements.textbookModeExisting.checked && !state.storedTextbooks.length) {
+      } else if (elements.textbookModeExisting.checked && !availableTextbooks.length) {
         elements.textbookSummary.textContent = "아직 등록된 교재가 없습니다. 먼저 새 교재를 한 번 등록해주세요.";
       } else {
         elements.textbookSummary.textContent = "";
@@ -3573,6 +3939,14 @@
           renderLibraryWorkspaceDashboard();
         }
       };
+      const sharedLibraryActive = isSharedFirebaseLibraryActive();
+      const sharedLibraryLabel = sharedLibraryActive
+        ? (
+            state.firebaseSchoolBridge.sharedLibraryLastSyncedAt
+              ? `Firebase 공용 문제 라이브러리 연결됨 · 마지막 동기화 ${formatTimestamp(state.firebaseSchoolBridge.sharedLibraryLastSyncedAt)}`
+              : "Firebase 공용 문제 라이브러리 연결됨"
+          )
+        : normalizeProblemText(state.firebaseSchoolBridge.sharedLibraryError || "");
       refreshDashboard();
       if (!elements.libraryFolderSummary || !elements.chooseLibraryFolderButton || !elements.clearLibraryFolderButton) {
         refreshDashboard();
@@ -3582,33 +3956,39 @@
         elements.chooseLibraryFolderButton.disabled = true;
         elements.clearLibraryFolderButton.disabled = true;
         elements.chooseLibraryFolderButton.textContent = "폴더 선택";
-        elements.libraryFolderSummary.textContent = "현재 실행 환경에서는 폴더 저장을 지원하지 않습니다. START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.";
-        setOptionalText(elements.librarySyncSummary, "폴더 저장 미지원");
+        elements.libraryFolderSummary.textContent = sharedLibraryActive
+          ? "현재 실행 환경에서는 폴더 저장을 지원하지 않지만, Firebase 공용 문제 라이브러리는 계속 사용할 수 있습니다."
+          : "현재 실행 환경에서는 폴더 저장을 지원하지 않습니다. START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.";
+        setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "폴더 저장 미지원");
         return;
       }
       if (!state.libraryDirectoryHandle) {
         elements.chooseLibraryFolderButton.disabled = false;
         elements.clearLibraryFolderButton.disabled = true;
         elements.chooseLibraryFolderButton.textContent = "폴더 선택";
-        elements.libraryFolderSummary.textContent = "브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 이력을 그 위치에 함께 저장합니다.";
-        setOptionalText(elements.librarySyncSummary, "브라우저 내부 저장소 사용 중");
+        elements.libraryFolderSummary.textContent = sharedLibraryActive
+          ? "Firebase 공용 문제 라이브러리 사용 중입니다. 폴더를 선택하면 시험 이력과 저장 작업물을 별도 백업합니다."
+          : "브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 이력을 그 위치에 함께 저장합니다.";
+        setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "브라우저 내부 저장소 사용 중");
         return;
       }
       elements.chooseLibraryFolderButton.disabled = false;
       elements.clearLibraryFolderButton.disabled = false;
       elements.chooseLibraryFolderButton.textContent = state.libraryDirectoryPermission === "granted" ? "폴더 변경" : "폴더 다시 연결";
       if (state.libraryDirectoryPermission === "granted") {
-        elements.libraryFolderSummary.textContent = `현재 저장 폴더: ${state.libraryDirectoryHandle.name}`;
+        elements.libraryFolderSummary.textContent = sharedLibraryActive
+          ? `현재 백업 폴더: ${state.libraryDirectoryHandle.name}`
+          : `현재 저장 폴더: ${state.libraryDirectoryHandle.name}`;
         setOptionalText(
           elements.librarySyncSummary,
           state.libraryLastSyncedAt
-            ? `마지막 폴더 동기화 ${formatTimestamp(state.libraryLastSyncedAt)}`
-            : "폴더 연결됨 · 아직 동기화 기록 없음"
+            ? [sharedLibraryLabel, `마지막 폴더 동기화 ${formatTimestamp(state.libraryLastSyncedAt)}`].filter(Boolean).join(" · ")
+            : (sharedLibraryLabel || "폴더 연결됨 · 아직 동기화 기록 없음")
         );
         return;
       }
       elements.libraryFolderSummary.textContent = `선택된 폴더: ${state.libraryDirectoryHandle.name} · 다시 연결해 권한을 허용하면 계속 사용합니다.`;
-      setOptionalText(elements.librarySyncSummary, "폴더 권한을 다시 허용해주세요.");
+      setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "폴더 권한을 다시 허용해주세요.");
     }
 
     async function queryLibraryDirectoryPermission(handle, readWrite = true) {
@@ -4079,12 +4459,13 @@
     }
 
     async function createLibrarySnapshotFromState() {
+      const sharedLibraryActive = isSharedFirebaseLibraryActive();
       return {
         textbooks: [...state.storedTextbooks],
         schools: [...getSchoolProfiles()],
-        imports: [...(state.libraryCache.imports || [])],
-        problemRecords: [...(state.libraryCache.problemRecords || [])],
-        problemAssets: await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
+        imports: sharedLibraryActive ? [] : [...(state.libraryCache.imports || [])],
+        problemRecords: sharedLibraryActive ? [] : [...(state.libraryCache.problemRecords || [])],
+        problemAssets: sharedLibraryActive ? [] : await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
         checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
@@ -4273,11 +4654,60 @@
         const db = await openLibraryDb();
         const transaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readonly");
         const store = transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+        const unresolvedIds = [];
         await Promise.all(missingIds.map(async (recordId) => {
           const assetRecord = await idbRequestToPromise(store.get(recordId));
-          cache[recordId] = assetRecord || { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          if (assetRecord) {
+            cache[recordId] = assetRecord;
+          } else {
+            unresolvedIds.push(recordId);
+          }
         }));
         await idbTransactionDone(transaction);
+        if (unresolvedIds.length && isSharedFirebaseLibraryActive()) {
+          const recordMap = new Map(
+            (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
+              .map((record) => [record.recordId, record])
+          );
+          const remoteAssetRecords = await Promise.all(unresolvedIds.map(async (recordId) => {
+            const record = recordMap.get(recordId);
+            if (!record) {
+              return { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+            }
+            try {
+              const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
+                Promise.all((Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
+                Promise.all((Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+              ]);
+              return {
+                recordId,
+                segmentBlobs,
+                answerSegmentBlobs,
+                updatedAt: Date.now()
+              };
+            } catch (error) {
+              console.warn("Failed to hydrate shared library assets", recordId, error);
+              return {
+                recordId,
+                segmentBlobs: [],
+                answerSegmentBlobs: [],
+                updatedAt: Date.now()
+              };
+            }
+          }));
+          const writeTransaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readwrite");
+          const writeStore = writeTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+          remoteAssetRecords.forEach((assetRecord) => {
+            cache[assetRecord.recordId] = assetRecord;
+            writeStore.put(assetRecord);
+          });
+          await idbTransactionDone(writeTransaction);
+        }
+        unresolvedIds.forEach((recordId) => {
+          if (!Object.prototype.hasOwnProperty.call(cache, recordId)) {
+            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          }
+        });
         state.libraryCache.problemAssetCache = cache;
       }
       return uniqueIds.map((recordId) => cache[recordId]).filter(Boolean);
@@ -4340,6 +4770,17 @@
         };
       }
 
+      const matchesTarget = (record) =>
+        normalizeLibrarySourceKey(record?.librarySourceKey || record?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY) === normalizedSourceKey &&
+        normalizeTextbookName(record?.textbookName || "") === normalizedTextbookName;
+      const matchingImportRecords = (Array.isArray(state.libraryCache.imports) ? state.libraryCache.imports : []).filter(matchesTarget);
+      const matchingProblemRecords = (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : []).filter(matchesTarget);
+      const matchingRecordIds = new Set(matchingProblemRecords.map((record) => record.recordId).filter(Boolean));
+      const matchingSourceIds = new Set([
+        ...matchingImportRecords.map((record) => record.sourceId),
+        ...matchingProblemRecords.map((record) => record.sourceId)
+      ].filter(Boolean));
+
       const db = await openLibraryDb();
       const transaction = db.transaction([
         LIBRARY_IMPORT_STORE,
@@ -4358,10 +4799,6 @@
       let deletedImportCount = 0;
       let deletedProblemCount = 0;
       let deletedExamItemCount = 0;
-
-      const matchesTarget = (record) =>
-        normalizeLibrarySourceKey(record?.librarySourceKey || record?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY) === normalizedSourceKey &&
-        normalizeTextbookName(record?.textbookName || "") === normalizedTextbookName;
 
       await new Promise((resolve, reject) => {
         const request = importStore.openCursor();
@@ -4404,6 +4841,13 @@
           cursor.continue();
         });
         request.addEventListener("error", () => reject(request.error || new Error("교재 문제 라이브러리를 삭제하지 못했습니다.")));
+      });
+
+      matchingRecordIds.forEach((recordId) => {
+        if (state.libraryCache.problemAssetCache && recordId) {
+          delete state.libraryCache.problemAssetCache[recordId];
+        }
+        assetStore.delete(recordId);
       });
 
       await new Promise((resolve, reject) => {
@@ -4452,12 +4896,29 @@
       });
 
       await idbTransactionDone(transaction);
+      let remoteProblemCount = 0;
+      let remotePassageCount = 0;
+      let remoteImportCount = 0;
+      let sharedLibraryReason = "";
+      for (const sourceId of matchingSourceIds) {
+        const result = await deleteSharedLibrarySourceInFirebase(sourceId);
+        if (result.deleted) {
+          remoteImportCount += result.importCount;
+          remoteProblemCount += result.problemCount;
+          remotePassageCount += result.passageCount;
+        } else if (result.reason) {
+          sharedLibraryReason = sharedLibraryReason
+            ? `${sharedLibraryReason} / ${result.reason}`
+            : result.reason;
+        }
+      }
       return {
-        importCount: deletedImportCount,
-        problemCount: deletedProblemCount,
-        passageCount: deletedPassageKeys.size,
+        importCount: Math.max(deletedImportCount, matchingImportRecords.length, remoteImportCount),
+        problemCount: Math.max(deletedProblemCount, matchingProblemRecords.filter((record) => record.kind === "problem").length, remoteProblemCount),
+        passageCount: Math.max(deletedPassageKeys.size, new Set(matchingProblemRecords.map((record) => record.passageKey).filter(Boolean)).size, remotePassageCount),
         examSetCount: deletedExamIds.size,
-        examItemCount: deletedExamItemCount
+        examItemCount: deletedExamItemCount,
+        sharedLibraryReason
       };
     }
 
@@ -4768,9 +5229,20 @@
       });
       await idbTransactionDone(transaction);
 
+      const sharedSyncResult = await syncSourceRecordToSharedFirebaseLibrary(sourceRecord, problemRecords);
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
-      setOptionalText(elements.librarySaveSummary, `${sourceRecord.librarySourceName} · ${sourceRecord.textbookName} / ${sourceRecord.fileName} 저장 완료 · ${getAnswerImportSummary(state.problems)} · ${formatTimestamp(sourceRecord.importedAt)}`);
+      setOptionalText(
+        elements.librarySaveSummary,
+        [
+          `${sourceRecord.librarySourceName} · ${sourceRecord.textbookName} / ${sourceRecord.fileName} 저장 완료`,
+          getAnswerImportSummary(state.problems),
+          formatTimestamp(sourceRecord.importedAt),
+          sharedSyncResult.synced
+            ? `Firebase 공용 라이브러리 동기화 완료`
+            : (sharedSyncResult.reason || "")
+        ].filter(Boolean).join(" · ")
+      );
       setBusy(false);
       if (isLibraryWorkspaceMode()) {
         setLibraryProgressState({
@@ -4782,7 +5254,11 @@
           percent: 100
         });
       }
-      setStatus(`페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다.`, "idle", "저장 완료");
+      setStatus(
+        `페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다.${sharedSyncResult.synced ? " Firebase 공용 라이브러리에도 반영했습니다." : (sharedSyncResult.reason ? ` Firebase 동기화는 보류되었습니다: ${sharedSyncResult.reason}` : "")}`,
+        "idle",
+        "저장 완료"
+      );
     }
 
     function getProblemRecordsOnly() {
@@ -6662,10 +7138,21 @@
         const nextText = buildExamAnswerEditText(savedRecords);
         state.examBuilder.answerEditBaseText = nextText;
         state.examBuilder.answerEditDraftText = nextText;
+        const sharedSyncResult = await saveProblemMetadataRecordsToSharedFirebaseLibrary(
+          nextProblemRecords.filter((record) => updateMap.has(record.recordId)),
+          nextImports.filter((record) => affectedSourceIds.has(record.sourceId))
+        );
         await syncLibraryFolderFromStateIfConnected();
         renderExamSlots();
-        setOptionalText(elements.examExportSummary, `문항 ${updates.map((entry) => entry.number).join(", ")}의 정답/해설을 수정했고, 공용 라이브러리에도 바로 반영했습니다.`);
-        setStatus(`문항 ${updates.map((entry) => entry.number).join(", ")}의 답안을 라이브러리에 반영했습니다.`, "idle", "수정 완료");
+        setOptionalText(
+          elements.examExportSummary,
+          `문항 ${updates.map((entry) => entry.number).join(", ")}의 정답/해설을 수정했고, ${sharedSyncResult.synced ? "Firebase 공용 라이브러리에도 바로 반영했습니다." : `로컬에는 저장했고 Firebase 반영은 보류했습니다: ${sharedSyncResult.reason}`}`
+        );
+        setStatus(
+          `문항 ${updates.map((entry) => entry.number).join(", ")}의 답안을 라이브러리에 반영했습니다.${sharedSyncResult.synced ? " Firebase 공용 라이브러리에도 동기화했습니다." : (sharedSyncResult.reason ? ` Firebase 동기화는 보류되었습니다: ${sharedSyncResult.reason}` : "")}`,
+          "idle",
+          "수정 완료"
+        );
       } finally {
         setBusy(false);
       }
@@ -7305,7 +7792,7 @@
     }
 
     async function refreshLibrarySummary() {
-      const [imports, problemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
+      const [localImports, localProblemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
         loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
         loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
@@ -7313,6 +7800,9 @@
         loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
+      const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
+      const imports = Array.isArray(sharedSnapshot?.imports) ? sharedSnapshot.imports : localImports;
+      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords) ? sharedSnapshot.problemRecords : localProblemRecords;
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
@@ -7339,15 +7829,20 @@
         }
       });
       const summaryNote = !summary.problemCount
-        ? "아직 저장된 문제 라이브러리가 없습니다."
+        ? (isSharedFirebaseLibraryActive()
+            ? "Firebase 공용 문제 라이브러리에 아직 저장된 문제 라이브러리가 없습니다."
+            : "아직 저장된 문제 라이브러리가 없습니다.")
         : (() => {
             const latestImport = state.libraryCache.imports[0];
+            const latestPrefix = isSharedFirebaseLibraryActive() ? "Firebase 공용 라이브러리 · " : "";
             return latestImport
-              ? `최근 저장: ${getRecordSourceLabel(latestImport)} · ${latestImport.textbookName} / ${latestImport.fileName} · ${formatTimestamp(latestImport.importedAt)} · 시험 이력 ${summary.examCount}건`
-              : "저장된 문제 라이브러리를 불러왔습니다.";
+              ? `${latestPrefix}최근 저장: ${getRecordSourceLabel(latestImport)} · ${latestImport.textbookName} / ${latestImport.fileName} · ${formatTimestamp(latestImport.importedAt)} · 시험 이력 ${summary.examCount}건`
+              : (isSharedFirebaseLibraryActive() ? "Firebase 공용 문제 라이브러리를 불러왔습니다." : "저장된 문제 라이브러리를 불러왔습니다.");
           })();
       setOptionalText(elements.librarySummaryNote, summaryNote);
       setOptionalText(elements.libraryWorkspaceSummaryNote, summaryNote);
+      populateStoredTextbookOptions();
+      updateTextbookSummary();
       updateLibraryStorageUi();
       updateDeleteTextbookUi();
       renderExamLibraryList();
@@ -7407,7 +7902,7 @@
 
         await syncLibraryFolderFromStateIfConnected();
         setStatus(
-          `${sourceLabel} / ${textbookName} 교재를 삭제했습니다. 등록 PDF ${deleted.importCount}개 · 문항 ${deleted.problemCount}개 · 시험 이력 ${deleted.examSetCount}개를 정리했습니다.`,
+          `${sourceLabel} / ${textbookName} 교재를 삭제했습니다. 등록 PDF ${deleted.importCount}개 · 문항 ${deleted.problemCount}개 · 시험 이력 ${deleted.examSetCount}개를 정리했습니다.${deleted.sharedLibraryReason ? ` Firebase 공용 라이브러리 반영은 보류되었습니다: ${deleted.sharedLibraryReason}` : " Firebase 공용 라이브러리에도 반영했습니다."}`,
           "idle",
           "삭제 완료"
         );
@@ -8971,17 +9466,93 @@
       }
     }
 
-    function openStandaloneHtmlPreview(htmlText) {
+    function openPendingStandaloneWindow(message = "출력 문서를 준비하는 중입니다...") {
+      const popup = window.open("", "_blank");
+      if (!popup) {
+        throw new Error("출력 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+      }
+      popup.document.open();
+      popup.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>PDF LAB</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#153f3b;font-family:Georgia,'Times New Roman',serif}.pending{padding:36px 42px;border:1px solid rgba(21,63,59,.14);border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(24,35,30,.12);letter-spacing:.08em;text-transform:uppercase}</style></head><body><div class="pending">${escapeHtml(message)}</div></body></html>`);
+      popup.document.close();
+      popup.focus();
+      return popup;
+    }
+
+    function waitForDocumentImages(targetDocument) {
+      const images = Array.from(targetDocument?.images || []);
+      return Promise.all(images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+        }
+        return new Promise((imageResolve) => {
+          image.addEventListener("load", () => imageResolve(), { once: true });
+          image.addEventListener("error", () => imageResolve(), { once: true });
+        });
+      }));
+    }
+
+    function openStandaloneHtmlPreview(htmlText, popup = null) {
+      if (popup && !popup.closed) {
+        popup.document.open();
+        popup.document.write(htmlText);
+        popup.document.close();
+        popup.focus();
+        return;
+      }
       const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       state.examBuilder.exportUrls.push(url);
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!popup) {
+      const previewPopup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!previewPopup) {
         throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
       }
     }
 
-    function printStandaloneHtml(htmlText) {
+    function printStandaloneHtml(htmlText, printWindow = null) {
+      if (printWindow && !printWindow.closed) {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (closeWindow = true) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            setTimeout(() => {
+              if (closeWindow) {
+                try {
+                  printWindow.close();
+                } catch (error) {
+                  console.warn("Failed to close print window", error);
+                }
+              }
+              resolve();
+            }, 250);
+          };
+          const runPrint = async () => {
+            try {
+              await waitForDocumentImages(printWindow.document);
+              printWindow.focus();
+              printWindow.addEventListener("afterprint", () => finish(true), { once: true });
+              printWindow.print();
+              setTimeout(() => finish(false), 5000);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          try {
+            printWindow.document.open();
+            printWindow.document.write(htmlText);
+            printWindow.document.close();
+            if (printWindow.document.readyState === "complete") {
+              setTimeout(runPrint, 50);
+            } else {
+              printWindow.addEventListener("load", runPrint, { once: true });
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
       return new Promise((resolve, reject) => {
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
@@ -9005,16 +9576,7 @@
               reject(new Error("인쇄용 프레임을 열지 못했습니다."));
               return;
             }
-            const images = Array.from(iframe.contentDocument?.images || []);
-            await Promise.all(images.map((image) => {
-              if (image.complete && image.naturalWidth > 0) {
-                return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-              }
-              return new Promise((imageResolve) => {
-                image.addEventListener("load", () => imageResolve(), { once: true });
-                image.addEventListener("error", () => imageResolve(), { once: true });
-              });
-            }));
+            await waitForDocumentImages(iframe.contentDocument);
             targetWindow.focus();
             targetWindow.print();
             cleanup();
@@ -9268,6 +9830,7 @@
 
     async function previewExamLayout() {
       validateExamBuilderForExport();
+      const previewWindow = openPendingStandaloneWindow("HTML 미리보기를 준비하는 중입니다...");
       setBusy(true);
       setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
       try {
@@ -9275,9 +9838,14 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html);
+        openStandaloneHtmlPreview(html, previewWindow);
         setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
         setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+      } catch (error) {
+        if (previewWindow && !previewWindow.closed) {
+          previewWindow.close();
+        }
+        throw error;
       } finally {
         setBusy(false);
       }
@@ -9285,6 +9853,7 @@
 
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
+      const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -9302,11 +9871,16 @@
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html);
+        await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"} 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+      } catch (error) {
+        if (printWindow && !printWindow.closed) {
+          printWindow.close();
+        }
+        throw error;
       } finally {
         cleanupExamExportUrls();
         setBusy(false);
