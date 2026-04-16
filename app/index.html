@@ -1492,6 +1492,25 @@
       return normalized || compact;
     }
 
+    function extractAlphabeticChoiceAnswerTokens(value) {
+      const compact = normalizeProblemText(value)
+        .replace(/^\[?\s*(?:정답|답)\s*\]?\s*[:：-]?\s*/, "")
+        .replace(/[(),，、/|]+/g, " ")
+        .trim();
+      if (!compact) {
+        return [];
+      }
+
+      const choiceText = compact.replace(/\s+/g, "");
+      if (!/^(?:10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿1-9A-Ea-e])+$/.test(choiceText)) {
+        return [];
+      }
+
+      return Array.from(new Set(
+        (choiceText.match(/[A-Ea-e]/g) || []).map((token) => token.toUpperCase())
+      ));
+    }
+
     function normalizeAnswerExplanationText(value) {
       return normalizeProblemText(value)
         .replace(/^\[?\s*(?:해설|풀이)\s*\]?\s*[:：-]?\s*/, "")
@@ -1963,6 +1982,13 @@
       return {
         selectedStudentId: String(rawState?.selectedStudentId || ""),
         selectedSessionId: String(rawState?.selectedSessionId || ""),
+        collapsedRoundKeys: rawState?.collapsedRoundKeys && typeof rawState.collapsedRoundKeys === "object"
+          ? Object.fromEntries(
+              Object.entries(rawState.collapsedRoundKeys)
+                .map(([key, value]) => [String(key || ""), Boolean(value)])
+                .filter(([key]) => Boolean(key))
+            )
+          : {},
         students: students
           .map((student) => {
             const name = normalizeProblemText(student?.name || "");
@@ -5130,6 +5156,51 @@
       return session.studentStates[studentId];
     }
 
+    function getStudentRetryRoundUiKey(sessionId, studentId, roundIndex) {
+      const normalizedSessionId = String(sessionId || "").trim();
+      const normalizedStudentId = String(studentId || "").trim();
+      const normalizedRoundIndex = Math.max(1, Number.parseInt(roundIndex, 10) || 0);
+      if (!normalizedSessionId || !normalizedStudentId || !normalizedRoundIndex) {
+        return "";
+      }
+      return `${normalizedSessionId}::${normalizedStudentId}::${normalizedRoundIndex}`;
+    }
+
+    function shouldCollapseStudentRetryRoundByDefault(round, isLatestRound) {
+      const itemCount = Array.isArray(round?.items) ? round.items.length : 0;
+      if (!itemCount) {
+        return false;
+      }
+      if (!isLatestRound) {
+        return true;
+      }
+      return itemCount > 12;
+    }
+
+    function isStudentRetryRoundCollapsed(sessionId, studentId, round, isLatestRound = false) {
+      const key = getStudentRetryRoundUiKey(sessionId, studentId, round?.roundIndex);
+      if (!key) {
+        return false;
+      }
+      const collapsedRoundKeys = state.studentRetry?.collapsedRoundKeys;
+      if (collapsedRoundKeys && Object.prototype.hasOwnProperty.call(collapsedRoundKeys, key)) {
+        return Boolean(collapsedRoundKeys[key]);
+      }
+      return shouldCollapseStudentRetryRoundByDefault(round, isLatestRound);
+    }
+
+    function setStudentRetryRoundCollapsed(sessionId, studentId, roundIndex, collapsed) {
+      const key = getStudentRetryRoundUiKey(sessionId, studentId, roundIndex);
+      if (!key) {
+        return;
+      }
+      if (!state.studentRetry.collapsedRoundKeys || typeof state.studentRetry.collapsedRoundKeys !== "object") {
+        state.studentRetry.collapsedRoundKeys = {};
+      }
+      state.studentRetry.collapsedRoundKeys[key] = Boolean(collapsed);
+      writeStudentRetryState({ syncFolder: false });
+    }
+
     function getStudentRetryUsedProblemIds(studentState) {
       return new Set(
         (studentState?.rounds || [])
@@ -5814,18 +5885,39 @@
       elements.schoolTypeSummary.textContent = `선택 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개에서 유형 ${availableTypes.length}개를 찾았습니다. 현재 ${selectedSet.size}개 유형이 출제 대상입니다.`;
     }
 
-    function createStudentRetryRoundMarkup(round, isLatestRound) {
+    function createStudentRetryRoundMarkup(round, options = {}) {
+      const {
+        isLatestRound = false,
+        sessionId = "",
+        studentId = ""
+      } = options;
       const wrongCount = (round.items || []).filter((item) => item.result === "wrong").length;
+      const collapsed = isStudentRetryRoundCollapsed(sessionId, studentId, round, isLatestRound);
+      const contentId = `studentRetryRound-${escapeHtml(
+        normalizeProblemTypeToken(`${sessionId}-${studentId}-${round.roundIndex}`) || String(round.roundIndex || "")
+      )}`;
       return `
-        <article class="student-retry-round${isLatestRound ? " is-latest" : ""}">
+        <article class="student-retry-round${isLatestRound ? " is-latest" : ""}${collapsed ? " is-collapsed" : ""}">
           <header class="student-retry-round-header">
-            <div>
+            <div class="student-retry-round-copy">
               <h3>${escapeHtml(round.label || `${round.roundIndex}차`)}</h3>
               <p>${escapeHtml(formatTimestamp(round.createdAt) || "")} · 오답 ${wrongCount}/${round.items.length}</p>
             </div>
-            ${isLatestRound ? `<span class="student-retry-badge">다음 생성 기준</span>` : ""}
+            <div class="student-retry-round-actions">
+              ${isLatestRound ? `<span class="student-retry-badge">다음 생성 기준</span>` : ""}
+              <button
+                class="student-retry-toggle-button"
+                type="button"
+                data-retry-round-toggle="${escapeHtml(round.roundIndex)}"
+                aria-expanded="${collapsed ? "false" : "true"}"
+                aria-controls="${contentId}"
+              >
+                <span>${collapsed ? "펼치기" : "접기"}</span>
+                <span class="student-retry-toggle-icon" aria-hidden="true"></span>
+              </button>
+            </div>
           </header>
-          <div class="student-retry-item-list">
+          <div class="student-retry-item-list" id="${contentId}"${collapsed ? " hidden" : ""}>
             ${(round.items || []).map((item) => `
               <label class="student-retry-item${item.result === "wrong" ? " is-wrong" : ""}">
                 <input class="student-retry-checkbox" type="checkbox" data-retry-round="${escapeHtml(round.roundIndex)}" data-retry-item="${escapeHtml(item.itemId)}"${item.result === "wrong" ? " checked" : ""}>
@@ -6000,7 +6092,11 @@
         </div>
         <p class="small-note">체크된 항목만 “틀림”으로 저장됩니다. 다음 오답 차수는 마지막 차수의 틀린 항목 ${latestWrongCount}개를 같은 지문/유형의 다른 문제로 다시 냅니다.</p>
         <div class="student-retry-round-list">
-          ${rounds.map((round) => createStudentRetryRoundMarkup(round, round.roundIndex === latestRound.roundIndex)).join("")}
+          ${rounds.map((round) => createStudentRetryRoundMarkup(round, {
+            isLatestRound: round.roundIndex === latestRound.roundIndex,
+            sessionId: selectedSession.sessionId,
+            studentId: selectedStudent.studentId
+          })).join("")}
         </div>
       `;
       writeStudentRetryState({ syncFolder: false });
@@ -7492,18 +7588,26 @@
       const runtimeRecord = cloneProblemRecordWithRepairedOcrAnswer(record);
       const questionNumber = index + 1;
       const type = runtimeRecord.isSubjective ? "주관식" : "객관식";
+      const rawAnswerText = normalizeProblemText(runtimeRecord.answerText || "");
+      const invalidAlphabeticChoiceTokens = runtimeRecord.isSubjective
+        ? []
+        : extractAlphabeticChoiceAnswerTokens(rawAnswerText);
       const answer = runtimeRecord.isSubjective
-        ? normalizeProblemText(runtimeRecord.answerText || "")
-        : formatAnswerLabelForExport(runtimeRecord.answerText || "");
+        ? rawAnswerText
+        : formatAnswerLabelForExport(rawAnswerText);
       return {
-        id: `q-${questionNumber}`,
-        number: questionNumber,
-        type,
-        prompt: `문항 ${questionNumber}`,
-        answer,
-        acceptableAnswers: [],
-        explanation: String(runtimeRecord.explanationText || "").trim(),
-        problemType: runtimeRecord.selectableType || runtimeRecord.problemType || PROBLEM_TYPE_OTHER
+        question: {
+          id: `q-${questionNumber}`,
+          number: questionNumber,
+          type,
+          prompt: `문항 ${questionNumber}`,
+          answer,
+          acceptableAnswers: [],
+          explanation: String(runtimeRecord.explanationText || "").trim(),
+          problemType: runtimeRecord.selectableType || runtimeRecord.problemType || PROBLEM_TYPE_OTHER
+        },
+        invalidAlphabeticChoiceTokens,
+        rawAnswerText
       };
     }
 
@@ -7576,11 +7680,16 @@
       const questions = [];
       const questionMappings = [];
       const missingAnswers = [];
+      const invalidObjectiveAnswerNumbers = [];
 
       entries.forEach((entry, index) => {
-        const question = buildExamCheckSetQuestionPayload(entry.record, index);
+        const questionPayload = buildExamCheckSetQuestionPayload(entry.record, index);
+        const question = questionPayload.question;
         if (!question.answer) {
           missingAnswers.push(question.number);
+        }
+        if (questionPayload.invalidAlphabeticChoiceTokens.length) {
+          invalidObjectiveAnswerNumbers.push(question.number);
         }
         questions.push(question);
         questionMappings.push({
@@ -7603,6 +7712,11 @@
         const preview = missingAnswers.slice(0, 8).join(", ");
         const suffix = missingAnswers.length > 8 ? ` 외 ${missingAnswers.length - 8}문항` : "";
         throw new Error(`정답이 비어 있는 문항이 있어 CHECK 세트를 만들 수 없습니다: ${preview}${suffix}`);
+      }
+      if (invalidObjectiveAnswerNumbers.length) {
+        const preview = invalidObjectiveAnswerNumbers.slice(0, 8).map((number) => `${number}번`).join(", ");
+        const suffix = invalidObjectiveAnswerNumbers.length > 8 ? ` 외 ${invalidObjectiveAnswerNumbers.length - 8}문항` : "";
+        throw new Error(`객관식 CHECK 세트를 만들기 전에 ${preview}${suffix} 답안을 숫자(1~5 또는 ①~⑤)로 수정해주세요. 문자형 답안(A-E)은 그대로 사용할 수 없습니다.`);
       }
 
       const baseId = requestedId || buildPortableCheckSetId(
@@ -7734,9 +7848,7 @@
         const targetInfo = getCheckSetTargetStudentInfo(student);
         const personalId = buildPersonalCheckSetId(baseDraft.checkSetId, targetInfo, index);
         const isRetryDraft = Boolean(retryContext?.student);
-        const title = isRetryDraft
-          ? baseDraft.title
-          : `${baseDraft.title} · ${targetInfo.name || `학생 ${index + 1}`}`;
+        const title = baseDraft.title;
         const description = [
           baseDraft.description,
           targetInfo.name ? `${targetInfo.name} 개인 CHECK` : "학생 개인 CHECK"
@@ -12021,6 +12133,32 @@
         });
       }
       if (elements.studentRetryRoot) {
+        elements.studentRetryRoot.addEventListener("click", (event) => {
+          const toggleButton = event.target instanceof Element
+            ? event.target.closest("[data-retry-round-toggle]")
+            : null;
+          if (!(toggleButton instanceof HTMLButtonElement)) {
+            return;
+          }
+          const student = getSelectedRetryStudent();
+          const session = getSelectedRetrySession();
+          if (!student || !session) {
+            return;
+          }
+          const studentState = getStudentRetryState(session, student.studentId);
+          const rounds = Array.isArray(studentState?.rounds) ? studentState.rounds : [];
+          const targetRound = rounds.find((round) =>
+            Number(round.roundIndex) === Number(toggleButton.dataset.retryRoundToggle)
+          );
+          if (!targetRound) {
+            return;
+          }
+          const latestRound = [...rounds].sort((left, right) => Number(left.roundIndex) - Number(right.roundIndex)).pop() || null;
+          const isLatestRound = Number(targetRound.roundIndex) === Number(latestRound?.roundIndex || 0);
+          const nextCollapsed = !isStudentRetryRoundCollapsed(session.sessionId, student.studentId, targetRound, isLatestRound);
+          setStudentRetryRoundCollapsed(session.sessionId, student.studentId, targetRound.roundIndex, nextCollapsed);
+          renderStudentRetryPanel();
+        });
         elements.studentRetryRoot.addEventListener("change", (event) => {
           const target = event.target;
           if (!(target instanceof HTMLInputElement) || !target.dataset.retryItem) {
