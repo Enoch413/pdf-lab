@@ -1309,6 +1309,11 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.exam-checkset-divider {
+  padding-top: 10px;
+  border-top: 1px solid rgba(24, 107, 99, 0.12);
+}
+
 .school-chip-list {
   display: flex;
   flex-wrap: wrap;

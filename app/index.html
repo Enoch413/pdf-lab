@@ -247,14 +247,13 @@
           <section class="panel-card">
             <h2 class="panel-title">1. 학교 선택</h2>
             <div class="field-grid">
-              <label class="field-row">
-                <span class="field-label">학교 이름</span>
-                <input class="text-input" id="schoolNameInput" type="text" placeholder="예: 강서A 2학년 1학기">
-              </label>
-              <div class="action-row compact-action-row">
-                <button class="solid-button" type="button" id="saveSchoolButton">학교 저장</button>
+              <div class="field-row">
+                <span class="field-label">Firebase 학교/반</span>
+                <div class="action-row compact-action-row">
+                  <button class="solid-button" type="button" id="refreshSchoolCatalogButton">학교/반 새로고침</button>
+                </div>
+                <p class="small-note" id="schoolSelectionSummary">Firebase에서 학교와 반 목록을 불러오면 학교별 출제와 CHECK 세트 반 ID가 자동으로 연결됩니다.</p>
               </div>
-              <p class="small-note" id="schoolSelectionSummary">학교를 먼저 선택하면 그 학교 기준으로 지문, 유형, 출제 이력을 한 흐름으로 묶어볼 수 있습니다.</p>
             </div>
             <div class="school-chip-list" id="schoolList"></div>
           </section>
@@ -343,20 +342,37 @@
                 <button class="solid-button" type="button" id="printExamButton">PDF 출력 / 인쇄</button>
               </div>
               <button class="ghost-button" type="button" id="commitExamButton">출제 이력 저장 + PDF 출력</button>
+              <div class="field-row exam-checkset-divider">
+                <span class="field-label">CHECK 세트 연동</span>
+                <p class="small-note">현재 draft를 CODE LAB용 CHECK 세트 JSON으로 바로 저장하고, 나중에 Firebase 오답 연동에 필요한 문제 매핑도 함께 보관합니다.</p>
+              </div>
+              <label class="field-row">
+                <span class="field-label">CHECK 세트 제목</span>
+                <input class="text-input" id="examCheckSetTitleInput" type="text" placeholder="비워두면 시험지 제목 기준으로 자동 생성">
+              </label>
+              <label class="field-row">
+                <span class="field-label">CHECK 세트 ID</span>
+                <input class="text-input" id="examCheckSetIdInput" type="text" placeholder="비워두면 자동 생성">
+              </label>
+              <label class="field-row">
+                <span class="field-label">설명</span>
+                <textarea class="textarea-input" id="examCheckSetDescriptionInput" placeholder="예: 1강서 4월 보강 · 1차 공통 CHECK"></textarea>
+              </label>
+              <label class="field-row">
+                <span class="field-label">반 ID 목록</span>
+                <input class="text-input" id="examCheckSetClassIdsInput" type="text" placeholder="예: class-1-gangseo-b, class-1-seonbu">
+              </label>
+              <div class="action-row">
+                <button class="ghost-button" type="button" id="saveExamCheckSetButton">CHECK 세트 저장</button>
+                <button class="solid-button" type="button" id="downloadExamCheckSetButton">CHECK JSON 다운로드</button>
+              </div>
+              <p class="small-note" id="examCheckSetSummary">현재 draft를 만들면 여기서 CHECK 세트를 함께 저장할 수 있습니다.</p>
             </div>
           </section>
 
           <section class="panel-card">
             <h2 class="panel-title">작업 저장</h2>
-            <div class="field-grid">
-              <label class="field-row">
-                <span class="field-label">작업 이름</span>
-                <input class="text-input" id="examWorkNameInput" type="text" placeholder="예: gangseo-a-midterm-draft">
-              </label>
-              <div class="single-action-row">
-                <button class="ghost-button" type="button" id="saveExamWorkButton">현재 draft 저장</button>
-              </div>
-            </div>
+            <p class="small-note" id="examWorkSummary">출제 이력 저장 + PDF 출력 시 현재 draft가 자동으로 함께 저장됩니다.</p>
             <div class="saved-work-empty" id="examWorkEmptyState">
               <h3>저장된 학교별 draft가 없습니다</h3>
               <p>지문 선택과 draft 결과를 저장해두면 같은 학교 흐름을 이어서 작업할 수 있습니다.</p>
@@ -505,6 +521,15 @@
           </section>
 
           <section class="panel-card">
+            <h2 class="panel-title">CHECK 세트 기록</h2>
+            <div class="exam-history-empty" id="examCheckSetEmptyState">
+              <h3>저장된 CHECK 세트가 없습니다</h3>
+              <p>현재 draft에서 CHECK 세트 저장 또는 CHECK JSON 다운로드를 누르면, 학교와 출처 기준 기록이 여기에 쌓입니다.</p>
+            </div>
+            <div class="exam-history-list" id="examCheckSetList"></div>
+          </section>
+
+          <section class="panel-card">
             <h2 class="panel-title">학교 공통 출제 이력</h2>
             <div class="exam-history-empty" id="examHistoryEmptyState">
               <h3>저장된 공통 출제 이력이 없습니다</h3>
@@ -517,6 +542,10 @@
     </section>
   </div>
 
+  <script src="./firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -587,7 +616,7 @@
     const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const STUDENT_RETRY_STORAGE_KEY = "pdfProblemTemplateRepacker.studentRetry.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
-    const LIBRARY_DB_VERSION = 7;
+    const LIBRARY_DB_VERSION = 8;
     const LIBRARY_SETTINGS_STORE = "settings";
     const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
     const LIBRARY_IMPORT_STORE = "imports";
@@ -595,8 +624,9 @@
     const LIBRARY_PROBLEM_ASSET_STORE = "problemAssets";
     const LIBRARY_EXAM_STORE = "examSets";
     const LIBRARY_EXAM_ITEM_STORE = "examItems";
+    const LIBRARY_CHECK_SET_STORE = "checkSetRecords";
     const LIBRARY_WORK_STORE = "savedWorks";
-    const LIBRARY_SNAPSHOT_VERSION = 3;
+    const LIBRARY_SNAPSHOT_VERSION = 4;
     const LIBRARY_META_FILE = "pdflab_library_meta.json";
     const LIBRARY_TEXTBOOKS_FILE = "pdflab_textbooks.json";
     const LIBRARY_SCHOOLS_FILE = "pdflab_school_profiles.json";
@@ -605,6 +635,7 @@
     const LIBRARY_PROBLEM_ASSETS_FILE = "pdflab_problem_assets.json";
     const LIBRARY_EXAM_SETS_FILE = "pdflab_exam_sets.json";
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
+    const LIBRARY_CHECK_SETS_FILE = "pdflab_check_sets.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
     const LIBRARY_STUDENT_RETRY_FILE = "pdflab_student_retry.json";
     const EXAM_HISTORY_SCOPE_SCHOOL = "school";
@@ -612,6 +643,19 @@
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
     const WORKSPACE_MODE_EXAM = "exam";
     const WORKSPACE_MODE_LIBRARY = "library";
+    const FIREBASE_CLASS_REFERENCE = [
+      { id: "class-1-gangseo-b", name: "1강서B" },
+      { id: "class-2-gangseo-a", name: "2강서A" },
+      { id: "class-3-gangseo", name: "3강서" },
+      { id: "class-1-seonbu", name: "1선부" },
+      { id: "class-2-seonbu", name: "2선부" },
+      { id: "class-3-seonbu", name: "3선부" },
+      { id: "class-1-gangseo-a", name: "1강서A" },
+      { id: "class-2-gangseo-b", name: "2강서B" },
+      { id: "class-1-danwon", name: "1단원" },
+      { id: "class-2-danwon", name: "2단원" },
+      { id: "class-3-danwon", name: "3단원" }
+    ];
     const EXAM_SLOT_RENDER_BATCH_SIZE = 120;
     const EXAM_HTML_PREVIEW_PROBLEM_LIMIT = 80;
     const PROBLEM_TYPE_RULES = [
@@ -1016,12 +1060,24 @@
         tesseractCmd: "",
         languages: []
       },
+      firebaseSchoolBridge: {
+        enabled: false,
+        auth: null,
+        db: null,
+        currentUser: null,
+        currentProfile: null,
+        classCatalog: [],
+        schoolCatalog: [],
+        lastSyncedAt: 0,
+        syncError: ""
+      },
       libraryCache: {
         imports: [],
         problemRecords: [],
         problemAssetCache: {},
         examSets: [],
         examItems: [],
+        checkSetRecords: [],
         savedWorks: []
       },
       loadedRepackWorkId: "",
@@ -1145,6 +1201,15 @@
       previewExamButton: document.getElementById("previewExamButton"),
       printExamButton: document.getElementById("printExamButton"),
       commitExamButton: document.getElementById("commitExamButton"),
+      examCheckSetTitleInput: document.getElementById("examCheckSetTitleInput"),
+      examCheckSetIdInput: document.getElementById("examCheckSetIdInput"),
+      examCheckSetDescriptionInput: document.getElementById("examCheckSetDescriptionInput"),
+      examCheckSetClassIdsInput: document.getElementById("examCheckSetClassIdsInput"),
+      saveExamCheckSetButton: document.getElementById("saveExamCheckSetButton"),
+      downloadExamCheckSetButton: document.getElementById("downloadExamCheckSetButton"),
+      examCheckSetSummary: document.getElementById("examCheckSetSummary"),
+      examCheckSetEmptyState: document.getElementById("examCheckSetEmptyState"),
+      examCheckSetList: document.getElementById("examCheckSetList"),
       examExportSummary: document.getElementById("examExportSummary"),
       examHistorySummary: document.getElementById("examHistorySummary"),
       examWorkNameInput: document.getElementById("examWorkNameInput"),
@@ -1162,6 +1227,7 @@
       examHistoryList: document.getElementById("examHistoryList"),
       schoolNameInput: document.getElementById("schoolNameInput"),
       saveSchoolButton: document.getElementById("saveSchoolButton"),
+      refreshSchoolCatalogButton: document.getElementById("refreshSchoolCatalogButton"),
       schoolSelectionSummary: document.getElementById("schoolSelectionSummary"),
       schoolList: document.getElementById("schoolList"),
       schoolSourceFilterSelect: document.getElementById("schoolSourceFilterSelect"),
@@ -1946,6 +2012,194 @@
       return normalizeSchoolKey(name) || `school-${Date.now()}`;
     }
 
+    function normalizeSchoolProfileEntry(entry = {}) {
+      const name = normalizeSchoolName(entry?.name || "");
+      if (!name) {
+        return null;
+      }
+      return {
+        key: normalizeSchoolKey(entry?.key || createSchoolKey(name)),
+        name,
+        classIds: Array.from(new Set(
+          (Array.isArray(entry?.classIds) ? entry.classIds : [])
+            .map((classId) => normalizeProblemText(classId))
+            .filter(Boolean)
+        )).sort((left, right) => left.localeCompare(right, "ko")),
+        source: String(entry?.source || "manual").trim() || "manual",
+        createdAt: Number(entry?.createdAt) || Date.now(),
+        updatedAt: Number(entry?.updatedAt) || Date.now()
+      };
+    }
+
+    function getFirebaseClassReferenceMap() {
+      return new Map(FIREBASE_CLASS_REFERENCE.map((entry) => [String(entry.id || "").trim(), String(entry.name || "").trim()]));
+    }
+
+    function deriveSchoolNameFromClassLabel(label) {
+      const cleaned = normalizeSchoolName(String(label || "").replace(/^\d+\s*/, "").replace(/[A-Za-z]$/, ""));
+      return cleaned;
+    }
+
+    function deriveSchoolNameFromClassId(classId) {
+      const parts = String(classId || "").trim().split("-").filter(Boolean);
+      const relevant = parts[0] === "class" ? parts.slice(2) : parts.slice(1);
+      if (!relevant.length) {
+        return normalizeSchoolName(classId);
+      }
+      const schoolParts = /^[a-z]$/i.test(relevant[relevant.length - 1]) && relevant.length > 1
+        ? relevant.slice(0, -1)
+        : relevant;
+      const token = schoolParts.join("-");
+      const knownLabels = {
+        gangseo: "강서",
+        seonbu: "선부",
+        danwon: "단원"
+      };
+      return knownLabels[token] || normalizeSchoolName(token.replace(/-/g, " "));
+    }
+
+    function deriveClassNameFromClassId(classId) {
+      const parts = String(classId || "").trim().split("-").filter(Boolean);
+      const relevant = parts[0] === "class" ? parts.slice(1) : parts;
+      if (!relevant.length) {
+        return normalizeSchoolName(classId);
+      }
+      const grade = /^\d+$/.test(relevant[0]) ? relevant[0] : "";
+      const schoolName = deriveSchoolNameFromClassId(classId);
+      const lastToken = relevant[relevant.length - 1];
+      const suffix = /^[a-z]$/i.test(lastToken) ? lastToken.toUpperCase() : "";
+      return normalizeSchoolName(`${grade}${schoolName}${suffix}`);
+    }
+
+    function normalizeFirebaseClassInfo(entry = {}) {
+      const id = normalizeProblemText(entry?.id || "");
+      if (!id) {
+        return null;
+      }
+      const referenceName = normalizeSchoolName(entry?.name || getFirebaseClassReferenceMap().get(id) || "");
+      const className = referenceName || deriveClassNameFromClassId(id);
+      const schoolName = deriveSchoolNameFromClassLabel(className) || deriveSchoolNameFromClassId(id) || className;
+      return {
+        id,
+        name: className || id,
+        schoolName: schoolName || className || id,
+        schoolKey: normalizeSchoolKey(schoolName || className || id)
+      };
+    }
+
+    function normalizeFirebaseSchoolUserProfile(source = {}) {
+      return {
+        uid: normalizeProblemText(source?.uid || source?.id || ""),
+        name: normalizeSchoolName(source?.name || ""),
+        role: normalizeProblemText(source?.role || "student").toLowerCase() || "student",
+        classIds: Array.from(new Set(
+          (Array.isArray(source?.classIds) ? source.classIds : [])
+            .map((classId) => normalizeProblemText(classId))
+            .filter(Boolean)
+        ))
+      };
+    }
+
+    function isPdfLabFirebaseConfigured() {
+      const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+      const requiredKeys = ["apiKey", "authDomain", "projectId", "appId"];
+      return Boolean(window.firebase) && requiredKeys.every((key) => typeof config[key] === "string" && config[key].trim());
+    }
+
+    function waitForPdfLabFirebaseAuth(auth, timeoutMs = 2500) {
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = (user) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (typeof unsubscribe === "function") {
+            unsubscribe();
+          }
+          resolve(user || null);
+        };
+        const timer = window.setTimeout(() => finish(auth?.currentUser || null), timeoutMs);
+        const unsubscribe = auth?.onAuthStateChanged
+          ? auth.onAuthStateChanged((user) => {
+              window.clearTimeout(timer);
+              finish(user || null);
+            }, () => {
+              window.clearTimeout(timer);
+              finish(auth?.currentUser || null);
+            })
+          : null;
+      });
+    }
+
+    async function fetchPdfLabFirebaseCurrentProfile(db, user) {
+      if (!db || !user?.uid) {
+        return null;
+      }
+      const snapshot = await db.collection("users").doc(user.uid).get();
+      if (!snapshot.exists) {
+        return normalizeFirebaseSchoolUserProfile({ uid: user.uid, name: user.displayName || "", role: "student", classIds: [] });
+      }
+      return normalizeFirebaseSchoolUserProfile({ uid: snapshot.id, ...(snapshot.data() || {}) });
+    }
+
+    function buildFirebaseClassCatalogFromUsers(users = []) {
+      const seen = new Set();
+      const rows = [];
+      (Array.isArray(users) ? users : []).forEach((user) => {
+        (Array.isArray(user?.classIds) ? user.classIds : []).forEach((classId) => {
+          const normalizedId = normalizeProblemText(classId);
+          if (!normalizedId || seen.has(normalizedId)) {
+            return;
+          }
+          seen.add(normalizedId);
+          const classInfo = normalizeFirebaseClassInfo({ id: normalizedId });
+          if (classInfo) {
+            rows.push(classInfo);
+          }
+        });
+      });
+      return rows.sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    }
+
+    function buildFirebaseSchoolProfiles(classCatalog = [], existingProfiles = []) {
+      const existingMap = new Map(
+        (Array.isArray(existingProfiles) ? existingProfiles : [])
+          .map((entry) => normalizeSchoolProfileEntry(entry))
+          .filter(Boolean)
+          .map((entry) => [entry.key, entry])
+      );
+      const grouped = new Map();
+      (Array.isArray(classCatalog) ? classCatalog : []).forEach((classInfo) => {
+        if (!classInfo?.schoolKey) {
+          return;
+        }
+        if (!grouped.has(classInfo.schoolKey)) {
+          grouped.set(classInfo.schoolKey, {
+            key: classInfo.schoolKey,
+            name: classInfo.schoolName || classInfo.name || classInfo.schoolKey,
+            classIds: [],
+            source: "firebase",
+            createdAt: existingMap.get(classInfo.schoolKey)?.createdAt || Date.now(),
+            updatedAt: Date.now()
+          });
+        }
+        const entry = grouped.get(classInfo.schoolKey);
+        entry.classIds.push(classInfo.id);
+      });
+      const firebaseProfiles = Array.from(grouped.values()).map((entry) =>
+        normalizeSchoolProfileEntry({
+          ...entry,
+          classIds: Array.from(new Set(entry.classIds))
+        })
+      ).filter(Boolean);
+      const firebaseKeys = new Set(firebaseProfiles.map((entry) => entry.key));
+      const preservedManualProfiles = (Array.isArray(existingProfiles) ? existingProfiles : [])
+        .map((entry) => normalizeSchoolProfileEntry(entry))
+        .filter((entry) => entry && entry.source !== "firebase" && !firebaseKeys.has(entry.key));
+      return [...firebaseProfiles, ...preservedManualProfiles].sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    }
+
     function readStoredSchools() {
       try {
         const raw = window.localStorage.getItem(SCHOOL_PROFILE_STORAGE_KEY);
@@ -1957,18 +2211,7 @@
           return [];
         }
         return parsed
-          .map((entry) => {
-            const name = normalizeSchoolName(entry?.name || "");
-            if (!name) {
-              return null;
-            }
-            return {
-              key: normalizeSchoolKey(entry?.key || createSchoolKey(name)),
-              name,
-              createdAt: Number(entry?.createdAt) || Date.now(),
-              updatedAt: Number(entry?.updatedAt) || Date.now()
-            };
-          })
+          .map((entry) => normalizeSchoolProfileEntry(entry))
           .filter(Boolean)
           .sort((left, right) => left.name.localeCompare(right.name, "ko"));
       } catch (error) {
@@ -1979,18 +2222,7 @@
 
     function writeStoredSchools(values) {
       const normalized = (values || [])
-        .map((entry) => {
-          const name = normalizeSchoolName(entry?.name || "");
-          if (!name) {
-            return null;
-          }
-          return {
-            key: normalizeSchoolKey(entry?.key || createSchoolKey(name)),
-            name,
-            createdAt: Number(entry?.createdAt) || Date.now(),
-            updatedAt: Number(entry?.updatedAt) || Date.now()
-          };
-        })
+        .map((entry) => normalizeSchoolProfileEntry(entry))
         .filter(Boolean)
         .sort((left, right) => left.name.localeCompare(right.name, "ko"));
       state.schoolWorkflow.schools = normalized;
@@ -2023,6 +2255,8 @@
       const profile = {
         key: createSchoolKey(normalizedName),
         name: normalizedName,
+        classIds: [],
+        source: "manual",
         createdAt: now,
         updatedAt: now
       };
@@ -2043,13 +2277,92 @@
       return "";
     }
 
+    function applySelectedSchoolClassIdsToCheckSetInput(force = true) {
+      if (!elements.examCheckSetClassIdsInput) {
+        return;
+      }
+      const selectedSchool = getSelectedSchoolProfile();
+      const nextClassIds = Array.isArray(selectedSchool?.classIds) ? selectedSchool.classIds : [];
+      if (!force && normalizeProblemText(elements.examCheckSetClassIdsInput.value || "")) {
+        return;
+      }
+      elements.examCheckSetClassIdsInput.value = nextClassIds.join(", ");
+      updateExamCheckSetSummary();
+    }
+
+    async function syncSchoolCatalogFromFirebase(forceRefresh = false) {
+      if (!isPdfLabFirebaseConfigured()) {
+        state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 기존 학교 목록만 사용합니다.";
+        setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
+        return false;
+      }
+      try {
+        const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        state.firebaseSchoolBridge.enabled = true;
+        state.firebaseSchoolBridge.auth = firebase.auth();
+        state.firebaseSchoolBridge.db = firebase.firestore();
+        const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
+        state.firebaseSchoolBridge.currentUser = user || null;
+        if (!user) {
+          state.firebaseSchoolBridge.syncError = "Firebase 로그인 상태가 없어 기존 학교 목록을 유지합니다. 같은 계정으로 로그인한 뒤 새로고침해주세요.";
+          setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
+          return false;
+        }
+
+        const currentProfile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSchoolBridge.db, user);
+        state.firebaseSchoolBridge.currentProfile = currentProfile;
+
+        let users = currentProfile ? [currentProfile] : [];
+        if (currentProfile?.role === "admin") {
+          try {
+            const snapshot = await state.firebaseSchoolBridge.db.collection("users").get();
+            users = snapshot.docs.map((doc) => normalizeFirebaseSchoolUserProfile({ uid: doc.id, ...(doc.data() || {}) }));
+          } catch (error) {
+            console.warn("Firebase users read fallback", error);
+          }
+        }
+
+        const classCatalog = buildFirebaseClassCatalogFromUsers(users);
+        const schoolCatalog = buildFirebaseSchoolProfiles(classCatalog, getSchoolProfiles());
+        state.firebaseSchoolBridge.classCatalog = classCatalog;
+        state.firebaseSchoolBridge.schoolCatalog = schoolCatalog.filter((entry) => entry.source === "firebase");
+        state.firebaseSchoolBridge.lastSyncedAt = Date.now();
+        state.firebaseSchoolBridge.syncError = "";
+
+        if (schoolCatalog.length) {
+          writeStoredSchools(schoolCatalog);
+          state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
+          applySelectedSchoolClassIdsToCheckSetInput(true);
+          renderExamLibraryList();
+          renderExamHistoryList();
+          updateExamBuilderSummary();
+          setOptionalText(
+            elements.schoolSelectionSummary,
+            `Firebase에서 학교 ${state.firebaseSchoolBridge.schoolCatalog.length}개 · 반 ${classCatalog.length}개를 불러왔습니다. 선택한 학교의 반 ID는 CHECK 세트에 자동 입력됩니다.`
+          );
+        } else {
+          setOptionalText(elements.schoolSelectionSummary, "Firebase에서 반 정보는 읽었지만 학교로 묶을 데이터가 없습니다.");
+        }
+        return true;
+      } catch (error) {
+        console.warn("Failed to sync school catalog from Firebase", error);
+        state.firebaseSchoolBridge.syncError = error?.message || "Firebase 학교 목록을 불러오지 못했습니다.";
+        setOptionalText(elements.schoolSelectionSummary, `Firebase 학교/반 동기화 실패: ${state.firebaseSchoolBridge.syncError}`);
+        return false;
+      }
+    }
+
     function getSchoolProfileDeleteStats(schoolKey) {
       const normalizedSchoolKey = normalizeSchoolKey(schoolKey || "");
       if (!normalizedSchoolKey) {
         return {
           examSetCount: 0,
           examItemCount: 0,
-          examWorkCount: 0
+          examWorkCount: 0,
+          checkSetCount: 0
         };
       }
       const examIds = new Set(
@@ -2064,7 +2377,10 @@
       return {
         examSetCount: examIds.size,
         examItemCount: getExamItems().filter((item) => examIds.has(item.examId)).length,
-        examWorkCount: examWorks.length
+        examWorkCount: examWorks.length,
+        checkSetCount: getStoredCheckSetRecords().filter((record) =>
+          normalizeSchoolKey(record?.schoolKey || "") === normalizedSchoolKey
+        ).length
       };
     }
 
@@ -2074,12 +2390,16 @@
       if (!targetSchool) {
         throw new Error("삭제할 학교를 찾을 수 없습니다.");
       }
+      if (targetSchool.source === "firebase") {
+        throw new Error("Firebase에서 동기화된 학교는 삭제할 수 없습니다. Firebase 학교/반 새로고침으로 목록을 다시 맞춰주세요.");
+      }
       const stats = getSchoolProfileDeleteStats(normalizedSchoolKey);
       const confirmed = window.confirm([
         `${targetSchool.name} 학교를 삭제할까요?`,
         "",
         `출제 이력 ${stats.examSetCount}개`,
         `출제 문항 이력 ${stats.examItemCount}개`,
+        `CHECK 세트 ${stats.checkSetCount}개`,
         `저장된 학교별 draft ${stats.examWorkCount}개`,
         "",
         "공용 문제 라이브러리와 교재 원본은 삭제하지 않습니다."
@@ -2094,9 +2414,10 @@
         const deletedExamIds = new Set();
         const deletedWorkIds = new Set();
         const db = await openLibraryDb();
-        const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE, LIBRARY_WORK_STORE], "readwrite");
+        const transaction = db.transaction([LIBRARY_EXAM_STORE, LIBRARY_EXAM_ITEM_STORE, LIBRARY_CHECK_SET_STORE, LIBRARY_WORK_STORE], "readwrite");
         const examStore = transaction.objectStore(LIBRARY_EXAM_STORE);
         const examItemStore = transaction.objectStore(LIBRARY_EXAM_ITEM_STORE);
+        const checkSetStore = transaction.objectStore(LIBRARY_CHECK_SET_STORE);
         const workStore = transaction.objectStore(LIBRARY_WORK_STORE);
 
         await new Promise((resolve, reject) => {
@@ -2135,6 +2456,22 @@
             request.addEventListener("error", () => reject(request.error || new Error("학교 출제 문항 이력을 삭제하지 못했습니다.")));
           });
         }
+
+        await new Promise((resolve, reject) => {
+          const request = checkSetStore.openCursor();
+          request.addEventListener("success", () => {
+            const cursor = request.result;
+            if (!cursor) {
+              resolve();
+              return;
+            }
+            if (normalizeSchoolKey(cursor.value?.schoolKey || "") === normalizedSchoolKey) {
+              cursor.delete();
+            }
+            cursor.continue();
+          });
+          request.addEventListener("error", () => reject(request.error || new Error("학교 CHECK 세트를 삭제하지 못했습니다.")));
+        });
 
         await new Promise((resolve, reject) => {
           const request = workStore.openCursor();
@@ -2192,7 +2529,7 @@
         setStatus(`${targetSchool.name} 학교를 삭제했습니다.`, "idle", "학교 삭제");
         setOptionalText(
           elements.schoolSelectionSummary,
-          `${targetSchool.name} 학교를 삭제했습니다. 관련 출제 이력 ${stats.examSetCount}개와 저장 draft ${stats.examWorkCount}개를 함께 정리했습니다.`
+          `${targetSchool.name} 학교를 삭제했습니다. 관련 출제 이력 ${stats.examSetCount}개, CHECK 세트 ${stats.checkSetCount}개, 저장 draft ${stats.examWorkCount}개를 함께 정리했습니다.`
         );
       } finally {
         setBusy(false);
@@ -2475,6 +2812,19 @@
           }
           if (!examItemStore.indexNames.contains("passageTypeKey")) {
             examItemStore.createIndex("passageTypeKey", "passageTypeKey", { unique: false });
+          }
+
+          const checkSetStore = db.objectStoreNames.contains(LIBRARY_CHECK_SET_STORE)
+            ? request.transaction.objectStore(LIBRARY_CHECK_SET_STORE)
+            : db.createObjectStore(LIBRARY_CHECK_SET_STORE, { keyPath: "checkSetRecordId" });
+          if (!checkSetStore.indexNames.contains("checkSetId")) {
+            checkSetStore.createIndex("checkSetId", "checkSetId", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("createdAt")) {
+            checkSetStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("schoolKey")) {
+            checkSetStore.createIndex("schoolKey", "schoolKey", { unique: false });
           }
 
           const workStore = db.objectStoreNames.contains(LIBRARY_WORK_STORE)
@@ -2974,6 +3324,7 @@
         (snapshot.problemAssets || []).length ||
         (snapshot.examSets || []).length ||
         (snapshot.examItems || []).length ||
+        (snapshot.checkSetRecords || []).length ||
         (snapshot.savedWorks || []).length ||
         (snapshot.studentRetry?.students || []).length ||
         (snapshot.studentRetry?.sessions || []).length
@@ -2993,6 +3344,7 @@
         problemAssetsRaw,
         examSetsRaw,
         examItemsRaw,
+        checkSetRecordsRaw,
         savedWorksRaw,
         studentRetryRaw
       ] = await Promise.all([
@@ -3004,10 +3356,11 @@
         readJsonFileFromDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, null)
       ]);
-      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, savedWorksRaw, studentRetryRaw].some((value) => value != null)) {
+      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, checkSetRecordsRaw, savedWorksRaw, studentRetryRaw].some((value) => value != null)) {
         return null;
       }
 
@@ -3046,6 +3399,7 @@
         problemAssets,
         examSets: Array.isArray(examSetsRaw) ? examSetsRaw : [],
         examItems: Array.isArray(examItemsRaw) ? examItemsRaw : [],
+        checkSetRecords: Array.isArray(checkSetRecordsRaw) ? checkSetRecordsRaw : [],
         savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : []),
         studentRetry: studentRetryRaw == null ? null : normalizeStudentRetryState(studentRetryRaw)
       };
@@ -3062,6 +3416,7 @@
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, problemAssets);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, snapshot.examSets || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, snapshot.checkSetRecords || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, normalizeStudentRetryState(snapshot.studentRetry || {}));
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
@@ -3080,6 +3435,7 @@
         problemAssets: await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
+        checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
         savedWorks: [...(state.libraryCache.savedWorks || [])],
         studentRetry: captureStudentRetryState()
       };
@@ -3093,6 +3449,7 @@
         LIBRARY_PROBLEM_ASSET_STORE,
         LIBRARY_EXAM_STORE,
         LIBRARY_EXAM_ITEM_STORE,
+        LIBRARY_CHECK_SET_STORE,
         LIBRARY_WORK_STORE
       ], "readwrite");
       const storeEntries = [
@@ -3105,6 +3462,7 @@
         [LIBRARY_PROBLEM_ASSET_STORE, snapshot.problemAssets || []],
         [LIBRARY_EXAM_STORE, snapshot.examSets || []],
         [LIBRARY_EXAM_ITEM_STORE, snapshot.examItems || []],
+        [LIBRARY_CHECK_SET_STORE, snapshot.checkSetRecords || []],
         [LIBRARY_WORK_STORE, snapshot.savedWorks || []]
       ];
       storeEntries.forEach(([storeName, records]) => {
@@ -3929,6 +4287,25 @@
       return getExamSetsForSelectedSchool(EXAM_HISTORY_SCOPE_STUDENT_RETRY);
     }
 
+    function getStoredCheckSetRecords() {
+      return Array.isArray(state.libraryCache.checkSetRecords) ? state.libraryCache.checkSetRecords : [];
+    }
+
+    function getCheckSetRecordsForSelectedSchool() {
+      const schoolKey = normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
+      const sourceKey = getSchoolSourceFilterKey();
+      return getStoredCheckSetRecords().filter((record) => {
+        const sameSource = normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey;
+        if (!sameSource) {
+          return false;
+        }
+        if (!schoolKey) {
+          return true;
+        }
+        return normalizeSchoolKey(record.schoolKey || "") === schoolKey;
+      });
+    }
+
     function getSchoolHistoryExamItems() {
       const targetExamIds = new Set(
         getExamSetsForSelectedSchool()
@@ -4648,6 +5025,7 @@
       state.studentRetry.selectedStudentId = "";
       state.studentRetry.selectedSessionId = "";
       clearGeneratedSchoolDraft();
+      applySelectedSchoolClassIdsToCheckSetInput(true);
       renderExamLibraryList();
       renderExamHistoryList();
     }
@@ -4664,6 +5042,7 @@
       state.schoolWorkflow.passageTextbookName = "";
       state.studentRetry.selectedSessionId = "";
       clearGeneratedSchoolDraft();
+      applySelectedSchoolClassIdsToCheckSetInput(true);
       renderExamLibraryList();
       renderExamHistoryList();
       updateExamBuilderSummary();
@@ -4682,10 +5061,7 @@
       );
       state.schoolWorkflow.selectedPassageKeys = state.schoolWorkflow.selectedPassageKeys.filter((key) => availablePassageKeys.has(key));
       syncSelectedSchoolTypes();
-      const profile = getSelectedSchoolProfile();
-      if (elements.schoolNameInput && profile && document.activeElement !== elements.schoolNameInput) {
-        elements.schoolNameInput.value = profile.name;
-      }
+      applySelectedSchoolClassIdsToCheckSetInput(true);
     }
 
     function renderSchoolList() {
@@ -4695,7 +5071,9 @@
           <button class="school-chip${school.key === state.schoolWorkflow.selectedSchoolKey ? " is-active" : ""}" type="button" data-school-select="${escapeHtml(school.key)}">
             ${escapeHtml(school.name)}
           </button>
-          <button class="school-chip-delete" type="button" data-school-delete="${escapeHtml(school.key)}" aria-label="${escapeHtml(school.name)} 학교 삭제">삭제</button>
+          ${school.source === "firebase"
+            ? ""
+            : `<button class="school-chip-delete" type="button" data-school-delete="${escapeHtml(school.key)}" aria-label="${escapeHtml(school.name)} 학교 삭제">삭제</button>`}
         </span>
       `).join("");
     }
@@ -5187,7 +5565,7 @@
           ? `선택 지문 ${passageCount}개 · 선택 유형 ${typeCount}개를 각 지문마다 1문제씩 출제`
           : `선택 지문 ${passageCount}개 · 선택 유형 ${typeCount}개 전부 출제`;
       }
-      if (!elements.examWorkNameInput.value.trim()) {
+      if (elements.examWorkNameInput && !elements.examWorkNameInput.value.trim()) {
         elements.examWorkNameInput.value = normalizeProblemTypeToken(`${schoolName}-${state.schoolWorkflow.draftMode}-draft`).toLowerCase();
       }
     }
@@ -6036,13 +6414,22 @@
       const slotCount = state.examBuilder.slots.length;
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const isReady = slotCount > 0 && assignedCount === slotCount;
-      elements.saveExamWorkButton.disabled = state.isBusy || slotCount === 0;
+      if (elements.saveExamWorkButton) {
+        elements.saveExamWorkButton.disabled = state.isBusy || slotCount === 0;
+      }
       elements.previewExamButton.disabled = state.isBusy || !isReady;
       elements.printExamButton.disabled = state.isBusy || !isReady;
       elements.commitExamButton.disabled = state.isBusy || !isReady;
       elements.commitExamButton.textContent = isStudentRetryDraftActive()
         ? "학생 출력 이력 저장 + PDF 출력"
         : "출제 이력 저장 + PDF 출력";
+      if (elements.saveExamCheckSetButton) {
+        elements.saveExamCheckSetButton.disabled = state.isBusy || !isReady;
+      }
+      if (elements.downloadExamCheckSetButton) {
+        elements.downloadExamCheckSetButton.disabled = state.isBusy || !isReady;
+      }
+      updateExamCheckSetSummary();
     }
 
     function buildExamSlotAnswerButton(slot, answerSummary = "", explanationSummary = "") {
@@ -6225,17 +6612,20 @@
       state.examBuilder.slots = [];
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
       clearExamAnswerEditorState();
-      elements.examWorkNameInput.value = "";
+      if (elements.examWorkNameInput) {
+        elements.examWorkNameInput.value = "";
+      }
       setOptionalText(elements.examExportSummary, "");
       renderExamSlots();
     }
 
     async function refreshLibrarySummary() {
-      const [imports, problemRecords, examSets, examItems, savedWorks] = await Promise.all([
+      const [imports, problemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
         loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
         loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_ITEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
@@ -6245,6 +6635,7 @@
         problemAssetCache: state.libraryCache.problemAssetCache || {},
         examSets: examSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         examItems,
+        checkSetRecords: checkSetRecords.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         savedWorks: savedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
       };
       const summary = buildLibrarySummary(state.libraryCache.imports, state.libraryCache.problemRecords);
@@ -6276,6 +6667,7 @@
       updateDeleteTextbookUi();
       renderExamLibraryList();
       renderExamHistoryList();
+      renderExamCheckSetList();
       renderSavedWorkLists();
       renderExamSlots();
       if (isLibraryWorkspaceMode()) {
@@ -6353,12 +6745,338 @@
       };
     }
 
+    function getDefaultExamCheckSetTitle() {
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const schoolName = getSelectedSchoolProfile()?.name || "학교";
+      const baseExamTitle = normalizeProblemText(elements.examTitleInput?.value || "");
+      if (retryContext) {
+        const studentName = retryContext.student?.name || "학생";
+        const roundLabel = retryContext.roundIndex ? `${retryContext.roundIndex}차` : "오답";
+        return baseExamTitle
+          ? `${baseExamTitle} · ${studentName} ${roundLabel} CHECK`
+          : `${schoolName} · ${studentName} ${roundLabel} CHECK`;
+      }
+      return baseExamTitle ? `${baseExamTitle} CHECK` : `${schoolName} 공통 CHECK`;
+    }
+
+    function getDefaultExamCheckSetDescription() {
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const schoolName = getSelectedSchoolProfile()?.name || "학교 미지정";
+      const sourceLabel = getLibrarySourceLabel(getSchoolSourceFilterKey());
+      const modeLabel = state.schoolWorkflow.draftMode === "full" ? "선택 유형 전부" : "각 지문별 유형당 1문제";
+      if (retryContext) {
+        return `${schoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} ${retryContext.roundIndex || ""}차 오답유형 CHECK`;
+      }
+      return `${schoolName} · ${sourceLabel} · ${modeLabel} 자동 생성 CHECK`;
+    }
+
+    function getCurrentExamCheckSetQuestionEntries() {
+      validateExamBuilderForExport();
+      return getExamSlotAssignedRecords().filter((entry) => entry?.record?.kind !== "shared");
+    }
+
+    function buildExamCheckSetQuestionPayload(record, index) {
+      const runtimeRecord = cloneProblemRecordWithRepairedOcrAnswer(record);
+      const questionNumber = index + 1;
+      const type = runtimeRecord.isSubjective ? "주관식" : "객관식";
+      const answer = runtimeRecord.isSubjective
+        ? normalizeProblemText(runtimeRecord.answerText || "")
+        : formatAnswerLabelForExport(runtimeRecord.answerText || "");
+      return {
+        id: `q${questionNumber}`,
+        number: questionNumber,
+        type,
+        prompt: `문항 ${questionNumber}`,
+        answer,
+        acceptableAnswers: [],
+        explanation: String(runtimeRecord.explanationText || "").trim(),
+        problemType: runtimeRecord.selectableType || runtimeRecord.problemType || PROBLEM_TYPE_OTHER
+      };
+    }
+
+    function buildExamCheckSetDraftPayload(options = {}) {
+      const entries = getCurrentExamCheckSetQuestionEntries();
+      const title = normalizeProblemText(options.title ?? elements.examCheckSetTitleInput?.value ?? "") || getDefaultExamCheckSetTitle();
+      const description = normalizeProblemText(options.description ?? elements.examCheckSetDescriptionInput?.value ?? "") || getDefaultExamCheckSetDescription();
+      const requestedId = normalizeProblemText(options.checkSetId ?? elements.examCheckSetIdInput?.value ?? "");
+      const schoolKey = normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
+      const schoolName = getSelectedSchoolProfile()?.name || "";
+      const sourceKey = getSchoolSourceFilterKey();
+      const sourceName = getLibrarySourceLabel(sourceKey);
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const classIds = parseCheckSetClassIds(options.classIds ?? elements.examCheckSetClassIdsInput?.value ?? "");
+      const questions = [];
+      const questionMappings = [];
+      const missingAnswers = [];
+
+      entries.forEach((entry, index) => {
+        const question = buildExamCheckSetQuestionPayload(entry.record, index);
+        if (!question.answer) {
+          missingAnswers.push(question.number);
+        }
+        questions.push(question);
+        questionMappings.push({
+          questionId: question.id,
+          number: question.number,
+          problemRecordId: entry.record.recordId,
+          sourceProblemId: entry.record.recordId,
+          passageKey: entry.record.passageKey || "",
+          typeLabel: question.problemType || PROBLEM_TYPE_OTHER,
+          textbookName: entry.record.textbookName || "",
+          librarySourceKey: getRecordSourceKey(entry.record),
+          librarySourceName: getRecordSourceLabel(entry.record)
+        });
+      });
+
+      if (!questions.length) {
+        throw new Error("CHECK 세트로 변환할 문항이 없습니다.");
+      }
+      if (missingAnswers.length) {
+        const preview = missingAnswers.slice(0, 8).join(", ");
+        const suffix = missingAnswers.length > 8 ? ` 외 ${missingAnswers.length - 8}문항` : "";
+        throw new Error(`정답이 비어 있는 문항이 있어 CHECK 세트를 만들 수 없습니다: ${preview}${suffix}`);
+      }
+
+      const baseId = requestedId || buildPortableCheckSetId(
+        `${schoolName || "school"}-${sourceKey}-${retryContext?.student?.name || ""}-${retryContext?.roundIndex || ""}-${title}`,
+        "pdflab-check-set"
+      );
+      const signature = getExamSelectionSignature(entries);
+      return {
+        title,
+        description,
+        checkSetId: baseId,
+        classIds,
+        schoolKey,
+        schoolName,
+        librarySourceKey: sourceKey,
+        librarySourceName: sourceName,
+        historyScope: retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL,
+        workflowMode: state.schoolWorkflow.draftMode,
+        studentRetrySessionId: retryContext?.sessionId || "",
+        studentRetrySessionName: retryContext?.session?.name || "",
+        studentRetryStudentId: retryContext?.studentId || "",
+        studentRetryStudentName: retryContext?.student?.name || "",
+        studentRetryRoundIndex: retryContext?.roundIndex || 0,
+        signature,
+        questions,
+        questionMappings,
+        objectiveCount: questions.filter((question) => question.type === "객관식").length,
+        subjectiveCount: questions.filter((question) => question.type !== "객관식").length,
+        exportPayload: {
+          kind: "check-set",
+          savedAt: new Date().toISOString(),
+          id: baseId,
+          title,
+          description,
+          classIds,
+          availableFrom: "",
+          availableTo: "",
+          questions
+        }
+      };
+    }
+
+    function downloadExamCheckSetPayload(record) {
+      const payload = record?.exportPayload || record?.payload;
+      if (!payload || !Array.isArray(payload.questions)) {
+        throw new Error("다운로드할 CHECK 세트 데이터가 없습니다.");
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${buildPortableCheckSetId(record.fileStem || payload.id || payload.title || "pdflab-check-set")}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function persistExamCheckSet(options = {}) {
+      const draft = buildExamCheckSetDraftPayload(options);
+      if (elements.examCheckSetTitleInput && !normalizeProblemText(elements.examCheckSetTitleInput.value)) {
+        elements.examCheckSetTitleInput.value = draft.title;
+      }
+      if (elements.examCheckSetIdInput) {
+        elements.examCheckSetIdInput.value = draft.checkSetId;
+      }
+      if (elements.examCheckSetDescriptionInput && !normalizeProblemText(elements.examCheckSetDescriptionInput.value)) {
+        elements.examCheckSetDescriptionInput.value = draft.description;
+      }
+      if (elements.examCheckSetClassIdsInput && !normalizeProblemText(elements.examCheckSetClassIdsInput.value) && draft.classIds.length) {
+        elements.examCheckSetClassIdsInput.value = draft.classIds.join(", ");
+      }
+      const existingRecord = getStoredCheckSetRecords().find((record) =>
+        String(record.checkSetId || "") === draft.checkSetId &&
+        normalizeSchoolKey(record.schoolKey || "") === draft.schoolKey &&
+        normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === draft.librarySourceKey &&
+        String(record.studentRetryStudentId || "") === draft.studentRetryStudentId &&
+        String(record.studentRetrySessionId || "") === draft.studentRetrySessionId &&
+        Number(record.studentRetryRoundIndex || 0) === Number(draft.studentRetryRoundIndex || 0)
+      );
+      const now = Date.now();
+      const record = {
+        checkSetRecordId: existingRecord?.checkSetRecordId || `check-set-record-${now}-${Math.random().toString(36).slice(2, 8)}`,
+        checkSetId: draft.checkSetId,
+        title: draft.title,
+        description: draft.description,
+        classIds: [...draft.classIds],
+        schoolKey: draft.schoolKey,
+        schoolName: draft.schoolName,
+        librarySourceKey: draft.librarySourceKey,
+        librarySourceName: draft.librarySourceName,
+        historyScope: draft.historyScope,
+        workflowMode: draft.workflowMode,
+        studentRetrySessionId: draft.studentRetrySessionId,
+        studentRetrySessionName: draft.studentRetrySessionName,
+        studentRetryStudentId: draft.studentRetryStudentId,
+        studentRetryStudentName: draft.studentRetryStudentName,
+        studentRetryRoundIndex: draft.studentRetryRoundIndex,
+        signature: draft.signature,
+        questionCount: draft.questions.length,
+        objectiveCount: draft.objectiveCount,
+        subjectiveCount: draft.subjectiveCount,
+        createdAt: existingRecord?.createdAt || now,
+        updatedAt: now,
+        fileStem: draft.checkSetId,
+        exportPayload: draft.exportPayload,
+        questionMappings: draft.questionMappings
+      };
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_CHECK_SET_STORE, "readwrite");
+      transaction.objectStore(LIBRARY_CHECK_SET_STORE).put(record);
+      await idbTransactionDone(transaction);
+      await refreshLibrarySummary();
+      await syncLibraryFolderFromStateIfConnected();
+      return {
+        record,
+        created: !existingRecord
+      };
+    }
+
+    async function saveCurrentExamAsCheckSet(downloadAfterSave = false) {
+      setBusy(true);
+      setStatus(downloadAfterSave ? "CHECK 세트를 만들고 JSON을 준비하는 중입니다..." : "CHECK 세트를 저장하는 중입니다...", "working", "CHECK");
+      try {
+        const { record, created } = await persistExamCheckSet();
+        if (downloadAfterSave) {
+          downloadExamCheckSetPayload(record);
+        }
+        setStatus(
+          created
+            ? `${record.title} CHECK 세트를 저장했습니다.`
+            : `${record.title} CHECK 세트를 업데이트했습니다.`,
+          "idle",
+          "CHECK"
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteStoredExamCheckSet(checkSetRecordId) {
+      const target = getStoredCheckSetRecords().find((record) => record.checkSetRecordId === checkSetRecordId);
+      if (!target) {
+        throw new Error("삭제할 CHECK 세트를 찾을 수 없습니다.");
+      }
+      const confirmed = window.confirm(`${target.title || "CHECK 세트"}를 삭제할까요?\n\n문제-원문항 매핑 기록도 함께 사라집니다.`);
+      if (!confirmed) {
+        return;
+      }
+      await deleteRecordFromStore(LIBRARY_CHECK_SET_STORE, checkSetRecordId);
+      await refreshLibrarySummary();
+      await syncLibraryFolderFromStateIfConnected();
+      setStatus(`${target.title || "CHECK 세트"}를 삭제했습니다.`, "idle", "CHECK");
+    }
+
+    function updateExamCheckSetSummary() {
+      if (!elements.examCheckSetSummary) {
+        return;
+      }
+      const slotCount = state.examBuilder.slots.length;
+      if (!slotCount) {
+        elements.examCheckSetSummary.textContent = "현재 draft를 만들면 여기서 CHECK 세트를 함께 저장할 수 있습니다.";
+        return;
+      }
+      const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
+      if (assignedCount !== slotCount) {
+        elements.examCheckSetSummary.textContent = `아직 문항이 배정되지 않은 슬롯이 ${slotCount - assignedCount}개 있어서 CHECK 세트를 만들 수 없습니다.`;
+        return;
+      }
+      const questionEntries = getExamSlotAssignedRecords().filter((entry) => entry?.record?.kind !== "shared");
+      const missingAnswers = questionEntries.filter((entry) => {
+        const runtimeRecord = cloneProblemRecordWithRepairedOcrAnswer(entry.record);
+        const answer = runtimeRecord.isSubjective
+          ? normalizeProblemText(runtimeRecord.answerText || "")
+          : formatAnswerLabelForExport(runtimeRecord.answerText || "");
+        return !answer;
+      }).length;
+      const classCount = parseCheckSetClassIds(elements.examCheckSetClassIdsInput?.value || "").length;
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const title = normalizeProblemText(elements.examCheckSetTitleInput?.value || "") || getDefaultExamCheckSetTitle();
+      const summaryBits = [
+        title,
+        `${questionEntries.length}문항`,
+        classCount ? `반 ID ${classCount}개` : "반 ID 미지정",
+        retryContext ? `${retryContext.student?.name || "학생"} ${retryContext.roundIndex || ""}차` : "학교 공통"
+      ];
+      if (missingAnswers) {
+        summaryBits.push(`정답 미입력 ${missingAnswers}문항`);
+      } else {
+        summaryBits.push("문제-원문항 매핑 저장 준비 완료");
+      }
+      elements.examCheckSetSummary.textContent = summaryBits.filter(Boolean).join(" · ");
+    }
+
+    function renderExamCheckSetList() {
+      if (!elements.examCheckSetList || !elements.examCheckSetEmptyState) {
+        return;
+      }
+      const records = getCheckSetRecordsForSelectedSchool();
+      elements.examCheckSetEmptyState.hidden = records.length > 0;
+      if (!records.length) {
+        elements.examCheckSetList.innerHTML = "";
+        return;
+      }
+      elements.examCheckSetList.innerHTML = records.map((record) => {
+        const typeSummary = Array.from(new Set((record.questionMappings || []).map((item) => item.typeLabel).filter(Boolean)))
+          .sort((left, right) => left.localeCompare(right, "ko"));
+        const metaBits = [
+          `${record.questionCount || 0}문항`,
+          record.classIds?.length ? `반 ${record.classIds.length}개` : "반 미지정",
+          formatTimestamp(record.updatedAt || record.createdAt)
+        ];
+        const scopeLabel = record.historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
+          ? `${record.studentRetryStudentName || "학생"} · ${record.studentRetryRoundIndex || ""}차`
+          : `${record.schoolName || "학교"} · 공통`;
+        return `
+          <article class="exam-history-card">
+            <header class="exam-history-card-header">
+              <div>
+                <h3>${escapeHtml(record.title || "CHECK 세트")}</h3>
+                <p>${escapeHtml(record.checkSetId || "")}</p>
+              </div>
+              <div class="exam-history-actions">
+                <button class="ghost-button exam-history-load-button" type="button" data-check-set-download="${escapeHtml(record.checkSetRecordId)}">JSON 다운로드</button>
+                <button class="ghost-button exam-history-delete-button" type="button" data-check-set-delete="${escapeHtml(record.checkSetRecordId)}">삭제</button>
+              </div>
+            </header>
+            <p class="exam-history-school">${escapeHtml(scopeLabel)} · ${escapeHtml(record.librarySourceName || getLibrarySourceLabel(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY))}</p>
+            <p class="exam-history-meta">${escapeHtml(metaBits.join(" · "))}</p>
+            <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
     function renderExamHistoryList() {
       const examSets = getExamSetsForSelectedSchool();
       elements.examHistoryEmptyState.hidden = examSets.length > 0;
       if (!examSets.length) {
         elements.examHistoryList.innerHTML = "";
         renderStudentRetryHistoryList();
+        renderExamCheckSetList();
         return;
       }
       const examItems = getExamItems();
@@ -6386,6 +7104,7 @@
         `;
       }).join("");
       renderStudentRetryHistoryList();
+      renderExamCheckSetList();
     }
 
     function renderSavedWorkCards(kind, currentWorkId = "") {
@@ -6433,7 +7152,11 @@
     }
 
     function getDefaultExamWorkName() {
-      return normalizeProblemText(elements.examWorkNameInput.value || elements.examTitleInput.value) || `시험지 작업 ${formatTimestamp(Date.now())}`;
+      return normalizeProblemText(
+        elements.examWorkNameInput?.value ||
+        elements.examTitleInput.value ||
+        [getSelectedSchoolProfile()?.name || "", state.schoolWorkflow.draftMode === "full" ? "full" : "distinct", "draft"].filter(Boolean).join("-")
+      ) || `시험지 작업 ${formatTimestamp(Date.now())}`;
     }
 
     function captureSchoolWorkflowSnapshot() {
@@ -6464,6 +7187,7 @@
       state.schoolWorkflow.excludeUsedProblems = snapshot.excludeUsedProblems !== false;
       state.schoolWorkflow.excludeUsedPassageTypes = Boolean(snapshot.excludeUsedPassageTypes);
       state.schoolWorkflow.warnings = Array.isArray(snapshot.warnings) ? [...snapshot.warnings] : [];
+      applySelectedSchoolClassIdsToCheckSetInput(true);
 
       if (elements.schoolModeDistinct) {
         elements.schoolModeDistinct.checked = state.schoolWorkflow.draftMode === "distinct";
@@ -6548,85 +7272,98 @@
       }
     }
 
-    async function saveCurrentExamWork() {
+    async function persistCurrentExamWorkRecord() {
       if (!state.examBuilder.slots.length) {
         throw new Error("먼저 학교별 출제 draft를 생성한 뒤 저장해주세요.");
       }
 
+      const existingRecord = state.examBuilder.loadedWorkId
+        ? getSavedWorks("exam").find((record) => record.workId === state.examBuilder.loadedWorkId)
+        : null;
+      const workId = existingRecord?.workId || createSavedWorkId("exam");
+      const now = Date.now();
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const slots = state.examBuilder.slots.map((slot) => ({
+        id: slot.id,
+        category: slot.category,
+        librarySourceKey: slot.librarySourceKey || getSchoolSourceFilterKey(),
+        librarySourceName: getLibrarySourceLabel(slot.librarySourceKey || getSchoolSourceFilterKey()),
+        textbookName: slot.textbookName,
+        passageKey: slot.passageKey,
+        tailPackKey: slot.tailPackKey,
+        selectedType: slot.selectedType,
+        assignedProblemId: slot.assignedProblemId,
+        assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
+        errorMessage: slot.errorMessage || "",
+        schoolDraftMode: slot.schoolDraftMode || "",
+        studentRetrySessionId: slot.studentRetrySessionId || "",
+        studentRetryStudentId: slot.studentRetryStudentId || "",
+        studentRetryRoundIndex: Number.parseInt(slot.studentRetryRoundIndex, 10) || 0
+      }));
+      const workName = getDefaultExamWorkName();
+      const assignedCount = slots.filter((slot) => slot.assignedProblemId).length;
+      const payload = {
+        objectiveCount: Number.parseInt(elements.examObjectiveCountInput.value, 10) || 0,
+        subjectiveCount: Number.parseInt(elements.examSubjectiveCountInput.value, 10) || 0,
+        tailCount: Number.parseInt(elements.examTailCountInput.value, 10) || 0,
+        kicker: elements.examKickerInput.value.trim(),
+        title: elements.examTitleInput.value.trim(),
+        subtitle: elements.examSubtitleInput.value.trim(),
+        answerOutputMode: getSelectedExamAnswerMode(),
+        checkSetMeta: {
+          title: elements.examCheckSetTitleInput?.value?.trim() || "",
+          checkSetId: elements.examCheckSetIdInput?.value?.trim() || "",
+          description: elements.examCheckSetDescriptionInput?.value?.trim() || "",
+          classIds: elements.examCheckSetClassIdsInput?.value?.trim() || ""
+        },
+        loadedExamId: state.examBuilder.loadedExamId || "",
+        layoutSettings: captureSharedLayoutSettings(),
+        schoolWorkflow: captureSchoolWorkflowSnapshot(),
+        studentRetry: retryContext
+          ? {
+              sessionId: retryContext.sessionId,
+              sessionName: retryContext.session?.name || "",
+              studentId: retryContext.studentId,
+              studentName: retryContext.student?.name || "",
+              roundIndex: retryContext.roundIndex
+            }
+          : null,
+        slots
+      };
+      const selectedSchoolName = getSelectedSchoolProfile()?.name || "학교 미지정";
+      const sourceLabel = getLibrarySourceLabel(payload.schoolWorkflow?.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      const workRecord = {
+        workId,
+        kind: "exam",
+        name: workName,
+        createdAt: existingRecord?.createdAt || now,
+        updatedAt: now,
+        summaryLine: retryContext
+          ? `${selectedSchoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} · ${retryContext.roundIndex}차 오답유형 · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length}`
+          : `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
+        payload
+      };
+
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_WORK_STORE, "readwrite");
+      transaction.objectStore(LIBRARY_WORK_STORE).put(workRecord);
+      await idbTransactionDone(transaction);
+      state.examBuilder.loadedWorkId = workId;
+      if (elements.examWorkNameInput) {
+        elements.examWorkNameInput.value = workName;
+      }
+      await refreshLibrarySummary();
+      await syncLibraryFolderFromStateIfConnected();
+      setOptionalText(elements.examWorkSummary, `${workName} 작업을 저장했습니다. 나중에 다시 불러와 제목 수정이나 문항 교체를 이어갈 수 있습니다.`);
+      return workRecord;
+    }
+
+    async function saveCurrentExamWork() {
       setBusy(true);
       setStatus("시험지 작업을 저장하는 중입니다...", "working", "작업 저장");
       try {
-        const existingRecord = state.examBuilder.loadedWorkId
-          ? getSavedWorks("exam").find((record) => record.workId === state.examBuilder.loadedWorkId)
-          : null;
-        const workId = existingRecord?.workId || createSavedWorkId("exam");
-        const now = Date.now();
-        const retryContext = getCurrentStudentRetryDraftContext();
-        const slots = state.examBuilder.slots.map((slot) => ({
-          id: slot.id,
-          category: slot.category,
-          librarySourceKey: slot.librarySourceKey || getSchoolSourceFilterKey(),
-          librarySourceName: getLibrarySourceLabel(slot.librarySourceKey || getSchoolSourceFilterKey()),
-          textbookName: slot.textbookName,
-          passageKey: slot.passageKey,
-          tailPackKey: slot.tailPackKey,
-          selectedType: slot.selectedType,
-          assignedProblemId: slot.assignedProblemId,
-          assignedProblemIds: Array.isArray(slot.assignedProblemIds) ? [...slot.assignedProblemIds] : [],
-          errorMessage: slot.errorMessage || "",
-          schoolDraftMode: slot.schoolDraftMode || "",
-          studentRetrySessionId: slot.studentRetrySessionId || "",
-          studentRetryStudentId: slot.studentRetryStudentId || "",
-          studentRetryRoundIndex: Number.parseInt(slot.studentRetryRoundIndex, 10) || 0
-        }));
-        const workName = getDefaultExamWorkName();
-        const assignedCount = slots.filter((slot) => slot.assignedProblemId).length;
-        const payload = {
-          objectiveCount: Number.parseInt(elements.examObjectiveCountInput.value, 10) || 0,
-          subjectiveCount: Number.parseInt(elements.examSubjectiveCountInput.value, 10) || 0,
-          tailCount: Number.parseInt(elements.examTailCountInput.value, 10) || 0,
-          kicker: elements.examKickerInput.value.trim(),
-          title: elements.examTitleInput.value.trim(),
-          subtitle: elements.examSubtitleInput.value.trim(),
-          answerOutputMode: getSelectedExamAnswerMode(),
-          loadedExamId: state.examBuilder.loadedExamId || "",
-          layoutSettings: captureSharedLayoutSettings(),
-          schoolWorkflow: captureSchoolWorkflowSnapshot(),
-          studentRetry: retryContext
-            ? {
-                sessionId: retryContext.sessionId,
-                sessionName: retryContext.session?.name || "",
-                studentId: retryContext.studentId,
-                studentName: retryContext.student?.name || "",
-                roundIndex: retryContext.roundIndex
-              }
-            : null,
-          slots
-        };
-        const selectedSchoolName = getSelectedSchoolProfile()?.name || "학교 미지정";
-        const sourceLabel = getLibrarySourceLabel(payload.schoolWorkflow?.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
-        const workRecord = {
-          workId,
-          kind: "exam",
-          name: workName,
-          createdAt: existingRecord?.createdAt || now,
-          updatedAt: now,
-          summaryLine: retryContext
-            ? `${selectedSchoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} · ${retryContext.roundIndex}차 오답유형 · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length}`
-            : `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
-          payload
-        };
-
-        const db = await openLibraryDb();
-        const transaction = db.transaction(LIBRARY_WORK_STORE, "readwrite");
-        transaction.objectStore(LIBRARY_WORK_STORE).put(workRecord);
-        await idbTransactionDone(transaction);
-        state.examBuilder.loadedWorkId = workId;
-        elements.examWorkNameInput.value = workName;
-        await refreshLibrarySummary();
-        await syncLibraryFolderFromStateIfConnected();
-        setOptionalText(elements.examWorkSummary, `${workName} 작업을 저장했습니다. 나중에 다시 불러와 제목 수정이나 문항 교체를 이어갈 수 있습니다.`);
-        setStatus(`${workName} 작업을 저장했습니다.`, "idle", "작업 저장");
+        const workRecord = await persistCurrentExamWorkRecord();
+        setStatus(`${workRecord.name} 작업을 저장했습니다.`, "idle", "작업 저장");
       } finally {
         setBusy(false);
       }
@@ -6712,6 +7449,18 @@
       elements.examTitleInput.value = payload.title || "파이널 테스트";
       elements.examSubtitleInput.value = payload.subtitle || "";
       applyExamAnswerModeToUi(payload.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      if (elements.examCheckSetTitleInput) {
+        elements.examCheckSetTitleInput.value = payload.checkSetMeta?.title || "";
+      }
+      if (elements.examCheckSetIdInput) {
+        elements.examCheckSetIdInput.value = payload.checkSetMeta?.checkSetId || "";
+      }
+      if (elements.examCheckSetDescriptionInput) {
+        elements.examCheckSetDescriptionInput.value = payload.checkSetMeta?.description || "";
+      }
+      if (elements.examCheckSetClassIdsInput) {
+        elements.examCheckSetClassIdsInput.value = payload.checkSetMeta?.classIds || "";
+      }
       state.examBuilder.loadedExamId = payload.loadedExamId || "";
       state.examBuilder.loadedWorkId = workId;
       if (payload.studentRetry?.studentId) {
@@ -6750,7 +7499,9 @@
         }
       });
       clearExamAnswerEditorState();
-      elements.examWorkNameInput.value = record.name || "";
+      if (elements.examWorkNameInput) {
+        elements.examWorkNameInput.value = record.name || "";
+      }
       renderExamLibraryList();
       renderExamSlots();
       setActiveTab("exam");
@@ -8044,6 +8795,23 @@
       return safe || "repacked-problems";
     }
 
+    function buildPortableCheckSetId(value, fallback = "pdflab-check-set") {
+      const safe = slugifyFileName(String(value || ""))
+        .toLowerCase()
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      return safe || fallback;
+    }
+
+    function parseCheckSetClassIds(value) {
+      return Array.from(new Set(
+        String(value || "")
+          .split(/[\n,]+/)
+          .map((entry) => normalizeProblemText(entry))
+          .filter(Boolean)
+      ));
+    }
+
     function readSettings() {
       return {
         kicker: elements.kickerInput.value.trim(),
@@ -8132,9 +8900,11 @@
       elements.previewExamButton.disabled = isBusy;
       elements.printExamButton.disabled = isBusy;
       elements.commitExamButton.disabled = isBusy;
-      elements.saveExamWorkButton.disabled = isBusy || !state.examBuilder.slots.length;
-      if (elements.saveSchoolButton) {
-        elements.saveSchoolButton.disabled = isBusy;
+      if (elements.saveExamWorkButton) {
+        elements.saveExamWorkButton.disabled = isBusy || !state.examBuilder.slots.length;
+      }
+      if (elements.refreshSchoolCatalogButton) {
+        elements.refreshSchoolCatalogButton.disabled = isBusy;
       }
       if (elements.generateSchoolDraftButton) {
         elements.generateSchoolDraftButton.disabled = isBusy;
@@ -9493,6 +10263,7 @@
       syncTextbookModeUi();
       updateLoadedFileLabel();
       await initializeLibraryFolderStorage();
+      await syncSchoolCatalogFromFirebase();
       state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
       applySchoolWorkflowSnapshot(captureSchoolWorkflowSnapshot());
       renderExamLibraryList();
@@ -9586,12 +10357,36 @@
           applyExamAnswerModeToUi(elements.examAnswerModeSelect.value);
         });
       }
+      [
+        elements.examTitleInput,
+        elements.examCheckSetTitleInput,
+        elements.examCheckSetIdInput,
+        elements.examCheckSetDescriptionInput,
+        elements.examCheckSetClassIdsInput
+      ].forEach((input) => {
+        if (!input) {
+          return;
+        }
+        input.addEventListener("input", () => {
+          updateExamCheckSetSummary();
+        });
+      });
       elements.printExamButton.addEventListener("click", () => {
         printExamLayout(false).catch(handleError);
       });
       elements.commitExamButton.addEventListener("click", () => {
         printExamLayout(true).catch(handleError);
       });
+      if (elements.saveExamCheckSetButton) {
+        elements.saveExamCheckSetButton.addEventListener("click", () => {
+          saveCurrentExamAsCheckSet(false).catch(handleError);
+        });
+      }
+      if (elements.downloadExamCheckSetButton) {
+        elements.downloadExamCheckSetButton.addEventListener("click", () => {
+          saveCurrentExamAsCheckSet(true).catch(handleError);
+        });
+      }
       elements.loadMoreButton.addEventListener("click", () => {
         ensureSheetRangeRendered(state.renderedSheetIndices.size + 6).catch(handleError);
       });
@@ -9728,9 +10523,11 @@
       elements.saveRepackWorkButton.addEventListener("click", () => {
         saveCurrentRepackWork().catch(handleError);
       });
-      elements.saveExamWorkButton.addEventListener("click", () => {
-        saveCurrentExamWork().catch(handleError);
-      });
+      if (elements.saveExamWorkButton) {
+        elements.saveExamWorkButton.addEventListener("click", () => {
+          saveCurrentExamWork().catch(handleError);
+        });
+      }
       elements.repackWorkList.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLButtonElement)) {
@@ -9793,23 +10590,43 @@
           }
         });
       }
-      if (elements.saveSchoolButton) {
-        elements.saveSchoolButton.addEventListener("click", () => {
-          const schoolName = normalizeSchoolName(elements.schoolNameInput.value);
-          if (!schoolName) {
-            handleError(new Error("학교 이름을 먼저 입력해주세요."));
+      if (elements.examCheckSetList) {
+        elements.examCheckSetList.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLButtonElement)) {
             return;
           }
+          if (target.dataset.checkSetDownload) {
+            try {
+              const record = getStoredCheckSetRecords().find((entry) => entry.checkSetRecordId === target.dataset.checkSetDownload);
+              if (!record) {
+                throw new Error("다운로드할 CHECK 세트를 찾지 못했습니다.");
+              }
+              downloadExamCheckSetPayload(record);
+            } catch (error) {
+              handleError(error);
+            }
+            return;
+          }
+          if (target.dataset.checkSetDelete) {
+            deleteStoredExamCheckSet(target.dataset.checkSetDelete).catch(handleError);
+          }
+        });
+      }
+      if (elements.refreshSchoolCatalogButton) {
+        elements.refreshSchoolCatalogButton.addEventListener("click", () => {
           Promise.resolve()
             .then(async () => {
-              registerSchoolProfile(schoolName);
-              renderExamLibraryList();
-              renderExamHistoryList();
-              updateExamBuilderSummary();
-              await syncLibraryFolderFromStateIfConnected();
-              setStatus(`${schoolName} 학교 프로필을 준비했습니다.`, "idle", "학교");
+              setBusy(true);
+              setStatus("Firebase 학교/반 목록을 새로고침하는 중입니다...", "working", "학교");
+              await syncSchoolCatalogFromFirebase(true);
+              renderSchoolList();
+              setStatus("Firebase 학교/반 목록을 새로고침했습니다.", "idle", "학교");
             })
-            .catch(handleError);
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
         });
       }
       if (elements.schoolList) {
