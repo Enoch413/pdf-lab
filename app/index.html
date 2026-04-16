@@ -477,10 +477,17 @@
             <div class="field-grid compact-field-grid">
               <label class="field-row">
                 <span class="field-label">학생 추가</span>
-                <div class="inline-action-field">
-                  <input class="text-input" id="studentNameInput" type="text" placeholder="예: 김민준">
-                  <button class="ghost-button" type="button" id="addStudentButton">학생 등록</button>
+                <div class="student-retry-add-stack">
+                  <select class="select-input" id="studentRetryFirebaseSelect" hidden disabled>
+                    <option value="">Firebase 학생 목록을 불러오는 중입니다</option>
+                  </select>
+                  <p class="small-note student-retry-firebase-summary" id="studentRetryFirebaseSummary">Firebase 학생 목록을 읽을 수 없으면 기존 수동 입력을 그대로 사용합니다.</p>
+                  <div class="inline-action-field">
+                    <input class="text-input" id="studentNameInput" type="text" placeholder="예: 김민준" list="studentRetryFirebaseList" autocomplete="off">
+                    <button class="ghost-button" type="button" id="addStudentButton">학생 등록</button>
+                  </div>
                 </div>
+                <datalist id="studentRetryFirebaseList"></datalist>
               </label>
               <label class="field-row">
                 <span class="field-label">학생 선택</span>
@@ -1066,6 +1073,8 @@
         db: null,
         currentUser: null,
         currentProfile: null,
+        firebaseUsers: [],
+        studentCatalog: [],
         classCatalog: [],
         schoolCatalog: [],
         lastSyncedAt: 0,
@@ -1244,6 +1253,9 @@
       generateSchoolDraftButton: document.getElementById("generateSchoolDraftButton"),
       clearSchoolDraftButton: document.getElementById("clearSchoolDraftButton"),
       studentNameInput: document.getElementById("studentNameInput"),
+      studentRetryFirebaseSelect: document.getElementById("studentRetryFirebaseSelect"),
+      studentRetryFirebaseSummary: document.getElementById("studentRetryFirebaseSummary"),
+      studentRetryFirebaseList: document.getElementById("studentRetryFirebaseList"),
       addStudentButton: document.getElementById("addStudentButton"),
       studentRetryStudentSelect: document.getElementById("studentRetryStudentSelect"),
       studentRetrySessionSelect: document.getElementById("studentRetrySessionSelect"),
@@ -1933,6 +1945,17 @@
               studentId: String(student?.studentId || createRetryId("student")),
               schoolKey,
               name,
+              firebaseUid: normalizeProblemText(student?.firebaseUid || ""),
+              classIds: Array.from(new Set(
+                (Array.isArray(student?.classIds) ? student.classIds : [])
+                  .map((classId) => normalizeProblemText(classId))
+                  .filter(Boolean)
+              )),
+              classNames: Array.from(new Set(
+                (Array.isArray(student?.classNames) ? student.classNames : [])
+                  .map((className) => normalizeSchoolName(className))
+                  .filter(Boolean)
+              )).sort((left, right) => left.localeCompare(right, "ko")),
               createdAt: Number(student?.createdAt) || Date.now(),
               updatedAt: Number(student?.updatedAt) || Date.now()
             };
@@ -2162,6 +2185,145 @@
       return rows.sort((left, right) => left.name.localeCompare(right.name, "ko"));
     }
 
+    function getSelectedSchoolClassIds() {
+      return Array.from(new Set(
+        (Array.isArray(getSelectedSchoolProfile()?.classIds) ? getSelectedSchoolProfile().classIds : [])
+          .map((classId) => normalizeProblemText(classId))
+          .filter(Boolean)
+      ));
+    }
+
+    function computeFirebaseStudentCatalogForSelectedSchool() {
+      const classIds = getSelectedSchoolClassIds();
+      const selectedClassSet = new Set(classIds);
+      if (!selectedClassSet.size) {
+        return [];
+      }
+      const classInfoMap = new Map(
+        (Array.isArray(state.firebaseSchoolBridge.classCatalog) ? state.firebaseSchoolBridge.classCatalog : [])
+          .map((entry) => [entry.id, entry])
+      );
+      return (Array.isArray(state.firebaseSchoolBridge.firebaseUsers) ? state.firebaseSchoolBridge.firebaseUsers : [])
+        .filter((user) => String(user?.role || "").toLowerCase() === "student")
+        .map((user) => {
+          const matchedClassIds = Array.from(new Set(
+            (Array.isArray(user?.classIds) ? user.classIds : [])
+              .map((classId) => normalizeProblemText(classId))
+              .filter((classId) => selectedClassSet.has(classId))
+          ));
+          if (!matchedClassIds.length) {
+            return null;
+          }
+          const classNames = matchedClassIds
+            .map((classId) => classInfoMap.get(classId) || normalizeFirebaseClassInfo({ id: classId }))
+            .filter(Boolean)
+            .map((classInfo) => normalizeSchoolName(classInfo.name || classInfo.id || ""))
+            .filter(Boolean);
+          const name = normalizeSchoolName(user?.name || "");
+          if (!name) {
+            return null;
+          }
+          return {
+            uid: normalizeProblemText(user?.uid || ""),
+            name,
+            role: normalizeProblemText(user?.role || "student").toLowerCase() || "student",
+            classIds: matchedClassIds,
+            classNames: Array.from(new Set(classNames)).sort((left, right) => left.localeCompare(right, "ko"))
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => left.name.localeCompare(right.name, "ko") || String(left.uid || "").localeCompare(String(right.uid || ""), "ko"));
+    }
+
+    function getFirebaseStudentCatalogForSelectedSchool() {
+      const catalog = computeFirebaseStudentCatalogForSelectedSchool();
+      state.firebaseSchoolBridge.studentCatalog = catalog;
+      return catalog;
+    }
+
+    function getSelectedFirebaseStudentCandidate() {
+      const catalog = getFirebaseStudentCatalogForSelectedSchool();
+      const selectedUid = normalizeProblemText(elements.studentRetryFirebaseSelect?.value || "");
+      if (selectedUid) {
+        return catalog.find((entry) => entry.uid === selectedUid) || null;
+      }
+      const typedName = normalizeProblemText(elements.studentNameInput?.value || "");
+      if (!typedName) {
+        return null;
+      }
+      return catalog.find((entry) => entry.name === typedName) || null;
+    }
+
+    function getPendingRetryStudentName() {
+      return normalizeProblemText(getSelectedFirebaseStudentCandidate()?.name || elements.studentNameInput?.value || "");
+    }
+
+    function formatRetryStudentLabel(student = {}) {
+      const classNames = Array.isArray(student?.classNames) ? student.classNames.filter(Boolean) : [];
+      return classNames.length
+        ? `${student.name} · ${classNames.join(", ")}`
+        : student.name;
+    }
+
+    function renderStudentRetryFirebaseControls() {
+      const selectedSchool = getSelectedSchoolProfile();
+      const selectedClassIds = getSelectedSchoolClassIds();
+      const currentRole = String(state.firebaseSchoolBridge.currentProfile?.role || "").toLowerCase();
+      const isAdmin = currentRole === "admin";
+      const firebaseStudents = isAdmin ? getFirebaseStudentCatalogForSelectedSchool() : [];
+      const showFirebasePicker = isAdmin && firebaseStudents.length > 0;
+
+      if (elements.studentRetryFirebaseList) {
+        elements.studentRetryFirebaseList.innerHTML = showFirebasePicker
+          ? firebaseStudents.map((student) => {
+              const classLabel = (student.classNames || []).join(", ");
+              const optionLabel = classLabel ? `${classLabel}${student.uid ? ` · ${student.uid}` : ""}` : (student.uid || "");
+              return `<option value="${escapeHtml(student.name)}"${optionLabel ? ` label="${escapeHtml(optionLabel)}"` : ""}></option>`;
+            }).join("")
+          : "";
+      }
+
+      if (elements.studentRetryFirebaseSelect) {
+        elements.studentRetryFirebaseSelect.hidden = !showFirebasePicker;
+        elements.studentRetryFirebaseSelect.disabled = state.isBusy || !showFirebasePicker;
+        elements.studentRetryFirebaseSelect.innerHTML = showFirebasePicker
+          ? [
+              `<option value="">Firebase 학생 목록에서 선택</option>`,
+              ...firebaseStudents.map((student) => `<option value="${escapeHtml(student.uid)}">${escapeHtml(formatRetryStudentLabel(student))}</option>`)
+            ].join("")
+          : `<option value="">Firebase 학생 목록을 사용할 수 없습니다</option>`;
+        if (!showFirebasePicker) {
+          elements.studentRetryFirebaseSelect.value = "";
+        }
+      }
+
+      if (elements.studentNameInput) {
+        elements.studentNameInput.placeholder = showFirebasePicker
+          ? "학생을 고르거나 이름을 직접 입력"
+          : "예: 김민준";
+      }
+
+      if (elements.studentRetryFirebaseSummary) {
+        if (!selectedSchool) {
+          elements.studentRetryFirebaseSummary.textContent = "학교를 선택하면 해당 학교 반 기준으로 학생 추천 목록이 바뀝니다. 지금은 수동 입력을 사용할 수 있습니다.";
+        } else if (!isPdfLabFirebaseConfigured()) {
+          elements.studentRetryFirebaseSummary.textContent = "Firebase 설정이 없어 기존 수동 입력을 그대로 사용합니다.";
+        } else if (!state.firebaseSchoolBridge.currentUser) {
+          elements.studentRetryFirebaseSummary.textContent = "Firebase 로그인 상태가 없어 기존 수동 입력을 사용합니다.";
+        } else if (!isAdmin) {
+          elements.studentRetryFirebaseSummary.textContent = "관리자 로그인에서만 전체 학생 목록을 자동으로 불러올 수 있습니다. 현재는 기존 수동 입력을 사용합니다.";
+        } else if (state.firebaseSchoolBridge.syncError) {
+          elements.studentRetryFirebaseSummary.textContent = `Firebase 학생 목록 연결 실패: ${state.firebaseSchoolBridge.syncError}. 기존 수동 입력을 사용합니다.`;
+        } else if (!selectedClassIds.length) {
+          elements.studentRetryFirebaseSummary.textContent = "선택한 학교에 연결된 반 ID가 없어 학생 자동 불러오기를 건너뛰고, 기존 수동 입력을 사용합니다.";
+        } else if (!firebaseStudents.length) {
+          elements.studentRetryFirebaseSummary.textContent = "선택한 학교/반에 연결된 학생이 없어 기존 수동 입력을 사용합니다.";
+        } else {
+          elements.studentRetryFirebaseSummary.textContent = `Firebase에서 반 ${selectedClassIds.length}개 기준 학생 ${firebaseStudents.length}명을 불러왔습니다. 목록에서 고르거나 자동완성으로 바로 등록할 수 있습니다.`;
+        }
+      }
+    }
+
     function buildFirebaseSchoolProfiles(classCatalog = [], existingProfiles = []) {
       const existingMap = new Map(
         (Array.isArray(existingProfiles) ? existingProfiles : [])
@@ -2292,8 +2454,11 @@
 
     async function syncSchoolCatalogFromFirebase(forceRefresh = false) {
       if (!isPdfLabFirebaseConfigured()) {
+        state.firebaseSchoolBridge.firebaseUsers = [];
+        state.firebaseSchoolBridge.studentCatalog = [];
         state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 기존 학교 목록만 사용합니다.";
         setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
+        renderStudentRetryPanel();
         return false;
       }
       try {
@@ -2307,14 +2472,19 @@
         const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
         state.firebaseSchoolBridge.currentUser = user || null;
         if (!user) {
+          state.firebaseSchoolBridge.currentProfile = null;
+          state.firebaseSchoolBridge.firebaseUsers = [];
+          state.firebaseSchoolBridge.studentCatalog = [];
           state.firebaseSchoolBridge.syncError = "Firebase 로그인 상태가 없어 기존 학교 목록을 유지합니다. 같은 계정으로 로그인한 뒤 새로고침해주세요.";
           setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
+          renderStudentRetryPanel();
           return false;
         }
 
         const currentProfile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSchoolBridge.db, user);
         state.firebaseSchoolBridge.currentProfile = currentProfile;
 
+        let userCatalogError = "";
         let users = currentProfile ? [currentProfile] : [];
         if (currentProfile?.role === "admin") {
           try {
@@ -2322,15 +2492,20 @@
             users = snapshot.docs.map((doc) => normalizeFirebaseSchoolUserProfile({ uid: doc.id, ...(doc.data() || {}) }));
           } catch (error) {
             console.warn("Firebase users read fallback", error);
+            userCatalogError = error?.message || "Firebase users 전체 목록을 읽지 못했습니다.";
           }
         }
 
         const classCatalog = buildFirebaseClassCatalogFromUsers(users);
         const schoolCatalog = buildFirebaseSchoolProfiles(classCatalog, getSchoolProfiles());
+        state.firebaseSchoolBridge.firebaseUsers = currentProfile?.role === "admin" ? users : [];
         state.firebaseSchoolBridge.classCatalog = classCatalog;
         state.firebaseSchoolBridge.schoolCatalog = schoolCatalog.filter((entry) => entry.source === "firebase");
         state.firebaseSchoolBridge.lastSyncedAt = Date.now();
-        state.firebaseSchoolBridge.syncError = "";
+        state.firebaseSchoolBridge.syncError = userCatalogError;
+        state.firebaseSchoolBridge.studentCatalog = currentProfile?.role === "admin"
+          ? computeFirebaseStudentCatalogForSelectedSchool()
+          : [];
 
         if (schoolCatalog.length) {
           writeStoredSchools(schoolCatalog);
@@ -2346,11 +2521,15 @@
         } else {
           setOptionalText(elements.schoolSelectionSummary, "Firebase에서 반 정보는 읽었지만 학교로 묶을 데이터가 없습니다.");
         }
+        renderStudentRetryPanel();
         return true;
       } catch (error) {
         console.warn("Failed to sync school catalog from Firebase", error);
+        state.firebaseSchoolBridge.firebaseUsers = [];
+        state.firebaseSchoolBridge.studentCatalog = [];
         state.firebaseSchoolBridge.syncError = error?.message || "Firebase 학교 목록을 불러오지 못했습니다.";
         setOptionalText(elements.schoolSelectionSummary, `Firebase 학교/반 동기화 실패: ${state.firebaseSchoolBridge.syncError}`);
+        renderStudentRetryPanel();
         return false;
       }
     }
@@ -4471,7 +4650,8 @@
     }
 
     function addRetryStudent() {
-      const name = normalizeProblemText(elements.studentNameInput?.value || "");
+      const firebaseStudent = getSelectedFirebaseStudentCandidate();
+      const name = getPendingRetryStudentName();
       const schoolKey = getStudentRetrySchoolKey();
       if (!schoolKey) {
         throw new Error("먼저 학교를 선택해주세요.");
@@ -4479,7 +4659,11 @@
       if (!name) {
         throw new Error("학생 이름을 입력해주세요.");
       }
-      const existing = getRetryStudentsForSelectedSchool().find((student) => student.name === name);
+      const existing = getRetryStudentsForSelectedSchool().find((student) =>
+        firebaseStudent?.uid
+          ? String(student.firebaseUid || "") === firebaseStudent.uid
+          : student.name === name
+      );
       if (existing) {
         state.studentRetry.selectedStudentId = existing.studentId;
       } else {
@@ -4488,6 +4672,9 @@
           studentId: createRetryId("student"),
           schoolKey,
           name,
+          firebaseUid: firebaseStudent?.uid || "",
+          classIds: Array.isArray(firebaseStudent?.classIds) ? [...firebaseStudent.classIds] : [],
+          classNames: Array.isArray(firebaseStudent?.classNames) ? [...firebaseStudent.classNames] : [],
           createdAt: now,
           updatedAt: now
         };
@@ -4496,6 +4683,9 @@
       }
       if (elements.studentNameInput) {
         elements.studentNameInput.value = "";
+      }
+      if (elements.studentRetryFirebaseSelect) {
+        elements.studentRetryFirebaseSelect.value = "";
       }
       writeStudentRetryState();
       renderStudentRetryPanel();
@@ -5186,6 +5376,7 @@
       if (!elements.studentRetryRoot) {
         return;
       }
+      renderStudentRetryFirebaseControls();
       ensureStudentRetrySelection();
       const students = getRetryStudentsForSelectedSchool();
       const sessions = getRetrySessionsForSelectedSchool();
@@ -5195,7 +5386,7 @@
       if (elements.studentRetryStudentSelect) {
         elements.studentRetryStudentSelect.disabled = state.isBusy || !students.length;
         elements.studentRetryStudentSelect.innerHTML = students.length
-          ? students.map((student) => `<option value="${escapeHtml(student.studentId)}">${escapeHtml(student.name)}</option>`).join("")
+          ? students.map((student) => `<option value="${escapeHtml(student.studentId)}">${escapeHtml(formatRetryStudentLabel(student))}</option>`).join("")
           : `<option value="">등록된 학생 없음</option>`;
         elements.studentRetryStudentSelect.value = selectedStudent?.studentId || "";
       }
@@ -8927,6 +9118,9 @@
       if (elements.studentNameInput) {
         elements.studentNameInput.disabled = isBusy;
       }
+      if (elements.studentRetryFirebaseSelect) {
+        elements.studentRetryFirebaseSelect.disabled = isBusy || elements.studentRetryFirebaseSelect.hidden;
+      }
       if (elements.addStudentButton) {
         elements.addStudentButton.disabled = isBusy;
       }
@@ -10788,6 +10982,21 @@
             addRetryStudent();
           } catch (error) {
             handleError(error);
+          }
+        });
+      }
+      if (elements.studentRetryFirebaseSelect) {
+        elements.studentRetryFirebaseSelect.addEventListener("change", () => {
+          const selectedStudent = getSelectedFirebaseStudentCandidate();
+          if (!elements.studentNameInput) {
+            return;
+          }
+          elements.studentNameInput.value = selectedStudent?.name || "";
+          if (selectedStudent) {
+            elements.studentNameInput.focus();
+            if (typeof elements.studentNameInput.select === "function") {
+              elements.studentNameInput.select();
+            }
           }
         });
       }

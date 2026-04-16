@@ -2499,6 +2499,15 @@ body[data-workspace-mode] .app-tab-shell {
   border-color: rgba(24, 107, 99, 0.2);
 }
 
+.student-retry-add-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.student-retry-firebase-summary {
+  margin: 0;
+}
+
 .student-retry-select-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
