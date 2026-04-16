@@ -2156,10 +2156,16 @@ body {
 
 .app-topbar-actions {
   margin-left: auto;
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  padding: 6px;
   gap: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 71, 72, 0.08);
+  background: rgba(247, 244, 238, 0.84);
+  box-shadow: 0 10px 24px rgba(30, 42, 39, 0.05);
+  backdrop-filter: blur(10px);
 }
 
 .app-topbar-link {
@@ -2168,21 +2174,22 @@ body {
   justify-content: center;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(24, 71, 72, 0.1);
-  background: rgba(255, 255, 255, 0.84);
-  color: #4b5d66;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #6f7975;
   font-size: 13px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: 0;
   text-decoration: none;
-  box-shadow: 0 8px 16px rgba(30, 42, 39, 0.04);
+  white-space: nowrap;
 }
 
 .app-topbar-link.is-active {
-  border-color: rgba(24, 107, 99, 0.28);
-  background: rgba(24, 107, 99, 0.12);
-  color: var(--accent);
+  background: #ffffff;
+  border-color: rgba(24, 71, 72, 0.08);
+  color: #163f42;
+  box-shadow: 0 8px 18px rgba(30, 42, 39, 0.06);
 }
 
 .app-tab-shell {
