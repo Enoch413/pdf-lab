@@ -227,11 +227,6 @@
         <p class="status-copy" id="statusCopy">PDF를 불러오면 문제를 자동으로 추출해서 공용 라이브러리에 저장할 수 있습니다.</p>
         <span class="stats-pill" id="statsPill">준비됨</span>
       </div>
-      <div class="preview-action-row" id="previewActionRow" hidden>
-        <button class="ghost-button" type="button" id="loadMoreButton">다음 미리보기 더 만들기</button>
-        <button class="solid-button" type="button" id="renderAllButton">전체 미리보기 생성</button>
-      </div>
-
       <div class="preview-root" id="previewRoot">
         <section class="empty-state empty-state-build">
           <div class="empty-kicker">READY TO IMPORT</div>
@@ -258,15 +253,6 @@
                 <form class="firebase-auth-form" id="firebaseLoginForm" hidden>
                   <button class="solid-button" type="button" id="firebaseGoogleLoginButton">Google로 로그인</button>
                   <p class="small-note">CODE LAB에서 쓰는 Google 관리자 계정으로 로그인하면 로컬에서도 반/학생 목록을 불러옵니다.</p>
-                  <label class="field-row">
-                    <span class="field-label">Firebase 이메일</span>
-                    <input class="text-input" id="firebaseEmailInput" type="email" autocomplete="username" placeholder="관리자 이메일">
-                  </label>
-                  <label class="field-row">
-                    <span class="field-label">Firebase 비밀번호</span>
-                    <input class="text-input" id="firebasePasswordInput" type="password" autocomplete="current-password" placeholder="비밀번호">
-                  </label>
-                  <button class="solid-button" type="button" id="firebaseLoginButton">Firebase 로그인</button>
                 </form>
                 <button class="ghost-button" type="button" id="firebaseLogoutButton" hidden>로그아웃</button>
               </div>
@@ -489,22 +475,8 @@
                 <button class="solid-button" type="button" id="generateStudentRetryButton">다음 오답 차수 생성</button>
               </div>
             </div>
-            <p class="small-note" id="studentRetrySummary">학생을 등록하고 1차 공통 세트를 시작하면, 학생별 오답 유형만 같은 지문/유형의 다른 문제로 다시 낼 수 있습니다.</p>
+            <p class="small-note" id="studentRetrySummary">1차 공통 세트를 시작하면 선택한 반의 학생이 자동으로 연결되고, 학생별 오답 유형만 같은 지문/유형의 다른 문제로 다시 낼 수 있습니다.</p>
             <div class="field-grid compact-field-grid">
-              <label class="field-row">
-                <span class="field-label">학생 추가</span>
-                <div class="student-retry-add-stack">
-                  <select class="select-input" id="studentRetryFirebaseSelect" hidden disabled>
-                    <option value="">Firebase 학생 목록을 불러오는 중입니다</option>
-                  </select>
-                  <p class="small-note student-retry-firebase-summary" id="studentRetryFirebaseSummary">Firebase 학생 목록을 읽을 수 없으면 기존 수동 입력을 그대로 사용합니다.</p>
-                  <div class="inline-action-field">
-                    <input class="text-input" id="studentNameInput" type="text" placeholder="예: 김민준" list="studentRetryFirebaseList" autocomplete="off">
-                    <button class="ghost-button" type="button" id="addStudentButton">학생 등록</button>
-                  </div>
-                </div>
-                <datalist id="studentRetryFirebaseList"></datalist>
-              </label>
               <label class="field-row">
                 <span class="field-label">학생 선택</span>
                 <div class="student-retry-select-actions">
@@ -5407,7 +5379,7 @@
       const addedStudentCount = ensureFirebaseRetryStudentsForSelectedSchool();
       const students = getRetryStudentsForSelectedSchool();
       if (!students.length) {
-        throw new Error("1차 공통을 적용할 학생이 없습니다. Firebase 학생 목록을 불러오거나 학생을 먼저 등록해주세요.");
+      throw new Error("1차 공통을 적용할 학생이 없습니다. 반 학생이 Firebase에 연결되어 있는지 확인한 뒤 반 새로고침 후 다시 시도해주세요.");
       }
       const now = Date.now();
       const session = {
@@ -5950,7 +5922,7 @@
         elements.studentRetryRoot.innerHTML = `
           <div class="exam-empty-state">
             <h3>등록된 학생이 없습니다</h3>
-            <p>학생 이름을 입력하고 학생 등록을 누르면 오답 재출제를 학생별로 관리할 수 있습니다.</p>
+            <p>1차 공통을 시작하면 선택한 반의 Firebase 학생 목록이 자동으로 연결됩니다.</p>
           </div>
         `;
         return;
@@ -7692,7 +7664,7 @@
       writeStudentRetryState({ syncFolder: false });
       const students = getRetryStudentsForSelectedSchool();
       if (!students.length) {
-        throw new Error("CHECK 세트를 배정할 학생이 없습니다. Firebase 학생 목록을 불러오거나 학생을 먼저 등록해주세요.");
+        throw new Error("CHECK 세트를 배정할 학생이 없습니다. 선택한 반의 Firebase 학생 목록을 먼저 불러와주세요.");
       }
       return students;
     }
@@ -9972,8 +9944,12 @@
       elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
       elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
       elements.saveRepackWorkButton.disabled = isBusy || !state.problems.length;
-      elements.loadMoreButton.disabled = isBusy;
-      elements.renderAllButton.disabled = isBusy;
+      if (elements.loadMoreButton) {
+        elements.loadMoreButton.disabled = isBusy;
+      }
+      if (elements.renderAllButton) {
+        elements.renderAllButton.disabled = isBusy;
+      }
       elements.createExamSlotsButton.disabled = isBusy;
       elements.clearExamSlotsButton.disabled = isBusy;
       if (elements.examAnswerModeSelect) {
@@ -10024,29 +10000,13 @@
     }
 
     function updatePreviewActionRow() {
-      if (isLibraryWorkspaceMode()) {
-        elements.previewActionRow.hidden = true;
-        elements.printButton.disabled = true;
-        elements.exportHtmlButton.disabled = true;
-        return;
-      }
-      const totalSheets = state.layoutPages.length;
-      const visibleSheets = totalSheets
-        ? Math.max(Math.min(state.previewSheetCount || getInitialSheetTarget(totalSheets), totalSheets), getInitialSheetTarget(totalSheets))
-        : 0;
-      const allVisible = totalSheets > 0 && visibleSheets >= totalSheets;
       const hasProblems = getActiveProblems().length > 0;
-      elements.previewActionRow.hidden = !hasProblems || allVisible;
+      if (elements.previewActionRow) {
+        elements.previewActionRow.hidden = true;
+      }
       elements.printButton.disabled = state.isBusy || !hasProblems;
       elements.exportHtmlButton.disabled = state.isBusy || !hasProblems;
       elements.saveLibraryButton.disabled = state.isBusy || !state.problems.length;
-      if (!hasProblems || allVisible) {
-        return;
-      }
-      const remaining = Math.max(0, totalSheets - visibleSheets);
-      const batch = Math.min(6, remaining);
-      elements.loadMoreButton.textContent = `다음 ${batch}쪽 보기`;
-      elements.renderAllButton.textContent = `전체 ${totalSheets}쪽 보기`;
     }
 
     function cleanupObjectUrls() {
@@ -10913,7 +10873,9 @@
         state.layoutPages = [];
         state.renderedSheetIndices = new Set();
         state.previewSheetCount = 0;
-        elements.previewActionRow.hidden = true;
+        if (elements.previewActionRow) {
+          elements.previewActionRow.hidden = true;
+        }
         elements.printButton.disabled = true;
         elements.exportHtmlButton.disabled = true;
         elements.saveRepackWorkButton.disabled = state.isBusy || !state.problems.length;
@@ -10939,7 +10901,9 @@
         `;
         elements.printButton.disabled = true;
         elements.exportHtmlButton.disabled = true;
-        elements.previewActionRow.hidden = true;
+        if (elements.previewActionRow) {
+          elements.previewActionRow.hidden = true;
+        }
         return;
       }
       const settings = readSettings();
@@ -10961,16 +10925,15 @@
         `;
         elements.printButton.disabled = true;
         elements.exportHtmlButton.disabled = true;
-        elements.previewActionRow.hidden = true;
+        if (elements.previewActionRow) {
+          elements.previewActionRow.hidden = true;
+        }
         return;
       }
       const layoutMeta = buildLayoutPages(settings, visibleProblems, { repeatHeaderEveryPage: false });
       state.layoutPages = layoutMeta.sheets;
       recomputeRenderedSheetIndices();
-      const initialPreviewTarget = getInitialSheetTarget(state.layoutPages.length);
-      state.previewSheetCount = state.layoutPages.length
-        ? Math.max(Math.min(state.previewSheetCount || initialPreviewTarget, state.layoutPages.length), initialPreviewTarget)
-        : 0;
+      state.previewSheetCount = state.layoutPages.length;
       elements.previewRoot.innerHTML = state.layoutPages
         .slice(0, state.previewSheetCount)
         .map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta))
@@ -11103,7 +11066,7 @@
           percent: 100
         });
       } else {
-        await ensureSheetRangeRendered(getInitialSheetTarget(state.layoutPages.length));
+        await ensureSheetRangeRendered(state.layoutPages.length);
       }
     }
 
@@ -11474,12 +11437,6 @@
           saveCurrentExamAsCheckSet(true).catch(handleError);
         });
       }
-      elements.loadMoreButton.addEventListener("click", () => {
-        ensureSheetRangeRendered(state.renderedSheetIndices.size + 6).catch(handleError);
-      });
-      elements.renderAllButton.addEventListener("click", () => {
-        ensureSheetRangeRendered(state.layoutPages.length).catch(handleError);
-      });
       [
         elements.questionFilterInput,
         elements.typeFilterInput,
