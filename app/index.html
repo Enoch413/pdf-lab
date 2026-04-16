@@ -7918,6 +7918,34 @@
       const bridge = state.firebaseSchoolBridge || {};
       const user = bridge.currentUser || bridge.auth?.currentUser || null;
       const profile = bridge.currentProfile || {};
+      const targetUserIds = Array.isArray(payload.targetUserIds) && payload.targetUserIds.length
+        ? payload.targetUserIds
+        : (record?.targetFirebaseUid ? [record.targetFirebaseUid] : []);
+      const targetStudentIds = Array.isArray(payload.targetStudentIds) && payload.targetStudentIds.length
+        ? payload.targetStudentIds
+        : Array.from(new Set([record?.targetFirebaseStudentId, record?.targetFirebaseLoginId].filter(Boolean)));
+      const targetLoginIds = Array.isArray(payload.targetLoginIds) && payload.targetLoginIds.length
+        ? payload.targetLoginIds
+        : (record?.targetFirebaseLoginId ? [record.targetFirebaseLoginId] : []);
+      const targetEmails = Array.isArray(payload.targetEmails) && payload.targetEmails.length
+        ? payload.targetEmails
+        : (record?.targetFirebaseEmail ? [record.targetFirebaseEmail] : []);
+      const targetStudentNames = Array.isArray(payload.targetStudentNames) && payload.targetStudentNames.length
+        ? payload.targetStudentNames
+        : (record?.targetStudentName ? [record.targetStudentName] : []);
+      const targetStudentName = normalizeSchoolName(
+        payload.targetStudentName ||
+        record?.targetStudentName ||
+        payload.targetStudentNames?.[0] ||
+        ""
+      );
+      const targetStudentId = normalizeProblemText(
+        payload.targetStudentId ||
+        record?.targetFirebaseStudentId ||
+        record?.targetFirebaseLoginId ||
+        payload.targetStudentIds?.[0] ||
+        ""
+      );
       return {
         docId: record.checkSetId,
         title: record.title || payload.title || "CHECK 세트",
@@ -7929,10 +7957,13 @@
             .filter(Boolean)
         )),
         assignmentMode: payload.assignmentMode || record.assignmentMode || "student",
-        targetUserIds: Array.isArray(payload.targetUserIds) ? payload.targetUserIds : [],
-        targetStudentIds: Array.isArray(payload.targetStudentIds) ? payload.targetStudentIds : [],
-        targetEmails: Array.isArray(payload.targetEmails) ? payload.targetEmails : [],
-        targetStudentNames: Array.isArray(payload.targetStudentNames) ? payload.targetStudentNames : [],
+        targetUserIds,
+        targetStudentIds,
+        targetLoginIds,
+        targetEmails,
+        targetStudentNames,
+        targetStudentName,
+        targetStudentId,
         source: payload.source || "pdf-lab",
         sourceBatchId: payload.sourceBatchId || record.sourceBatchId || "",
         sourceSetId: payload.sourceSetId || record.sourceSetId || "",
