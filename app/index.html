@@ -2693,6 +2693,51 @@
       }
     }
 
+    function mergeSharedAndLocalLibraryImports(localImports = [], sharedImports = []) {
+      const recordMap = new Map();
+      (Array.isArray(localImports) ? localImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, record);
+        }
+      });
+      (Array.isArray(sharedImports) ? sharedImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, {
+            ...(recordMap.get(record.sourceId) || {}),
+            ...record
+          });
+        }
+      });
+      return Array.from(recordMap.values());
+    }
+
+    function mergeSharedAndLocalLibraryProblems(localProblemRecords = [], sharedProblemRecords = []) {
+      const recordMap = new Map();
+      (Array.isArray(localProblemRecords) ? localProblemRecords : []).forEach((record) => {
+        if (record?.recordId) {
+          recordMap.set(record.recordId, record);
+        }
+      });
+      (Array.isArray(sharedProblemRecords) ? sharedProblemRecords : []).forEach((record) => {
+        if (!record?.recordId) {
+          return;
+        }
+        const localRecord = recordMap.get(record.recordId) || {};
+        const merged = {
+          ...localRecord,
+          ...record
+        };
+        if (!Array.isArray(merged.segmentBlobs) && Array.isArray(localRecord.segmentBlobs)) {
+          merged.segmentBlobs = localRecord.segmentBlobs;
+        }
+        if (!Array.isArray(merged.answerSegmentBlobs) && Array.isArray(localRecord.answerSegmentBlobs)) {
+          merged.answerSegmentBlobs = localRecord.answerSegmentBlobs;
+        }
+        recordMap.set(record.recordId, merged);
+      });
+      return Array.from(recordMap.values());
+    }
+
     async function signInPdfLabFirebaseWithGoogle() {
       if (!ensurePdfLabFirebaseServices()) {
         state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
@@ -4722,12 +4767,16 @@
       const assetMap = new Map(assetRecords.map((assetRecord) => [assetRecord.recordId, assetRecord]));
       return normalizedRecords.map((record) => ({
         ...record,
-        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs)
+        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs) && assetMap.get(record.recordId).segmentBlobs.length
           ? assetMap.get(record.recordId).segmentBlobs
-          : [],
-        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs)
+          : Array.isArray(record.segmentBlobs)
+            ? record.segmentBlobs
+            : [],
+        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs) && assetMap.get(record.recordId).answerSegmentBlobs.length
           ? assetMap.get(record.recordId).answerSegmentBlobs
-          : []
+          : Array.isArray(record.answerSegmentBlobs)
+            ? record.answerSegmentBlobs
+            : []
       }));
     }
 
@@ -7801,8 +7850,12 @@
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
       const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
-      const imports = Array.isArray(sharedSnapshot?.imports) ? sharedSnapshot.imports : localImports;
-      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords) ? sharedSnapshot.problemRecords : localProblemRecords;
+      const imports = Array.isArray(sharedSnapshot?.imports)
+        ? mergeSharedAndLocalLibraryImports(localImports, sharedSnapshot.imports)
+        : localImports;
+      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
+        ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
+        : localProblemRecords;
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
