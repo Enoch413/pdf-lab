@@ -1099,7 +1099,12 @@
         classCatalog: [],
         schoolCatalog: [],
         lastSyncedAt: 0,
-        syncError: ""
+        syncError: "",
+        retryResponseSyncTimerId: 0,
+        retryResponseSyncContextKey: "",
+        retryResponseSyncPromise: null,
+        lastRetryResponseAppliedKey: "",
+        lastRetryResponseAppliedAt: 0
       },
       libraryCache: {
         imports: [],
@@ -2458,6 +2463,7 @@
         return false;
       }
       await state.firebaseSchoolBridge.auth.signOut();
+      clearStudentRetryCheckResponseSyncTimer();
       clearFirebaseProfileWatcher();
       state.firebaseSchoolBridge.currentUser = null;
       state.firebaseSchoolBridge.currentProfile = null;
@@ -2960,6 +2966,7 @@
 
     async function syncSchoolCatalogFromFirebase(forceRefresh = false) {
       if (!isPdfLabFirebaseConfigured()) {
+        clearStudentRetryCheckResponseSyncTimer();
         clearFirebaseProfileWatcher();
         state.firebaseSchoolBridge.accessibleClassIds = [];
         state.firebaseSchoolBridge.firebaseUsers = [];
@@ -2977,6 +2984,7 @@
         const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
         state.firebaseSchoolBridge.currentUser = user || null;
         if (!user) {
+          clearStudentRetryCheckResponseSyncTimer();
           clearFirebaseProfileWatcher();
           state.firebaseSchoolBridge.currentProfile = null;
           state.firebaseSchoolBridge.accessibleClassIds = [];
@@ -3049,6 +3057,7 @@
         return true;
       } catch (error) {
         console.warn("Failed to sync school catalog from Firebase", error);
+        clearStudentRetryCheckResponseSyncTimer();
         clearFirebaseProfileWatcher();
         state.firebaseSchoolBridge.accessibleClassIds = [];
         state.firebaseSchoolBridge.firebaseUsers = [];
@@ -5201,6 +5210,250 @@
       writeStudentRetryState({ syncFolder: false });
     }
 
+    function buildRetryProblemRecordSignature(items = []) {
+      return (Array.isArray(items) ? items : [])
+        .map((item) => normalizeProblemText(item?.problemRecordId || ""))
+        .filter(Boolean)
+        .join("::");
+    }
+
+    function doesRetryStudentMatchCheckSetRecord(record = {}, student = {}) {
+      const recordUid = normalizeProblemText(record.targetFirebaseUid || "");
+      const recordStudentId = normalizeProblemText(record.targetFirebaseStudentId || "");
+      const recordLoginId = normalizeProblemText(record.targetFirebaseLoginId || "");
+      const recordEmail = normalizeProblemText(record.targetFirebaseEmail || "").toLowerCase();
+      const recordName = normalizeSchoolName(record.targetStudentName || "");
+      const studentUid = normalizeProblemText(student.firebaseUid || "");
+      const studentId = normalizeProblemText(student.firebaseStudentId || "");
+      const studentLoginId = normalizeProblemText(student.firebaseLoginId || "");
+      const studentEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
+      const studentName = normalizeSchoolName(student.name || "");
+      if (recordUid && studentUid && recordUid === studentUid) {
+        return true;
+      }
+      if (recordStudentId && studentId && recordStudentId === studentId) {
+        return true;
+      }
+      if (recordStudentId && studentLoginId && recordStudentId === studentLoginId) {
+        return true;
+      }
+      if (recordLoginId && studentLoginId && recordLoginId === studentLoginId) {
+        return true;
+      }
+      if (recordLoginId && studentId && recordLoginId === studentId) {
+        return true;
+      }
+      if (recordEmail && studentEmail && recordEmail === studentEmail) {
+        return true;
+      }
+      if (record.targetStudentLocalId && String(record.targetStudentLocalId || "") === String(student.studentId || "")) {
+        return true;
+      }
+      return Boolean(recordName && studentName && recordName === studentName);
+    }
+
+    function doesRetryStudentMatchCheckResponse(response = {}, student = {}) {
+      const responseUid = normalizeProblemText(response.userId || "");
+      const responseStudentId = normalizeProblemText(response.studentId || "");
+      const responseEmail = normalizeProblemText(response.email || "").toLowerCase();
+      const responseName = normalizeSchoolName(response.name || "");
+      const studentUid = normalizeProblemText(student.firebaseUid || "");
+      const studentId = normalizeProblemText(student.firebaseStudentId || "");
+      const studentLoginId = normalizeProblemText(student.firebaseLoginId || "");
+      const studentEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
+      const studentName = normalizeSchoolName(student.name || "");
+      if (responseUid && studentUid && responseUid === studentUid) {
+        return true;
+      }
+      if (responseStudentId && studentId && responseStudentId === studentId) {
+        return true;
+      }
+      if (responseStudentId && studentLoginId && responseStudentId === studentLoginId) {
+        return true;
+      }
+      if (responseEmail && studentEmail && responseEmail === studentEmail) {
+        return true;
+      }
+      return Boolean(responseName && studentName && responseName === studentName);
+    }
+
+    function getRetryCheckSetRecordsForRound(session, student, round) {
+      if (!session || !student || !round) {
+        return [];
+      }
+      const selectedSchoolKey = normalizeSchoolKey(session.schoolKey || "");
+      const selectedSourceKey = normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      const roundIndex = Math.max(1, Number.parseInt(round.roundIndex, 10) || 0);
+      const allRecords = getStoredCheckSetRecords();
+      if (roundIndex <= 1) {
+        const baseSignature = buildRetryProblemRecordSignature(session.baseItems || []);
+        return allRecords
+          .filter((record) => normalizeSchoolKey(record.schoolKey || "") === selectedSchoolKey)
+          .filter((record) => normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === selectedSourceKey)
+          .filter((record) => String(record.sourceRound || "") === "round1")
+          .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
+          .filter((record) => buildRetryProblemRecordSignature(record.questionMappings || []) === baseSignature)
+          .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
+      }
+      return allRecords
+        .filter((record) => String(record.studentRetrySessionId || "") === String(session.sessionId || ""))
+        .filter((record) => Number(record.studentRetryRoundIndex || 0) === roundIndex)
+        .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
+        .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
+    }
+
+    function getRetryRoundWrongProblemIdsFromCheckResponse(record = {}, response = {}) {
+      const mappingByQuestionId = new Map(
+        (Array.isArray(record.questionMappings) ? record.questionMappings : [])
+          .map((mapping) => [String(mapping?.questionId || ""), String(mapping?.problemRecordId || "")])
+          .filter(([questionId, problemRecordId]) => Boolean(questionId) && Boolean(problemRecordId))
+      );
+      return new Set(
+        (Array.isArray(response.answers) ? response.answers : [])
+          .filter((answer) => answer?.isCorrect === false)
+          .map((answer) => mappingByQuestionId.get(String(answer?.questionId || answer?.id || "")) || "")
+          .filter(Boolean)
+      );
+    }
+
+    function applyCheckResponseToRetryRound(round, record, response) {
+      if (!round || !record || !response) {
+        return false;
+      }
+      const wrongProblemIds = getRetryRoundWrongProblemIdsFromCheckResponse(record, response);
+      let changed = false;
+      (Array.isArray(round.items) ? round.items : []).forEach((item) => {
+        const nextResult = wrongProblemIds.has(String(item.problemRecordId || "")) ? "wrong" : "correct";
+        if (item.result !== nextResult) {
+          item.result = nextResult;
+          changed = true;
+        }
+      });
+      return changed;
+    }
+
+    async function fetchLatestCheckResponseForRetryRoundRecord(record, student) {
+      const db = state.firebaseSchoolBridge?.db;
+      const checkSetId = normalizeProblemText(record?.checkSetId || "");
+      if (!db || typeof db.collection !== "function" || !checkSetId) {
+        return null;
+      }
+      const snapshot = await db.collection("checkResponses")
+        .where("checkSetId", "==", checkSetId)
+        .get();
+      const responses = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...(doc.data() || {}) }))
+        .filter((entry) => String(entry.role || "").toLowerCase() !== "admin")
+        .filter((entry) => doesRetryStudentMatchCheckResponse(entry, student))
+        .sort((left, right) => String(right.submittedAt || "").localeCompare(String(left.submittedAt || "")));
+      return responses[0] || null;
+    }
+
+    function clearStudentRetryCheckResponseSyncTimer() {
+      const bridge = state.firebaseSchoolBridge;
+      if (!bridge) {
+        return;
+      }
+      if (bridge.retryResponseSyncTimerId) {
+        window.clearInterval(bridge.retryResponseSyncTimerId);
+      }
+      bridge.retryResponseSyncTimerId = 0;
+      bridge.retryResponseSyncContextKey = "";
+      bridge.retryResponseSyncPromise = null;
+    }
+
+    async function syncSelectedStudentRetryResultsFromCheckResponses(options = {}) {
+      const { silent = true, force = false } = options;
+      const bridge = state.firebaseSchoolBridge || {};
+      const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
+      const session = getSelectedRetrySession();
+      const student = getSelectedRetryStudent();
+      const contextKey = [session?.sessionId || "", student?.studentId || ""].join("::");
+      if (!session || !student || !bridge.db || profileRole !== "admin") {
+        bridge.retryResponseSyncPromise = null;
+        return { synced: false, changed: false, reason: "unavailable" };
+      }
+      if (!force && bridge.retryResponseSyncPromise && bridge.retryResponseSyncContextKey === contextKey) {
+        return bridge.retryResponseSyncPromise;
+      }
+      const task = (async () => {
+        const rounds = [...(Array.isArray(getStudentRetryState(session, student.studentId)?.rounds) ? getStudentRetryState(session, student.studentId).rounds : [])]
+          .sort((left, right) => Number(left.roundIndex) - Number(right.roundIndex));
+        let changed = false;
+        let matchedResponses = 0;
+        for (const round of rounds) {
+          const record = getRetryCheckSetRecordsForRound(session, student, round)[0] || null;
+          if (!record) {
+            continue;
+          }
+          const response = await fetchLatestCheckResponseForRetryRoundRecord(record, student);
+          if (!response) {
+            continue;
+          }
+          matchedResponses += 1;
+          if (applyCheckResponseToRetryRound(round, record, response)) {
+            changed = true;
+          }
+        }
+        bridge.lastRetryResponseAppliedKey = contextKey;
+        bridge.lastRetryResponseAppliedAt = Date.now();
+        if (changed) {
+          session.updatedAt = Date.now();
+          writeStudentRetryState({ syncFolder: false });
+          renderStudentRetryPanel();
+          if (!silent) {
+            setStatus(`${student.name} 학생 CHECK 제출 결과를 자동 반영했습니다.`, "idle", "오답유형");
+          }
+        }
+        return { synced: true, changed, matchedResponses };
+      })()
+        .catch((error) => {
+          console.warn("Failed to sync student retry results from CHECK responses", error);
+          if (!silent) {
+            setStatus(`CHECK 제출 결과 자동 반영 실패: ${error?.message || "알 수 없는 오류"}`, "error", "오답유형");
+          }
+          return { synced: false, changed: false, reason: error?.message || "failed" };
+        })
+        .finally(() => {
+          if (bridge.retryResponseSyncPromise === task) {
+            bridge.retryResponseSyncPromise = null;
+          }
+        });
+      bridge.retryResponseSyncContextKey = contextKey;
+      bridge.retryResponseSyncPromise = task;
+      return task;
+    }
+
+    function scheduleStudentRetryCheckResponseSync(options = {}) {
+      const { immediate = false } = options;
+      const bridge = state.firebaseSchoolBridge || {};
+      const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
+      const session = getSelectedRetrySession();
+      const student = getSelectedRetryStudent();
+      const contextKey = [session?.sessionId || "", student?.studentId || ""].join("::");
+      if (!session || !student || !bridge.db || profileRole !== "admin") {
+        clearStudentRetryCheckResponseSyncTimer();
+        return;
+      }
+      const contextChanged = bridge.retryResponseSyncContextKey !== contextKey;
+      bridge.retryResponseSyncContextKey = contextKey;
+      if (!bridge.retryResponseSyncTimerId) {
+        bridge.retryResponseSyncTimerId = window.setInterval(() => {
+          syncSelectedStudentRetryResultsFromCheckResponses({ silent: true }).catch((error) => {
+            console.warn("Student retry CHECK response polling failed", error);
+          });
+        }, 20000);
+      }
+      if (bridge.retryResponseSyncPromise && bridge.retryResponseSyncContextKey === contextKey) {
+        return;
+      }
+      if (immediate || contextChanged || !bridge.lastRetryResponseAppliedAt) {
+        syncSelectedStudentRetryResultsFromCheckResponses({ silent: true, force: true }).catch((error) => {
+          console.warn("Initial student retry CHECK response sync failed", error);
+        });
+      }
+    }
+
     function getStudentRetryUsedProblemIds(studentState) {
       return new Set(
         (studentState?.rounds || [])
@@ -6039,6 +6292,7 @@
       renderStudentRetryHistoryList();
 
       if (!students.length) {
+        scheduleStudentRetryCheckResponseSync();
         elements.studentRetryRoot.innerHTML = `
           <div class="exam-empty-state">
             <h3>등록된 학생이 없습니다</h3>
@@ -6048,6 +6302,7 @@
         return;
       }
       if (!selectedSession) {
+        scheduleStudentRetryCheckResponseSync();
         elements.studentRetryRoot.innerHTML = `
           <div class="exam-empty-state">
             <h3>오답 재출제 세트가 없습니다</h3>
@@ -6057,6 +6312,7 @@
         return;
       }
       if (!selectedStudent) {
+        scheduleStudentRetryCheckResponseSync();
         elements.studentRetryRoot.innerHTML = `
           <div class="exam-empty-state">
             <h3>학생을 선택해주세요</h3>
@@ -6100,6 +6356,7 @@
         </div>
       `;
       writeStudentRetryState({ syncFolder: false });
+      scheduleStudentRetryCheckResponseSync();
     }
 
     function renderExamLibraryList() {
