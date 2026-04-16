@@ -2623,6 +2623,16 @@ body[data-workspace-mode] .app-tab-shell {
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(24, 71, 72, 0.08);
+  cursor: pointer;
+  list-style: none;
+}
+
+.student-retry-round-header::-webkit-details-marker {
+  display: none;
+}
+
+.student-retry-round-copy {
+  min-width: 0;
 }
 
 .student-retry-round-header h3 {
@@ -2647,8 +2657,74 @@ body[data-workspace-mode] .app-tab-shell {
   font-weight: 800;
 }
 
+.student-retry-round-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.student-retry-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(24, 71, 72, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.student-retry-round-header:hover .student-retry-toggle-button,
+.student-retry-round-header:focus-visible .student-retry-toggle-button {
+  border-color: rgba(24, 107, 99, 0.28);
+  background: #fffef9;
+  box-shadow: 0 8px 20px rgba(24, 107, 99, 0.08);
+  transform: translateY(-1px);
+}
+
+.student-retry-round-header:focus-visible {
+  outline: 2px solid rgba(24, 107, 99, 0.28);
+  outline-offset: -4px;
+}
+
+.student-retry-toggle-label-collapse {
+  display: none;
+}
+
+.student-retry-round[open] .student-retry-toggle-label-expand {
+  display: none;
+}
+
+.student-retry-round[open] .student-retry-toggle-label-collapse {
+  display: inline;
+}
+
+.student-retry-toggle-icon {
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform 0.16s ease;
+}
+
+.student-retry-round[open] .student-retry-toggle-icon {
+  transform: rotate(-135deg) translateY(-1px);
+}
+
 .student-retry-item-list {
   display: grid;
+}
+
+.student-retry-round:not([open]) > .student-retry-item-list {
+  display: none;
 }
 
 .student-retry-item {
@@ -2836,6 +2912,11 @@ body[data-workspace-mode] .app-tab-shell {
   .student-retry-round-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .student-retry-round-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .student-retry-item {

@@ -1943,6 +1943,13 @@
       return {
         selectedStudentId: String(rawState?.selectedStudentId || ""),
         selectedSessionId: String(rawState?.selectedSessionId || ""),
+        expandedRoundKeys: rawState?.expandedRoundKeys && typeof rawState.expandedRoundKeys === "object"
+          ? Object.fromEntries(
+              Object.entries(rawState.expandedRoundKeys)
+                .map(([key, value]) => [String(key || ""), Boolean(value)])
+                .filter(([key]) => Boolean(key))
+            )
+          : {},
         students: students
           .map((student) => {
             const name = normalizeProblemText(student?.name || "");
@@ -5636,6 +5643,41 @@
       );
     }
 
+    function getStudentRetryRoundUiKey(sessionId, studentId, roundIndex) {
+      const normalizedSessionId = normalizeProblemText(sessionId || "");
+      const normalizedStudentId = normalizeProblemText(studentId || "");
+      const normalizedRoundIndex = Number.parseInt(roundIndex, 10) || 0;
+      if (!normalizedSessionId || !normalizedStudentId || !normalizedRoundIndex) {
+        return "";
+      }
+      return `${normalizedSessionId}::${normalizedStudentId}::${normalizedRoundIndex}`;
+    }
+
+    function isStudentRetryRoundExpanded(sessionId, studentId, roundIndex) {
+      const key = getStudentRetryRoundUiKey(sessionId, studentId, roundIndex);
+      if (!key) {
+        return false;
+      }
+      const expandedRoundKeys = state.studentRetry?.expandedRoundKeys;
+      return Boolean(expandedRoundKeys && expandedRoundKeys[key]);
+    }
+
+    function setStudentRetryRoundExpanded(sessionId, studentId, roundIndex, expanded) {
+      const key = getStudentRetryRoundUiKey(sessionId, studentId, roundIndex);
+      if (!key) {
+        return;
+      }
+      if (!state.studentRetry.expandedRoundKeys || typeof state.studentRetry.expandedRoundKeys !== "object") {
+        state.studentRetry.expandedRoundKeys = {};
+      }
+      if (expanded) {
+        state.studentRetry.expandedRoundKeys[key] = true;
+      } else {
+        delete state.studentRetry.expandedRoundKeys[key];
+      }
+      writeStudentRetryState({ syncFolder: false });
+    }
+
     function findNextRetryCandidateForItem(item, usedProblemIds) {
       const sourceKey = getStudentRetrySourceKey();
       const candidates = getProblemRecordsOnly()
@@ -6311,18 +6353,38 @@
       elements.schoolTypeSummary.textContent = `선택 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개에서 유형 ${availableTypes.length}개를 찾았습니다. 현재 ${selectedSet.size}개 유형이 출제 대상입니다.`;
     }
 
-    function createStudentRetryRoundMarkup(round, isLatestRound) {
+    function createStudentRetryRoundMarkup(round, options = {}) {
+      const {
+        isLatestRound = false,
+        sessionId = "",
+        studentId = ""
+      } = options;
       const wrongCount = (round.items || []).filter((item) => item.result === "wrong").length;
+      const expanded = isStudentRetryRoundExpanded(sessionId, studentId, round.roundIndex);
+      const contentId = `studentRetryRound-${escapeHtml(
+        normalizeProblemTypeToken(`${sessionId}-${studentId}-${round.roundIndex}`) || String(round.roundIndex || "")
+      )}`;
       return `
-        <article class="student-retry-round${isLatestRound ? " is-latest" : ""}">
-          <header class="student-retry-round-header">
-            <div>
+        <details
+          class="student-retry-round${isLatestRound ? " is-latest" : ""}"
+          data-retry-round-details="${escapeHtml(round.roundIndex)}"
+          ${expanded ? "open" : ""}
+        >
+          <summary class="student-retry-round-header">
+            <div class="student-retry-round-copy">
               <h3>${escapeHtml(round.label || `${round.roundIndex}차`)}</h3>
               <p>${escapeHtml(formatTimestamp(round.createdAt) || "")} · 오답 ${wrongCount}/${round.items.length}</p>
             </div>
-            ${isLatestRound ? `<span class="student-retry-badge">다음 생성 기준</span>` : ""}
-          </header>
-          <div class="student-retry-item-list">
+            <div class="student-retry-round-actions">
+              ${isLatestRound ? `<span class="student-retry-badge">다음 생성 기준</span>` : ""}
+              <span class="student-retry-toggle-button" role="button" aria-controls="${contentId}">
+                <span class="student-retry-toggle-label-expand">펼치기</span>
+                <span class="student-retry-toggle-label-collapse">접기</span>
+                <span class="student-retry-toggle-icon" aria-hidden="true"></span>
+              </span>
+            </div>
+          </summary>
+          <div class="student-retry-item-list" id="${contentId}">
             ${(round.items || []).map((item) => `
               <label class="student-retry-item${item.result === "wrong" ? " is-wrong" : ""}">
                 <input class="student-retry-checkbox" type="checkbox" data-retry-round="${escapeHtml(round.roundIndex)}" data-retry-item="${escapeHtml(item.itemId)}"${item.result === "wrong" ? " checked" : ""}>
@@ -6334,7 +6396,7 @@
               </label>
             `).join("")}
           </div>
-        </article>
+        </details>
       `;
     }
 
@@ -6497,7 +6559,11 @@
         </div>
         <p class="small-note">체크된 항목만 “틀림”으로 저장됩니다. 다음 오답 차수는 마지막 차수의 틀린 항목 ${latestWrongCount}개를 같은 지문/유형의 다른 문제로 다시 냅니다.</p>
         <div class="student-retry-round-list">
-          ${rounds.map((round) => createStudentRetryRoundMarkup(round, round.roundIndex === latestRound.roundIndex)).join("")}
+          ${rounds.map((round) => createStudentRetryRoundMarkup(round, {
+            isLatestRound: round.roundIndex === latestRound.roundIndex,
+            sessionId: selectedSession.sessionId,
+            studentId: selectedStudent.studentId
+          })).join("")}
         </div>
       `;
       writeStudentRetryState({ syncFolder: false });
@@ -12605,6 +12671,23 @@
         });
       }
       if (elements.studentRetryRoot) {
+        elements.studentRetryRoot.addEventListener("toggle", (event) => {
+          const details = event.target;
+          if (!(details instanceof HTMLDetailsElement) || !details.dataset.retryRoundDetails) {
+            return;
+          }
+          const student = getSelectedRetryStudent();
+          const session = getSelectedRetrySession();
+          if (!student || !session) {
+            return;
+          }
+          setStudentRetryRoundExpanded(
+            session.sessionId,
+            student.studentId,
+            details.dataset.retryRoundDetails,
+            details.open
+          );
+        }, true);
         elements.studentRetryRoot.addEventListener("change", (event) => {
           const target = event.target;
           if (!(target instanceof HTMLInputElement) || !target.dataset.retryItem) {
