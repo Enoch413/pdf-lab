@@ -248,7 +248,6 @@
             <h2 class="panel-title">1. 반 선택</h2>
             <div class="field-grid">
               <div class="field-row">
-                <span class="field-label">Firebase 반 목록</span>
                 <div class="action-row compact-action-row">
                   <button class="solid-button" type="button" id="refreshSchoolCatalogButton">반 새로고침</button>
                 </div>
@@ -2059,6 +2058,31 @@
       };
     }
 
+    function isLegacyGroupedFirebaseProfile(entry = {}) {
+      if (String(entry?.source || "") !== "firebase") {
+        return false;
+      }
+      const classIds = Array.isArray(entry?.classIds) ? entry.classIds.filter(Boolean) : [];
+      if (classIds.length !== 1) {
+        return classIds.length > 0;
+      }
+      const onlyClassId = normalizeProblemText(classIds[0]);
+      if (!onlyClassId) {
+        return false;
+      }
+      const classInfo = normalizeFirebaseClassInfo({ id: onlyClassId });
+      if (!classInfo) {
+        return false;
+      }
+      const normalizedName = normalizeSchoolName(entry?.name || "");
+      const normalizedKey = normalizeSchoolKey(entry?.key || "");
+      return (
+        normalizedName === normalizeSchoolName(classInfo.schoolName || "") &&
+        normalizedName !== normalizeSchoolName(classInfo.name || "") &&
+        normalizedKey !== normalizeSchoolKey(classInfo.id || classInfo.name || "")
+      );
+    }
+
     function getFirebaseClassReferenceMap() {
       return new Map(FIREBASE_CLASS_REFERENCE.map((entry) => [String(entry.id || "").trim(), String(entry.name || "").trim()]));
     }
@@ -2496,6 +2520,7 @@
         }
         return parsed
           .map((entry) => normalizeSchoolProfileEntry(entry))
+          .filter((entry) => entry && !isLegacyGroupedFirebaseProfile(entry))
           .filter(Boolean)
           .sort((left, right) => left.name.localeCompare(right.name, "ko"));
       } catch (error) {
