@@ -472,6 +472,11 @@
     </section>
   </div>
 
+  <script src="./firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -562,6 +567,9 @@
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
     const LIBRARY_CHECK_SETS_FILE = "pdflab_check_sets.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
+    const FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION = "pdfLabSharedLibraryImports";
+    const FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION = "pdfLabSharedLibraryProblems";
+    const FIREBASE_SHARED_LIBRARY_ASSET_ROOT = "pdf-lab/shared-library";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
     const WORKSPACE_MODE_EXAM = "exam";
     const WORKSPACE_MODE_LIBRARY = "library";
@@ -980,6 +988,16 @@
         examItems: [],
         checkSetRecords: [],
         savedWorks: []
+      },
+      firebaseSharedLibrary: {
+        auth: null,
+        db: null,
+        storage: null,
+        currentUser: null,
+        currentProfile: null,
+        enabled: false,
+        error: "",
+        lastSyncedAt: 0
       },
       loadedRepackWorkId: "",
       examBuilder: {
@@ -1417,6 +1435,198 @@
       const cloned = record && typeof record === "object" ? { ...record } : record;
       repairOcrStolenInitialAnswerFields(cloned);
       return cloned;
+    }
+
+    function isPdfLabFirebaseConfigured() {
+      const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+      return Boolean(config.apiKey && config.projectId && config.appId);
+    }
+
+    function getPdfLabFirebaseConfig() {
+      return window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+    }
+
+    function ensurePdfLabFirebaseServices() {
+      if (!isPdfLabFirebaseConfigured() || !window.firebase) {
+        return false;
+      }
+      if (!firebase.apps.length) {
+        firebase.initializeApp(getPdfLabFirebaseConfig());
+      }
+      state.firebaseSharedLibrary.auth = firebase.auth();
+      state.firebaseSharedLibrary.db = firebase.firestore();
+      state.firebaseSharedLibrary.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
+      return Boolean(state.firebaseSharedLibrary.auth && state.firebaseSharedLibrary.db && state.firebaseSharedLibrary.storage);
+    }
+
+    function waitForPdfLabFirebaseAuth(auth, timeoutMs = 1500) {
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = (user) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (typeof unsubscribe === "function") {
+            unsubscribe();
+          }
+          resolve(user || null);
+        };
+        const timer = window.setTimeout(() => finish(auth?.currentUser || null), timeoutMs);
+        const unsubscribe = auth?.onAuthStateChanged
+          ? auth.onAuthStateChanged((user) => {
+              window.clearTimeout(timer);
+              finish(user || null);
+            }, () => {
+              window.clearTimeout(timer);
+              finish(auth?.currentUser || null);
+            })
+          : null;
+      });
+    }
+
+    function getFriendlyFirebaseMessage(error) {
+      const code = String(error?.code || "");
+      if (code.includes("permission-denied")) {
+        return "Firebase 공용 문제 라이브러리 권한이 없습니다. 관리자 계정으로 로그인해주세요.";
+      }
+      if (code.includes("network-request-failed")) {
+        return "Firebase 네트워크 연결이 불안정합니다.";
+      }
+      return error?.message || "Firebase 공용 문제 라이브러리를 불러오지 못했습니다.";
+    }
+
+    async function fetchPdfLabFirebaseCurrentProfile(db, user) {
+      if (!db || !user?.uid) {
+        return null;
+      }
+      const snapshot = await db.collection("users").doc(user.uid).get();
+      return snapshot.exists ? { uid: user.uid, ...(snapshot.data() || {}) } : { uid: user.uid, email: user.email || "" };
+    }
+
+    function normalizeSharedFirebaseImportRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return {
+        ...normalized,
+        sourceId: normalizeProblemText(normalized.sourceId || fallbackId)
+      };
+    }
+
+    function normalizeSharedFirebaseProblemRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return cloneProblemRecordWithRepairedOcrAnswer({
+        ...normalized,
+        recordId: normalizeProblemText(normalized.recordId || fallbackId),
+        sourceId: normalizeProblemText(normalized.sourceId || ""),
+        segmentStoragePaths: Array.isArray(normalized.segmentStoragePaths)
+          ? normalized.segmentStoragePaths.filter((value) => typeof value === "string")
+          : [],
+        answerSegmentStoragePaths: Array.isArray(normalized.answerSegmentStoragePaths)
+          ? normalized.answerSegmentStoragePaths.filter((value) => typeof value === "string")
+          : []
+      });
+    }
+
+    function isSharedFirebaseLibraryActive() {
+      return Boolean(state.firebaseSharedLibrary?.enabled);
+    }
+
+    async function loadSharedLibrarySnapshotFromFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
+        return null;
+      }
+      try {
+        const user = await waitForPdfLabFirebaseAuth(state.firebaseSharedLibrary.auth);
+        state.firebaseSharedLibrary.currentUser = user || null;
+        if (!user) {
+          state.firebaseSharedLibrary.enabled = false;
+          state.firebaseSharedLibrary.error = "Firebase 로그인 상태가 없어 로컬 문제 라이브러리를 사용합니다.";
+          return null;
+        }
+        const profile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSharedLibrary.db, user);
+        state.firebaseSharedLibrary.currentProfile = profile;
+        if (String(profile?.role || "").toLowerCase() !== "admin") {
+          state.firebaseSharedLibrary.enabled = false;
+          state.firebaseSharedLibrary.error = "관리자 계정이 아니어서 로컬 문제 라이브러리를 사용합니다.";
+          return null;
+        }
+        const [importsSnapshot, problemSnapshot] = await Promise.all([
+          state.firebaseSharedLibrary.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).get(),
+          state.firebaseSharedLibrary.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).get()
+        ]);
+        state.firebaseSharedLibrary.enabled = true;
+        state.firebaseSharedLibrary.error = "";
+        state.firebaseSharedLibrary.lastSyncedAt = Date.now();
+        return {
+          imports: importsSnapshot.docs.map((doc) => normalizeSharedFirebaseImportRecord(doc.data(), doc.id)),
+          problemRecords: problemSnapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id))
+        };
+      } catch (error) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = getFriendlyFirebaseMessage(error);
+        console.warn("Failed to load shared Firebase library", error);
+        return null;
+      }
+    }
+
+    function mergeSharedAndLocalLibraryImports(localImports = [], sharedImports = []) {
+      const recordMap = new Map();
+      (Array.isArray(localImports) ? localImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, record);
+        }
+      });
+      (Array.isArray(sharedImports) ? sharedImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, {
+            ...(recordMap.get(record.sourceId) || {}),
+            ...record
+          });
+        }
+      });
+      return Array.from(recordMap.values());
+    }
+
+    function mergeSharedAndLocalLibraryProblems(localProblemRecords = [], sharedProblemRecords = []) {
+      const recordMap = new Map();
+      (Array.isArray(localProblemRecords) ? localProblemRecords : []).forEach((record) => {
+        if (record?.recordId) {
+          recordMap.set(record.recordId, record);
+        }
+      });
+      (Array.isArray(sharedProblemRecords) ? sharedProblemRecords : []).forEach((record) => {
+        if (!record?.recordId) {
+          return;
+        }
+        const localRecord = recordMap.get(record.recordId) || {};
+        const merged = {
+          ...localRecord,
+          ...record
+        };
+        if (!Array.isArray(merged.segmentBlobs) && Array.isArray(localRecord.segmentBlobs)) {
+          merged.segmentBlobs = localRecord.segmentBlobs;
+        }
+        if (!Array.isArray(merged.answerSegmentBlobs) && Array.isArray(localRecord.answerSegmentBlobs)) {
+          merged.answerSegmentBlobs = localRecord.answerSegmentBlobs;
+        }
+        recordMap.set(record.recordId, merged);
+      });
+      return Array.from(recordMap.values());
+    }
+
+    async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
+      const normalizedPath = normalizeProblemText(storagePath);
+      if (!normalizedPath || !state.firebaseSharedLibrary?.storage) {
+        return null;
+      }
+      const downloadUrl = await state.firebaseSharedLibrary.storage.ref(normalizedPath).getDownloadURL();
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`공용 라이브러리 이미지를 불러오지 못했습니다. (${response.status})`);
+      }
+      return await response.blob();
     }
 
     function escapeRegExp(value) {
@@ -3071,11 +3281,55 @@
         const db = await openLibraryDb();
         const transaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readonly");
         const store = transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+        const unresolvedIds = [];
         await Promise.all(missingIds.map(async (recordId) => {
           const assetRecord = await idbRequestToPromise(store.get(recordId));
-          cache[recordId] = assetRecord || { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          if (assetRecord) {
+            cache[recordId] = assetRecord;
+          } else {
+            unresolvedIds.push(recordId);
+          }
         }));
         await idbTransactionDone(transaction);
+        if (unresolvedIds.length && isSharedFirebaseLibraryActive()) {
+          const recordMap = new Map(
+            (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
+              .map((record) => [record.recordId, record])
+          );
+          const remoteAssetRecords = await Promise.all(unresolvedIds.map(async (recordId) => {
+            const record = recordMap.get(recordId);
+            if (!record) {
+              return { recordId, segmentBlobs: [], answerSegmentBlobs: [], updatedAt: Date.now() };
+            }
+            try {
+              const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
+                Promise.all((Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
+                Promise.all((Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+              ]);
+              return {
+                recordId,
+                segmentBlobs,
+                answerSegmentBlobs,
+                updatedAt: Date.now()
+              };
+            } catch (error) {
+              console.warn("Failed to hydrate shared library assets", recordId, error);
+              return { recordId, segmentBlobs: [], answerSegmentBlobs: [], updatedAt: Date.now() };
+            }
+          }));
+          const writeTransaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readwrite");
+          const writeStore = writeTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+          remoteAssetRecords.forEach((assetRecord) => {
+            cache[assetRecord.recordId] = assetRecord;
+            writeStore.put(assetRecord);
+          });
+          await idbTransactionDone(writeTransaction);
+        }
+        unresolvedIds.forEach((recordId) => {
+          if (!Object.prototype.hasOwnProperty.call(cache, recordId)) {
+            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          }
+        });
         state.libraryCache.problemAssetCache = cache;
       }
       return uniqueIds.map((recordId) => cache[recordId]).filter(Boolean);
@@ -3090,12 +3344,16 @@
       const assetMap = new Map(assetRecords.map((assetRecord) => [assetRecord.recordId, assetRecord]));
       return normalizedRecords.map((record) => ({
         ...record,
-        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs)
+        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs) && assetMap.get(record.recordId).segmentBlobs.length
           ? assetMap.get(record.recordId).segmentBlobs
-          : [],
-        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs)
+          : Array.isArray(record.segmentBlobs)
+            ? record.segmentBlobs
+            : [],
+        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs) && assetMap.get(record.recordId).answerSegmentBlobs.length
           ? assetMap.get(record.recordId).answerSegmentBlobs
-          : []
+          : Array.isArray(record.answerSegmentBlobs)
+            ? record.answerSegmentBlobs
+            : []
       }));
     }
 
@@ -6044,7 +6302,7 @@
     }
 
     async function refreshLibrarySummary() {
-      const [imports, problemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
+      const [localImports, localProblemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
         loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
         loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
@@ -6052,6 +6310,13 @@
         loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
+      const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
+      const imports = Array.isArray(sharedSnapshot?.imports)
+        ? mergeSharedAndLocalLibraryImports(localImports, sharedSnapshot.imports)
+        : localImports;
+      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
+        ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
+        : localProblemRecords;
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
@@ -6980,17 +7245,93 @@
       }
     }
 
-    function openStandaloneHtmlPreview(htmlText) {
+    function openPendingStandaloneWindow(message = "출력 문서를 준비하는 중입니다...") {
+      const popup = window.open("", "_blank");
+      if (!popup) {
+        throw new Error("출력 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+      }
+      popup.document.open();
+      popup.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>PDF LAB</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#153f3b;font-family:Georgia,'Times New Roman',serif}.pending{padding:36px 42px;border:1px solid rgba(21,63,59,.14);border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(24,35,30,.12);letter-spacing:.08em;text-transform:uppercase}</style></head><body><div class="pending">${escapeHtml(message)}</div></body></html>`);
+      popup.document.close();
+      popup.focus();
+      return popup;
+    }
+
+    function waitForDocumentImages(targetDocument) {
+      const images = Array.from(targetDocument?.images || []);
+      return Promise.all(images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+        }
+        return new Promise((imageResolve) => {
+          image.addEventListener("load", () => imageResolve(), { once: true });
+          image.addEventListener("error", () => imageResolve(), { once: true });
+        });
+      }));
+    }
+
+    function openStandaloneHtmlPreview(htmlText, popup = null) {
+      if (popup && !popup.closed) {
+        popup.document.open();
+        popup.document.write(htmlText);
+        popup.document.close();
+        popup.focus();
+        return;
+      }
       const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       state.examBuilder.exportUrls.push(url);
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!popup) {
+      const previewPopup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!previewPopup) {
         throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
       }
     }
 
-    function printStandaloneHtml(htmlText) {
+    function printStandaloneHtml(htmlText, printWindow = null) {
+      if (printWindow && !printWindow.closed) {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (closeWindow = true) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            setTimeout(() => {
+              if (closeWindow) {
+                try {
+                  printWindow.close();
+                } catch (error) {
+                  console.warn("Failed to close print window", error);
+                }
+              }
+              resolve();
+            }, 250);
+          };
+          const runPrint = async () => {
+            try {
+              await waitForDocumentImages(printWindow.document);
+              printWindow.focus();
+              printWindow.addEventListener("afterprint", () => finish(true), { once: true });
+              printWindow.print();
+              setTimeout(() => finish(false), 5000);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          try {
+            printWindow.document.open();
+            printWindow.document.write(htmlText);
+            printWindow.document.close();
+            if (printWindow.document.readyState === "complete") {
+              setTimeout(runPrint, 50);
+            } else {
+              printWindow.addEventListener("load", runPrint, { once: true });
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
       return new Promise((resolve, reject) => {
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
@@ -7014,16 +7355,7 @@
               reject(new Error("인쇄용 프레임을 열지 못했습니다."));
               return;
             }
-            const images = Array.from(iframe.contentDocument?.images || []);
-            await Promise.all(images.map((image) => {
-              if (image.complete && image.naturalWidth > 0) {
-                return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-              }
-              return new Promise((imageResolve) => {
-                image.addEventListener("load", () => imageResolve(), { once: true });
-                image.addEventListener("error", () => imageResolve(), { once: true });
-              });
-            }));
+            await waitForDocumentImages(iframe.contentDocument);
             targetWindow.focus();
             targetWindow.print();
             cleanup();
@@ -7172,6 +7504,7 @@
 
     async function previewExamLayout() {
       validateExamBuilderForExport();
+      const previewWindow = openPendingStandaloneWindow("HTML 미리보기를 준비하는 중입니다...");
       setBusy(true);
       setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
       try {
@@ -7179,9 +7512,14 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html);
+        openStandaloneHtmlPreview(html, previewWindow);
         setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
         setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+      } catch (error) {
+        if (previewWindow && !previewWindow.closed) {
+          previewWindow.close();
+        }
+        throw error;
       } finally {
         setBusy(false);
       }
@@ -7189,6 +7527,7 @@
 
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
+      const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -7199,11 +7538,16 @@
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html);
+        await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+      } catch (error) {
+        if (printWindow && !printWindow.closed) {
+          printWindow.close();
+        }
+        throw error;
       } finally {
         cleanupExamExportUrls();
         setBusy(false);
