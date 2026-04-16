@@ -253,6 +253,23 @@
                 </div>
                 <p class="small-note" id="schoolSelectionSummary">Firebase에서 내 반 목록을 불러오면 반별 출제와 CHECK 세트 반 ID가 자동으로 연결됩니다.</p>
               </div>
+              <div class="firebase-auth-panel" id="firebaseAuthPanel">
+                <p class="file-name" id="firebaseAuthStatus">Firebase 로그인 상태를 확인하고 있습니다.</p>
+                <form class="firebase-auth-form" id="firebaseLoginForm" hidden>
+                  <button class="solid-button" type="button" id="firebaseGoogleLoginButton">Google로 로그인</button>
+                  <p class="small-note">CODE LAB에서 쓰는 Google 관리자 계정으로 로그인하면 로컬에서도 반/학생 목록을 불러옵니다.</p>
+                  <label class="field-row">
+                    <span class="field-label">Firebase 이메일</span>
+                    <input class="text-input" id="firebaseEmailInput" type="email" autocomplete="username" placeholder="관리자 이메일">
+                  </label>
+                  <label class="field-row">
+                    <span class="field-label">Firebase 비밀번호</span>
+                    <input class="text-input" id="firebasePasswordInput" type="password" autocomplete="current-password" placeholder="비밀번호">
+                  </label>
+                  <button class="solid-button" type="button" id="firebaseLoginButton">Firebase 로그인</button>
+                </form>
+                <button class="ghost-button" type="button" id="firebaseLogoutButton" hidden>로그아웃</button>
+              </div>
             </div>
             <div class="school-chip-list" id="schoolList"></div>
           </section>
@@ -343,7 +360,7 @@
               <button class="ghost-button" type="button" id="commitExamButton">출제 이력 저장 + PDF 출력</button>
               <div class="field-row exam-checkset-divider">
                 <span class="field-label">CHECK 세트 연동</span>
-                <p class="small-note">현재 draft를 CODE LAB용 CHECK 세트 JSON으로 바로 저장하고, 나중에 Firebase 오답 연동에 필요한 문제 매핑도 함께 보관합니다.</p>
+                <p class="small-note">현재 draft를 학생별 개인 CHECK 세트로 저장하고, Firebase 관리자 로그인 상태면 CODE LAB CHECK에도 바로 올립니다.</p>
               </div>
               <label class="field-row">
                 <span class="field-label">CHECK 세트 제목</span>
@@ -365,7 +382,7 @@
                 <button class="ghost-button" type="button" id="saveExamCheckSetButton">CHECK 세트 저장</button>
                 <button class="solid-button" type="button" id="downloadExamCheckSetButton">CHECK JSON 다운로드</button>
               </div>
-              <p class="small-note" id="examCheckSetSummary">현재 draft를 만들면 여기서 CHECK 세트를 함께 저장할 수 있습니다.</p>
+              <p class="small-note" id="examCheckSetSummary">현재 draft를 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.</p>
             </div>
           </section>
 
@@ -530,7 +547,7 @@
             <h2 class="panel-title">CHECK 세트 기록</h2>
             <div class="exam-history-empty" id="examCheckSetEmptyState">
               <h3>저장된 CHECK 세트가 없습니다</h3>
-              <p>현재 draft에서 CHECK 세트 저장 또는 CHECK JSON 다운로드를 누르면, 반과 출처 기준 기록이 여기에 쌓입니다.</p>
+              <p>현재 draft에서 CHECK 세트 저장 또는 CHECK JSON 다운로드를 누르면, 학생별 개인 CHECK 기록이 여기에 쌓입니다.</p>
             </div>
             <div class="exam-history-list" id="examCheckSetList"></div>
           </section>
@@ -1241,6 +1258,14 @@
       schoolNameInput: document.getElementById("schoolNameInput"),
       saveSchoolButton: document.getElementById("saveSchoolButton"),
       refreshSchoolCatalogButton: document.getElementById("refreshSchoolCatalogButton"),
+      firebaseAuthPanel: document.getElementById("firebaseAuthPanel"),
+      firebaseAuthStatus: document.getElementById("firebaseAuthStatus"),
+      firebaseLoginForm: document.getElementById("firebaseLoginForm"),
+      firebaseGoogleLoginButton: document.getElementById("firebaseGoogleLoginButton"),
+      firebaseEmailInput: document.getElementById("firebaseEmailInput"),
+      firebasePasswordInput: document.getElementById("firebasePasswordInput"),
+      firebaseLoginButton: document.getElementById("firebaseLoginButton"),
+      firebaseLogoutButton: document.getElementById("firebaseLogoutButton"),
       schoolSelectionSummary: document.getElementById("schoolSelectionSummary"),
       schoolList: document.getElementById("schoolList"),
       schoolSourceFilterSelect: document.getElementById("schoolSourceFilterSelect"),
@@ -1950,6 +1975,9 @@
               schoolKey,
               name,
               firebaseUid: normalizeProblemText(student?.firebaseUid || ""),
+              firebaseLoginId: normalizeProblemText(student?.firebaseLoginId || ""),
+              firebaseEmail: normalizeProblemText(student?.firebaseEmail || "").toLowerCase(),
+              firebaseStudentId: normalizeProblemText(student?.firebaseStudentId || ""),
               classIds: Array.from(new Set(
                 (Array.isArray(student?.classIds) ? student.classIds : [])
                   .map((classId) => normalizeProblemText(classId))
@@ -2140,9 +2168,14 @@
     }
 
     function normalizeFirebaseSchoolUserProfile(source = {}) {
+      const email = normalizeProblemText(source?.email || "").toLowerCase();
+      const loginId = normalizeProblemText(source?.loginId || (email ? email.split("@", 1)[0] : ""));
       return {
         uid: normalizeProblemText(source?.uid || source?.id || ""),
         name: normalizeSchoolName(source?.name || ""),
+        loginId,
+        email,
+        studentId: normalizeProblemText(source?.studentId || loginId || ""),
         role: normalizeProblemText(source?.role || "student").toLowerCase() || "student",
         adminScope: normalizeProblemTypeToken(source?.adminScope || "").toLowerCase(),
         classIds: Array.from(new Set(
@@ -2232,6 +2265,190 @@
       const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
       const requiredKeys = ["apiKey", "authDomain", "projectId", "appId"];
       return Boolean(window.firebase) && requiredKeys.every((key) => typeof config[key] === "string" && config[key].trim());
+    }
+
+    function getPdfLabFirebaseConfig() {
+      return window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+    }
+
+    function ensurePdfLabFirebaseServices() {
+      if (!isPdfLabFirebaseConfigured()) {
+        return false;
+      }
+      const config = getPdfLabFirebaseConfig();
+      if (!firebase.apps.length) {
+        firebase.initializeApp(config);
+      }
+      state.firebaseSchoolBridge.enabled = true;
+      state.firebaseSchoolBridge.auth = firebase.auth();
+      state.firebaseSchoolBridge.db = firebase.firestore();
+      return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db);
+    }
+
+    function getPdfLabFirebaseAccountLabel(user = state.firebaseSchoolBridge.currentUser, profile = state.firebaseSchoolBridge.currentProfile) {
+      const name = normalizeProblemText(profile?.name || user?.displayName || "");
+      const email = normalizeProblemText(user?.email || "");
+      const role = normalizeProblemText(profile?.role || "").toLowerCase();
+      const roleLabel = role === "admin" ? "관리자" : (role || "사용자");
+      if (name && email && name !== email) {
+        return `${name} (${email}) · ${roleLabel}`;
+      }
+      return `${name || email || "Firebase 계정"} · ${roleLabel}`;
+    }
+
+    function getFriendlyFirebaseAuthMessage(error) {
+      const code = String(error?.code || "");
+      if (code.includes("unauthorized-domain")) {
+        return "현재 도메인이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 localhost와 127.0.0.1을 추가한 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
+        return "Firebase 이메일 또는 비밀번호를 확인해주세요.";
+      }
+      if (code.includes("popup-blocked")) {
+        return "브라우저가 Google 로그인 팝업을 차단했습니다. 팝업을 허용한 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("popup-closed-by-user")) {
+        return "Google 로그인 창이 닫혔습니다. 다시 로그인해주세요.";
+      }
+      if (code.includes("account-exists-with-different-credential")) {
+        return "같은 이메일이 다른 Firebase 로그인 방식으로 이미 연결되어 있습니다. CODE LAB에서 쓰는 로그인 방식을 확인해주세요.";
+      }
+      if (code.includes("too-many-requests")) {
+        return "Firebase 로그인 시도가 잠시 제한되었습니다. 잠시 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("network-request-failed")) {
+        return "Firebase 네트워크 연결이 불안정합니다. 인터넷 연결을 확인한 뒤 다시 시도해주세요.";
+      }
+      return error?.message || "Firebase 로그인 처리 중 오류가 발생했습니다.";
+    }
+
+    function renderPdfLabFirebaseAuthUi() {
+      const configured = isPdfLabFirebaseConfigured();
+      const authUser = state.firebaseSchoolBridge.currentUser || state.firebaseSchoolBridge.auth?.currentUser || null;
+      if (elements.firebaseAuthPanel) {
+        elements.firebaseAuthPanel.hidden = false;
+      }
+      if (elements.firebaseAuthStatus) {
+        if (!configured) {
+          elements.firebaseAuthStatus.textContent = "Firebase 설정이 없어 기존 로컬 반 목록을 사용합니다.";
+        } else if (authUser) {
+          elements.firebaseAuthStatus.textContent = `로그인됨: ${getPdfLabFirebaseAccountLabel(authUser)}`;
+        } else if (state.firebaseSchoolBridge.syncError) {
+          elements.firebaseAuthStatus.textContent = state.firebaseSchoolBridge.syncError;
+        } else {
+          elements.firebaseAuthStatus.textContent = "로컬 테스트에서 반/학생을 불러오려면 Firebase 계정으로 로그인하세요.";
+        }
+      }
+      if (elements.firebaseLoginForm) {
+        elements.firebaseLoginForm.hidden = !configured || Boolean(authUser);
+      }
+      if (elements.firebaseLogoutButton) {
+        elements.firebaseLogoutButton.hidden = !configured || !authUser;
+      }
+      if (elements.firebaseEmailInput) {
+        elements.firebaseEmailInput.disabled = state.isBusy || !configured || Boolean(authUser);
+      }
+      if (elements.firebasePasswordInput) {
+        elements.firebasePasswordInput.disabled = state.isBusy || !configured || Boolean(authUser);
+      }
+      if (elements.firebaseGoogleLoginButton) {
+        elements.firebaseGoogleLoginButton.disabled = state.isBusy || !configured || Boolean(authUser);
+      }
+      if (elements.firebaseLoginButton) {
+        elements.firebaseLoginButton.disabled = state.isBusy || !configured || Boolean(authUser);
+      }
+      if (elements.firebaseLogoutButton) {
+        elements.firebaseLogoutButton.disabled = state.isBusy || !configured || !authUser;
+      }
+    }
+
+    async function setPdfLabFirebaseLocalPersistence(auth) {
+      if (!auth?.setPersistence || !window.firebase?.auth?.Auth?.Persistence?.LOCAL) {
+        return;
+      }
+      try {
+        await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+      } catch (error) {
+        console.warn("Failed to set Firebase local persistence", error);
+      }
+    }
+
+    async function signInPdfLabFirebaseWithGoogle() {
+      if (!ensurePdfLabFirebaseServices()) {
+        state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(state.firebaseSchoolBridge.syncError);
+      }
+      try {
+        state.firebaseSchoolBridge.syncError = "";
+        renderPdfLabFirebaseAuthUi();
+        await setPdfLabFirebaseLocalPersistence(state.firebaseSchoolBridge.auth);
+        const provider = new window.firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const credential = await state.firebaseSchoolBridge.auth.signInWithPopup(provider);
+        state.firebaseSchoolBridge.currentUser = credential?.user || state.firebaseSchoolBridge.auth.currentUser || null;
+        renderPdfLabFirebaseAuthUi();
+        return syncSchoolCatalogFromFirebase(true);
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error);
+        state.firebaseSchoolBridge.syncError = message;
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(message);
+      }
+    }
+
+    async function signInPdfLabFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(state.firebaseSchoolBridge.syncError);
+      }
+      const email = normalizeProblemText(elements.firebaseEmailInput?.value || "");
+      const password = String(elements.firebasePasswordInput?.value || "");
+      if (!email || !password) {
+        throw new Error("Firebase 이메일과 비밀번호를 입력해주세요.");
+      }
+      try {
+        state.firebaseSchoolBridge.syncError = "";
+        renderPdfLabFirebaseAuthUi();
+        await setPdfLabFirebaseLocalPersistence(state.firebaseSchoolBridge.auth);
+        const credential = await state.firebaseSchoolBridge.auth.signInWithEmailAndPassword(email, password);
+        state.firebaseSchoolBridge.currentUser = credential?.user || state.firebaseSchoolBridge.auth.currentUser || null;
+        if (elements.firebasePasswordInput) {
+          elements.firebasePasswordInput.value = "";
+        }
+        renderPdfLabFirebaseAuthUi();
+        return syncSchoolCatalogFromFirebase(true);
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error);
+        state.firebaseSchoolBridge.syncError = message;
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(message);
+      }
+    }
+
+    async function signOutPdfLabFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        return false;
+      }
+      await state.firebaseSchoolBridge.auth.signOut();
+      clearFirebaseProfileWatcher();
+      state.firebaseSchoolBridge.currentUser = null;
+      state.firebaseSchoolBridge.currentProfile = null;
+      state.firebaseSchoolBridge.accessibleClassIds = [];
+      state.firebaseSchoolBridge.firebaseUsers = [];
+      state.firebaseSchoolBridge.studentCatalog = [];
+      state.firebaseSchoolBridge.classCatalog = [];
+      state.firebaseSchoolBridge.schoolCatalog = [];
+      state.firebaseSchoolBridge.syncError = "Firebase에서 로그아웃했습니다. 기존 로컬 반 목록은 계속 사용할 수 있습니다.";
+      writeStoredSchools(getSchoolProfiles().filter((entry) => entry.source !== "firebase"));
+      state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
+      applySelectedSchoolClassIdsToCheckSetInput(true);
+      renderExamLibraryList();
+      renderExamHistoryList();
+      renderStudentRetryPanel();
+      renderPdfLabFirebaseAuthUi();
+      return true;
     }
 
     function waitForPdfLabFirebaseAuth(auth, timeoutMs = 2500) {
@@ -2331,6 +2548,9 @@
           return {
             uid: normalizeProblemText(user?.uid || ""),
             name,
+            loginId: normalizeProblemText(user?.loginId || ""),
+            email: normalizeProblemText(user?.email || "").toLowerCase(),
+            studentId: normalizeProblemText(user?.studentId || user?.loginId || ""),
             role: normalizeProblemText(user?.role || "student").toLowerCase() || "student",
             classIds: matchedClassIds,
             classNames: Array.from(new Set(classNames)).sort((left, right) => left.localeCompare(right, "ko"))
@@ -2368,6 +2588,73 @@
       return classNames.length
         ? `${student.name} · ${classNames.join(", ")}`
         : student.name;
+    }
+
+    function upsertRetryStudentFromFirebaseStudent(firebaseStudent = {}, schoolKey = getStudentRetrySchoolKey()) {
+      const normalizedSchoolKey = normalizeSchoolKey(schoolKey || "");
+      const name = normalizeSchoolName(firebaseStudent?.name || "");
+      if (!normalizedSchoolKey || !name) {
+        return null;
+      }
+      if (!Array.isArray(state.studentRetry.students)) {
+        state.studentRetry.students = [];
+      }
+      const firebaseUid = normalizeProblemText(firebaseStudent?.uid || "");
+      const firebaseLoginId = normalizeProblemText(firebaseStudent?.loginId || "");
+      const firebaseEmail = normalizeProblemText(firebaseStudent?.email || "").toLowerCase();
+      const firebaseStudentId = normalizeProblemText(firebaseStudent?.studentId || firebaseLoginId || "");
+      const existing = state.studentRetry.students.find((student) =>
+        normalizeSchoolKey(student.schoolKey || "") === normalizedSchoolKey &&
+        (
+          (firebaseUid && String(student.firebaseUid || "") === firebaseUid) ||
+          (firebaseEmail && String(student.firebaseEmail || "").toLowerCase() === firebaseEmail) ||
+          (firebaseStudentId && String(student.firebaseStudentId || "") === firebaseStudentId) ||
+          normalizeSchoolName(student.name || "") === name
+        )
+      );
+      const classIds = Array.isArray(firebaseStudent?.classIds) ? [...firebaseStudent.classIds] : [];
+      const classNames = Array.isArray(firebaseStudent?.classNames) ? [...firebaseStudent.classNames] : [];
+      const now = Date.now();
+      if (existing) {
+        existing.name = name;
+        existing.firebaseUid = firebaseUid || existing.firebaseUid || "";
+        existing.firebaseLoginId = firebaseLoginId || existing.firebaseLoginId || "";
+        existing.firebaseEmail = firebaseEmail || existing.firebaseEmail || "";
+        existing.firebaseStudentId = firebaseStudentId || existing.firebaseStudentId || "";
+        existing.classIds = classIds;
+        existing.classNames = classNames;
+        existing.updatedAt = now;
+        return existing;
+      }
+      const student = {
+        studentId: createRetryId("student"),
+        schoolKey: normalizedSchoolKey,
+        name,
+        firebaseUid,
+        firebaseLoginId,
+        firebaseEmail,
+        firebaseStudentId,
+        classIds,
+        classNames,
+        createdAt: now,
+        updatedAt: now
+      };
+      state.studentRetry.students.push(student);
+      return student;
+    }
+
+    function ensureFirebaseRetryStudentsForSelectedSchool() {
+      const currentRole = String(state.firebaseSchoolBridge.currentProfile?.role || "").toLowerCase();
+      if (currentRole !== "admin") {
+        return 0;
+      }
+      const beforeIds = new Set(getRetryStudentsForSelectedSchool().map((student) => student.studentId));
+      getFirebaseStudentCatalogForSelectedSchool().forEach((firebaseStudent) => {
+        upsertRetryStudentFromFirebaseStudent(firebaseStudent);
+      });
+      return getRetryStudentsForSelectedSchool()
+        .filter((student) => !beforeIds.has(student.studentId))
+        .length;
     }
 
     function renderStudentRetryFirebaseControls() {
@@ -2654,16 +2941,13 @@
         state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 기존 반 목록만 사용합니다.";
         setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
         renderStudentRetryPanel();
+        renderPdfLabFirebaseAuthUi();
         return false;
       }
       try {
-        const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
-        if (!firebase.apps.length) {
-          firebase.initializeApp(config);
+        if (!ensurePdfLabFirebaseServices()) {
+          throw new Error("Firebase 서비스를 초기화하지 못했습니다.");
         }
-        state.firebaseSchoolBridge.enabled = true;
-        state.firebaseSchoolBridge.auth = firebase.auth();
-        state.firebaseSchoolBridge.db = firebase.firestore();
         const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
         state.firebaseSchoolBridge.currentUser = user || null;
         if (!user) {
@@ -2675,6 +2959,7 @@
           state.firebaseSchoolBridge.syncError = "Firebase 로그인 상태가 없어 기존 반 목록을 유지합니다. 같은 계정으로 로그인한 뒤 새로고침해주세요.";
           setOptionalText(elements.schoolSelectionSummary, state.firebaseSchoolBridge.syncError);
           renderStudentRetryPanel();
+          renderPdfLabFirebaseAuthUi();
           return false;
         }
 
@@ -2682,6 +2967,7 @@
         state.firebaseSchoolBridge.currentProfile = currentProfile;
         state.firebaseSchoolBridge.currentProfileSignature = createFirebaseProfileScopeSignature(currentProfile || { uid: user.uid });
         state.firebaseSchoolBridge.accessibleClassIds = getFirebaseAccessibleClassIds(currentProfile);
+        renderPdfLabFirebaseAuthUi();
         ensureFirebaseProfileWatcher();
 
         let userCatalogError = "";
@@ -2733,6 +3019,7 @@
           }
         }
         renderStudentRetryPanel();
+        renderPdfLabFirebaseAuthUi();
         return true;
       } catch (error) {
         console.warn("Failed to sync school catalog from Firebase", error);
@@ -2740,9 +3027,10 @@
         state.firebaseSchoolBridge.accessibleClassIds = [];
         state.firebaseSchoolBridge.firebaseUsers = [];
         state.firebaseSchoolBridge.studentCatalog = [];
-        state.firebaseSchoolBridge.syncError = error?.message || "Firebase 반 목록을 불러오지 못했습니다.";
+        state.firebaseSchoolBridge.syncError = getFriendlyFirebaseAuthMessage(error) || "Firebase 반 목록을 불러오지 못했습니다.";
         setOptionalText(elements.schoolSelectionSummary, `Firebase 반 목록 동기화 실패: ${state.firebaseSchoolBridge.syncError}`);
         renderStudentRetryPanel();
+        renderPdfLabFirebaseAuthUi();
         return false;
       }
     }
@@ -4875,6 +5163,10 @@
       const existing = getRetryStudentsForSelectedSchool().find((student) =>
         firebaseStudent?.uid
           ? String(student.firebaseUid || "") === firebaseStudent.uid
+          : firebaseStudent?.email
+            ? String(student.firebaseEmail || "").toLowerCase() === String(firebaseStudent.email || "").toLowerCase()
+            : firebaseStudent?.studentId
+              ? String(student.firebaseStudentId || "") === String(firebaseStudent.studentId || "")
           : student.name === name
       );
       if (existing) {
@@ -4886,6 +5178,9 @@
           schoolKey,
           name,
           firebaseUid: firebaseStudent?.uid || "",
+          firebaseLoginId: firebaseStudent?.loginId || "",
+          firebaseEmail: firebaseStudent?.email || "",
+          firebaseStudentId: firebaseStudent?.studentId || firebaseStudent?.loginId || "",
           classIds: Array.isArray(firebaseStudent?.classIds) ? [...firebaseStudent.classIds] : [],
           classNames: Array.isArray(firebaseStudent?.classNames) ? [...firebaseStudent.classNames] : [],
           createdAt: now,
@@ -5109,6 +5404,11 @@
       if (!baseItems.length) {
         throw new Error("먼저 1차 공통으로 쓸 반별 draft를 생성해주세요.");
       }
+      const addedStudentCount = ensureFirebaseRetryStudentsForSelectedSchool();
+      const students = getRetryStudentsForSelectedSchool();
+      if (!students.length) {
+        throw new Error("1차 공통을 적용할 학생이 없습니다. Firebase 학생 목록을 불러오거나 학생을 먼저 등록해주세요.");
+      }
       const now = Date.now();
       const session = {
         sessionId: createRetryId("retry-session"),
@@ -5123,9 +5423,17 @@
       };
       state.studentRetry.sessions.unshift(session);
       state.studentRetry.selectedSessionId = session.sessionId;
+      students.forEach((student) => {
+        getStudentRetryState(session, student.studentId);
+      });
+      state.studentRetry.selectedStudentId = students[0]?.studentId || "";
       writeStudentRetryState();
       renderStudentRetryPanel();
-      setStatus(`${session.name} 세트를 시작했습니다. 학생별 오답을 체크한 뒤 다음 차수를 생성하세요.`, "idle", "오답유형");
+      setStatus(
+        `${session.name} 세트를 학생 ${students.length}명에게 1차 공통으로 적용했습니다.${addedStudentCount ? ` Firebase 학생 ${addedStudentCount}명도 자동 등록했습니다.` : ""} 학생별 오답을 체크한 뒤 다음 차수를 생성하세요.`,
+        "idle",
+        "오답유형"
+      );
     }
 
     function updateStudentRetryResult(studentId, roundIndex, itemId, isWrong) {
@@ -7188,7 +7496,7 @@
         ? normalizeProblemText(runtimeRecord.answerText || "")
         : formatAnswerLabelForExport(runtimeRecord.answerText || "");
       return {
-        id: `q${questionNumber}`,
+        id: `q-${questionNumber}`,
         number: questionNumber,
         type,
         prompt: `문항 ${questionNumber}`,
@@ -7196,6 +7504,61 @@
         acceptableAnswers: [],
         explanation: String(runtimeRecord.explanationText || "").trim(),
         problemType: runtimeRecord.selectableType || runtimeRecord.problemType || PROBLEM_TYPE_OTHER
+      };
+    }
+
+    function getLocalDateStamp(date = new Date()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function buildExamCheckSetSourceRound(retryContext) {
+      return retryContext
+        ? `round${Math.max(1, Number.parseInt(retryContext.roundIndex, 10) || 1)}`
+        : "round1";
+    }
+
+    function buildExamCheckSetSourceKeyPart(values, fallback) {
+      const joined = (Array.isArray(values) ? values : [values])
+        .map((value) => normalizeProblemText(value))
+        .filter(Boolean)
+        .join("-");
+      return buildPortableCheckSetId(joined, fallback);
+    }
+
+    function buildExamCheckSetSourceFingerprint(value) {
+      const text = String(value || "");
+      let hash = 2166136261;
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(36);
+    }
+
+    function buildExamCheckSetSourceMeta({ classIds = [], schoolKey = "", sourceRound = "round1", baseId = "", signature = "" } = {}) {
+      const classKey = buildExamCheckSetSourceKeyPart(
+        classIds.length ? classIds : [schoolKey || "class"],
+        "class"
+      );
+      const dateStamp = getLocalDateStamp();
+      const fingerprint = buildExamCheckSetSourceFingerprint(signature || baseId || classKey);
+      const sourceSetLabel = sourceRound === "round1" ? (baseId || "main") : "retry";
+      const setKey = buildExamCheckSetSourceKeyPart(
+        [classKey, sourceRound, sourceSetLabel, fingerprint],
+        `${classKey}-${sourceRound}-main`
+      );
+      return {
+        source: "pdf-lab",
+        createdByLab: "pdf-lab",
+        sourceRound,
+        sourceSetId: setKey,
+        sourceBatchId: buildExamCheckSetSourceKeyPart(
+          [dateStamp, setKey],
+          `${dateStamp}-${classKey}-${sourceRound}`
+        )
       };
     }
 
@@ -7247,6 +7610,13 @@
         "pdflab-check-set"
       );
       const signature = getExamSelectionSignature(entries);
+      const sourceMeta = buildExamCheckSetSourceMeta({
+        classIds,
+        schoolKey,
+        sourceRound: buildExamCheckSetSourceRound(retryContext),
+        baseId,
+        signature
+      });
       return {
         title,
         description,
@@ -7264,6 +7634,7 @@
         studentRetryStudentName: retryContext?.student?.name || "",
         studentRetryRoundIndex: retryContext?.roundIndex || 0,
         signature,
+        ...sourceMeta,
         questions,
         questionMappings,
         objectiveCount: questions.filter((question) => question.type === "객관식").length,
@@ -7277,21 +7648,173 @@
           classIds,
           availableFrom: "",
           availableTo: "",
+          ...sourceMeta,
           questions
         }
       };
     }
 
+    function getCheckSetTargetStudentInfo(student = {}) {
+      const firebaseUid = normalizeProblemText(student.firebaseUid || "");
+      const firebaseLoginId = normalizeProblemText(student.firebaseLoginId || "");
+      const firebaseEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
+      const firebaseStudentId = normalizeProblemText(student.firebaseStudentId || firebaseLoginId || "");
+      const name = normalizeSchoolName(student.name || "");
+      return {
+        localStudentId: String(student.studentId || ""),
+        name,
+        firebaseUid,
+        firebaseLoginId,
+        firebaseEmail,
+        firebaseStudentId,
+        classIds: Array.from(new Set(
+          (Array.isArray(student.classIds) ? student.classIds : [])
+            .map((classId) => normalizeProblemText(classId))
+            .filter(Boolean)
+        )),
+        classNames: Array.from(new Set(
+          (Array.isArray(student.classNames) ? student.classNames : [])
+            .map((className) => normalizeSchoolName(className))
+            .filter(Boolean)
+        )).sort((left, right) => left.localeCompare(right, "ko"))
+      };
+    }
+
+    function getCheckSetTargetStudentsForCurrentDraft(retryContext = getCurrentStudentRetryDraftContext()) {
+      if (retryContext?.student) {
+        ensureFirebaseRetryStudentsForSelectedSchool();
+        writeStudentRetryState({ syncFolder: false });
+        const refreshedStudent = (state.studentRetry.students || [])
+          .find((entry) => String(entry.studentId || "") === String(retryContext.studentId || "")) || retryContext.student;
+        return [refreshedStudent];
+      }
+      ensureFirebaseRetryStudentsForSelectedSchool();
+      writeStudentRetryState({ syncFolder: false });
+      const students = getRetryStudentsForSelectedSchool();
+      if (!students.length) {
+        throw new Error("CHECK 세트를 배정할 학생이 없습니다. Firebase 학생 목록을 불러오거나 학생을 먼저 등록해주세요.");
+      }
+      return students;
+    }
+
+    function getCheckSetTargetStudentsForSummary(retryContext = getCurrentStudentRetryDraftContext()) {
+      if (retryContext?.student) {
+        return [retryContext.student];
+      }
+      const localStudents = getRetryStudentsForSelectedSchool();
+      if (localStudents.length) {
+        return localStudents;
+      }
+      const currentRole = String(state.firebaseSchoolBridge.currentProfile?.role || "").toLowerCase();
+      return currentRole === "admin" ? getFirebaseStudentCatalogForSelectedSchool() : [];
+    }
+
+    function buildPersonalCheckSetId(baseId, targetInfo, index = 0) {
+      const targetKey = targetInfo.firebaseUid ||
+        targetInfo.firebaseStudentId ||
+        targetInfo.firebaseLoginId ||
+        targetInfo.firebaseEmail ||
+        targetInfo.name ||
+        targetInfo.localStudentId ||
+        `student-${index + 1}`;
+      return buildPortableCheckSetId(`${baseId}-${targetKey}`, `${baseId || "pdflab-check-set"}-${index + 1}`);
+    }
+
+    function getPersonalCheckSetClassIds(targetInfo, fallbackClassIds) {
+      const classIds = Array.isArray(fallbackClassIds) && fallbackClassIds.length
+        ? fallbackClassIds
+        : targetInfo.classIds;
+      return Array.from(new Set((Array.isArray(classIds) ? classIds : []).map((classId) => normalizeProblemText(classId)).filter(Boolean)));
+    }
+
+    function buildPersonalExamCheckSetDrafts(baseDraft) {
+      const retryContext = getCurrentStudentRetryDraftContext();
+      const targetStudents = getCheckSetTargetStudentsForCurrentDraft(retryContext);
+      return targetStudents.map((student, index) => {
+        const targetInfo = getCheckSetTargetStudentInfo(student);
+        const personalId = buildPersonalCheckSetId(baseDraft.checkSetId, targetInfo, index);
+        const isRetryDraft = Boolean(retryContext?.student);
+        const title = isRetryDraft
+          ? baseDraft.title
+          : `${baseDraft.title} · ${targetInfo.name || `학생 ${index + 1}`}`;
+        const description = [
+          baseDraft.description,
+          targetInfo.name ? `${targetInfo.name} 개인 CHECK` : "학생 개인 CHECK"
+        ].filter(Boolean).join(" · ");
+        const classIds = getPersonalCheckSetClassIds(targetInfo, baseDraft.classIds);
+        const sourceRound = baseDraft.sourceRound || (isRetryDraft
+          ? `round${baseDraft.studentRetryRoundIndex || 1}`
+          : "round1");
+        const targetStudentIds = Array.from(new Set([targetInfo.firebaseStudentId, targetInfo.firebaseLoginId].filter(Boolean)));
+        const exportPayload = {
+          ...baseDraft.exportPayload,
+          savedAt: new Date().toISOString(),
+          id: personalId,
+          title,
+          description,
+          classIds,
+          assignmentMode: "student",
+          targetUserIds: targetInfo.firebaseUid ? [targetInfo.firebaseUid] : [],
+          targetStudentIds,
+          targetEmails: targetInfo.firebaseEmail ? [targetInfo.firebaseEmail] : [],
+          targetStudentNames: targetInfo.name ? [targetInfo.name] : [],
+          targetStudentName: targetInfo.name || "",
+          targetStudentId: targetInfo.firebaseStudentId || targetInfo.firebaseLoginId || "",
+          targetLoginIds: targetInfo.firebaseLoginId ? [targetInfo.firebaseLoginId] : [],
+          source: baseDraft.source || "pdf-lab",
+          sourceBatchId: baseDraft.sourceBatchId || "",
+          sourceSetId: baseDraft.sourceSetId || "",
+          sourceRound,
+          createdByLab: baseDraft.createdByLab || "pdf-lab",
+          pdfLabStudentId: targetInfo.localStudentId,
+          pdfLabSessionId: baseDraft.studentRetrySessionId || "",
+          pdfLabSessionName: baseDraft.studentRetrySessionName || "",
+          pdfLabRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
+          questions: baseDraft.questions
+        };
+        return {
+          ...baseDraft,
+          title,
+          description,
+          checkSetId: personalId,
+          classIds,
+          assignmentMode: "student",
+          targetStudentLocalId: targetInfo.localStudentId,
+          targetStudentName: targetInfo.name || "",
+          targetFirebaseUid: targetInfo.firebaseUid,
+          targetFirebaseLoginId: targetInfo.firebaseLoginId,
+          targetFirebaseEmail: targetInfo.firebaseEmail,
+          targetFirebaseStudentId: targetInfo.firebaseStudentId,
+          source: baseDraft.source || "pdf-lab",
+          sourceBatchId: baseDraft.sourceBatchId || "",
+          sourceSetId: baseDraft.sourceSetId || "",
+          sourceRound,
+          createdByLab: baseDraft.createdByLab || "pdf-lab",
+          exportPayload
+        };
+      });
+    }
+
     function downloadExamCheckSetPayload(record) {
-      const payload = record?.exportPayload || record?.payload;
-      if (!payload || !Array.isArray(payload.questions)) {
+      const records = Array.isArray(record) ? record : [record];
+      const payloads = records
+        .map((entry) => entry?.exportPayload || entry?.payload)
+        .filter((payload) => payload && Array.isArray(payload.questions));
+      if (!payloads.length) {
         throw new Error("다운로드할 CHECK 세트 데이터가 없습니다.");
       }
+      const payload = payloads.length === 1
+        ? payloads[0]
+        : {
+            kind: "check-set-bundle",
+            savedAt: new Date().toISOString(),
+            checkSets: payloads
+          };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${buildPortableCheckSetId(record.fileStem || payload.id || payload.title || "pdflab-check-set")}.json`;
+      anchor.download = `${buildPortableCheckSetId(records[0]?.fileStem || payload.id || payload.title || "pdflab-check-set")}.json`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -7300,6 +7823,7 @@
 
     async function persistExamCheckSet(options = {}) {
       const draft = buildExamCheckSetDraftPayload(options);
+      const personalDrafts = buildPersonalExamCheckSetDrafts(draft);
       if (elements.examCheckSetTitleInput && !normalizeProblemText(elements.examCheckSetTitleInput.value)) {
         elements.examCheckSetTitleInput.value = draft.title;
       }
@@ -7312,66 +7836,183 @@
       if (elements.examCheckSetClassIdsInput && !normalizeProblemText(elements.examCheckSetClassIdsInput.value) && draft.classIds.length) {
         elements.examCheckSetClassIdsInput.value = draft.classIds.join(", ");
       }
-      const existingRecord = getStoredCheckSetRecords().find((record) =>
-        String(record.checkSetId || "") === draft.checkSetId &&
-        normalizeSchoolKey(record.schoolKey || "") === draft.schoolKey &&
-        normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === draft.librarySourceKey &&
-        String(record.studentRetryStudentId || "") === draft.studentRetryStudentId &&
-        String(record.studentRetrySessionId || "") === draft.studentRetrySessionId &&
-        Number(record.studentRetryRoundIndex || 0) === Number(draft.studentRetryRoundIndex || 0)
-      );
       const now = Date.now();
-      const record = {
-        checkSetRecordId: existingRecord?.checkSetRecordId || `check-set-record-${now}-${Math.random().toString(36).slice(2, 8)}`,
-        checkSetId: draft.checkSetId,
-        title: draft.title,
-        description: draft.description,
-        classIds: [...draft.classIds],
-        schoolKey: draft.schoolKey,
-        schoolName: draft.schoolName,
-        librarySourceKey: draft.librarySourceKey,
-        librarySourceName: draft.librarySourceName,
-        historyScope: draft.historyScope,
-        workflowMode: draft.workflowMode,
-        studentRetrySessionId: draft.studentRetrySessionId,
-        studentRetrySessionName: draft.studentRetrySessionName,
-        studentRetryStudentId: draft.studentRetryStudentId,
-        studentRetryStudentName: draft.studentRetryStudentName,
-        studentRetryRoundIndex: draft.studentRetryRoundIndex,
-        signature: draft.signature,
-        questionCount: draft.questions.length,
-        objectiveCount: draft.objectiveCount,
-        subjectiveCount: draft.subjectiveCount,
-        createdAt: existingRecord?.createdAt || now,
-        updatedAt: now,
-        fileStem: draft.checkSetId,
-        exportPayload: draft.exportPayload,
-        questionMappings: draft.questionMappings
-      };
+      const storedRecords = getStoredCheckSetRecords();
+      const recordResults = personalDrafts.map((personalDraft) => {
+        const existingRecord = storedRecords.find((record) =>
+          String(record.checkSetId || "") === personalDraft.checkSetId &&
+          normalizeSchoolKey(record.schoolKey || "") === personalDraft.schoolKey &&
+          normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === personalDraft.librarySourceKey
+        );
+        const record = {
+          checkSetRecordId: existingRecord?.checkSetRecordId || `check-set-record-${now}-${Math.random().toString(36).slice(2, 8)}`,
+          checkSetId: personalDraft.checkSetId,
+          title: personalDraft.title,
+          description: personalDraft.description,
+          classIds: [...personalDraft.classIds],
+          schoolKey: personalDraft.schoolKey,
+          schoolName: personalDraft.schoolName,
+          librarySourceKey: personalDraft.librarySourceKey,
+          librarySourceName: personalDraft.librarySourceName,
+          historyScope: personalDraft.historyScope,
+          workflowMode: personalDraft.workflowMode,
+          assignmentMode: personalDraft.assignmentMode,
+          source: personalDraft.source,
+          createdByLab: personalDraft.createdByLab,
+          sourceBatchId: personalDraft.sourceBatchId,
+          sourceSetId: personalDraft.sourceSetId,
+          sourceRound: personalDraft.sourceRound,
+          studentRetrySessionId: personalDraft.studentRetrySessionId,
+          studentRetrySessionName: personalDraft.studentRetrySessionName,
+          studentRetryStudentId: personalDraft.studentRetryStudentId || personalDraft.targetStudentLocalId,
+          studentRetryStudentName: personalDraft.studentRetryStudentName || personalDraft.targetStudentName,
+          studentRetryRoundIndex: personalDraft.studentRetryRoundIndex,
+          targetStudentLocalId: personalDraft.targetStudentLocalId,
+          targetStudentName: personalDraft.targetStudentName,
+          targetFirebaseUid: personalDraft.targetFirebaseUid,
+          targetFirebaseLoginId: personalDraft.targetFirebaseLoginId,
+          targetFirebaseEmail: personalDraft.targetFirebaseEmail,
+          targetFirebaseStudentId: personalDraft.targetFirebaseStudentId,
+          signature: `${personalDraft.signature}::${personalDraft.targetFirebaseUid || personalDraft.targetFirebaseStudentId || personalDraft.targetFirebaseEmail || personalDraft.targetStudentLocalId || personalDraft.targetStudentName}`,
+          questionCount: personalDraft.questions.length,
+          objectiveCount: personalDraft.objectiveCount,
+          subjectiveCount: personalDraft.subjectiveCount,
+          createdAt: existingRecord?.createdAt || now,
+          updatedAt: now,
+          fileStem: personalDraft.checkSetId,
+          exportPayload: personalDraft.exportPayload,
+          questionMappings: personalDraft.questionMappings
+        };
+        return {
+          record,
+          created: !existingRecord
+        };
+      });
       const db = await openLibraryDb();
       const transaction = db.transaction(LIBRARY_CHECK_SET_STORE, "readwrite");
-      transaction.objectStore(LIBRARY_CHECK_SET_STORE).put(record);
+      const store = transaction.objectStore(LIBRARY_CHECK_SET_STORE);
+      recordResults.forEach(({ record }) => {
+        store.put(record);
+      });
       await idbTransactionDone(transaction);
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
       return {
-        record,
-        created: !existingRecord
+        records: recordResults.map((entry) => entry.record),
+        primaryRecord: recordResults[0]?.record || null,
+        createdCount: recordResults.filter((entry) => entry.created).length,
+        updatedCount: recordResults.filter((entry) => !entry.created).length
       };
+    }
+
+    function getIsoTimestampFromMillis(value) {
+      const timestamp = Number(value) || Date.now();
+      return new Date(timestamp).toISOString();
+    }
+
+    function buildCodeLabPortalCheckSetDoc(record, uploadedAtIso) {
+      const payload = record?.exportPayload || record?.payload;
+      if (!payload || !Array.isArray(payload.questions)) {
+        throw new Error("CODE LAB에 업로드할 CHECK 세트 데이터가 없습니다.");
+      }
+      const bridge = state.firebaseSchoolBridge || {};
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      const profile = bridge.currentProfile || {};
+      return {
+        docId: record.checkSetId,
+        title: record.title || payload.title || "CHECK 세트",
+        fileName: `${buildPortableCheckSetId(record.fileStem || record.checkSetId || payload.id || "pdflab-check-set")}.json`,
+        payload,
+        classIds: Array.from(new Set(
+          (Array.isArray(record.classIds) && record.classIds.length ? record.classIds : payload.classIds || [])
+            .map((classId) => normalizeProblemText(classId))
+            .filter(Boolean)
+        )),
+        assignmentMode: payload.assignmentMode || record.assignmentMode || "student",
+        targetUserIds: Array.isArray(payload.targetUserIds) ? payload.targetUserIds : [],
+        targetStudentIds: Array.isArray(payload.targetStudentIds) ? payload.targetStudentIds : [],
+        targetEmails: Array.isArray(payload.targetEmails) ? payload.targetEmails : [],
+        targetStudentNames: Array.isArray(payload.targetStudentNames) ? payload.targetStudentNames : [],
+        source: payload.source || "pdf-lab",
+        sourceBatchId: payload.sourceBatchId || record.sourceBatchId || "",
+        sourceSetId: payload.sourceSetId || record.sourceSetId || "",
+        sourceRound: payload.sourceRound || record.sourceRound || "",
+        createdByLab: payload.createdByLab || record.createdByLab || "pdf-lab",
+        questionCount: Array.isArray(payload.questions) ? payload.questions.length : 0,
+        createdAt: getIsoTimestampFromMillis(record.createdAt),
+        updatedAt: uploadedAtIso,
+        sortOrder: Number(record.createdAt || Date.now()),
+        updatedBy: user?.uid || "",
+        updatedByName: normalizeProblemText(profile.name || user?.displayName || user?.email || "")
+      };
+    }
+
+    async function uploadExamCheckSetRecordsToCodeLab(records = []) {
+      const rows = Array.isArray(records) ? records.filter(Boolean) : [];
+      if (!rows.length) {
+        return { uploaded: 0, skipped: 0, reason: "" };
+      }
+      if (!isPdfLabFirebaseConfigured() || !ensurePdfLabFirebaseServices()) {
+        return { uploaded: 0, skipped: rows.length, reason: "Firebase 설정 없음" };
+      }
+      const bridge = state.firebaseSchoolBridge;
+      const db = bridge.db;
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      const profile = bridge.currentProfile || null;
+      if (!db || typeof db.collection !== "function" || !user) {
+        return { uploaded: 0, skipped: rows.length, reason: "Firebase 관리자 로그인 필요" };
+      }
+      if (String(profile?.role || "").toLowerCase() !== "admin") {
+        return { uploaded: 0, skipped: rows.length, reason: "관리자 계정 필요" };
+      }
+
+      const uploadedAtIso = new Date().toISOString();
+      for (const record of rows) {
+        const docId = normalizeProblemText(record.checkSetId || record.exportPayload?.id || "");
+        if (!docId) {
+          throw new Error("CODE LAB에 업로드할 CHECK 세트 ID가 비어 있습니다.");
+        }
+        await db.collection("portalCheckSets").doc(docId).set(
+          buildCodeLabPortalCheckSetDoc(record, uploadedAtIso),
+          { merge: true }
+        );
+      }
+      return { uploaded: rows.length, skipped: 0, reason: "" };
+    }
+
+    function formatCheckSetSaveStatus(records, createdCount, updatedCount, uploadResult) {
+      const total = Array.isArray(records) ? records.length : 0;
+      const actionParts = [];
+      if (createdCount) {
+        actionParts.push(`${createdCount}개 생성`);
+      }
+      if (updatedCount) {
+        actionParts.push(`${updatedCount}개 업데이트`);
+      }
+      const saveText = total === 1
+        ? `${records[0]?.title || "CHECK 세트"}를 저장했습니다`
+        : `학생별 개인 CHECK 세트 ${total}개를 저장했습니다`;
+      const uploadText = uploadResult?.uploaded
+        ? `CODE LAB CHECK에 ${uploadResult.uploaded}개 업로드했습니다`
+        : uploadResult?.reason
+          ? `CODE LAB 업로드는 건너뛰었습니다: ${uploadResult.reason}`
+          : "";
+      return [saveText, actionParts.length ? `(${actionParts.join(", ")})` : "", uploadText]
+        .filter(Boolean)
+        .join(" · ");
     }
 
     async function saveCurrentExamAsCheckSet(downloadAfterSave = false) {
       setBusy(true);
-      setStatus(downloadAfterSave ? "CHECK 세트를 만들고 JSON을 준비하는 중입니다..." : "CHECK 세트를 저장하는 중입니다...", "working", "CHECK");
+      setStatus(downloadAfterSave ? "학생별 CHECK 세트를 만들고 JSON을 준비하는 중입니다..." : "학생별 CHECK 세트를 저장하는 중입니다...", "working", "CHECK");
       try {
-        const { record, created } = await persistExamCheckSet();
+        const { records, createdCount, updatedCount } = await persistExamCheckSet();
+        const uploadResult = await uploadExamCheckSetRecordsToCodeLab(records);
         if (downloadAfterSave) {
-          downloadExamCheckSetPayload(record);
+          downloadExamCheckSetPayload(records);
         }
         setStatus(
-          created
-            ? `${record.title} CHECK 세트를 저장했습니다.`
-            : `${record.title} CHECK 세트를 업데이트했습니다.`,
+          formatCheckSetSaveStatus(records, createdCount, updatedCount, uploadResult),
           "idle",
           "CHECK"
         );
@@ -7401,7 +8042,7 @@
       }
       const slotCount = state.examBuilder.slots.length;
       if (!slotCount) {
-        elements.examCheckSetSummary.textContent = "현재 draft를 만들면 여기서 CHECK 세트를 함께 저장할 수 있습니다.";
+        elements.examCheckSetSummary.textContent = "현재 draft를 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.";
         return;
       }
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
@@ -7419,17 +8060,20 @@
       }).length;
       const classCount = parseCheckSetClassIds(elements.examCheckSetClassIdsInput?.value || "").length;
       const retryContext = getCurrentStudentRetryDraftContext();
+      const targetCount = getCheckSetTargetStudentsForSummary(retryContext).length;
       const title = normalizeProblemText(elements.examCheckSetTitleInput?.value || "") || getDefaultExamCheckSetTitle();
       const summaryBits = [
         title,
         `${questionEntries.length}문항`,
         classCount ? `반 ID ${classCount}개` : "반 ID 미지정",
-        retryContext ? `${retryContext.student?.name || "학생"} ${retryContext.roundIndex || ""}차` : "반 공통"
+        retryContext
+          ? `${retryContext.student?.name || "학생"} ${retryContext.roundIndex || ""}차 개인`
+          : (targetCount ? `학생 ${targetCount}명 개인 세트` : "학생 미지정")
       ];
       if (missingAnswers) {
         summaryBits.push(`정답 미입력 ${missingAnswers}문항`);
       } else {
-        summaryBits.push("문제-원문항 매핑 저장 준비 완료");
+        summaryBits.push("CODE LAB 개인 CHECK 업로드 준비 완료");
       }
       elements.examCheckSetSummary.textContent = summaryBits.filter(Boolean).join(" · ");
     }
@@ -7452,9 +8096,11 @@
           record.classIds?.length ? `반 ${record.classIds.length}개` : "반 미지정",
           formatTimestamp(record.updatedAt || record.createdAt)
         ];
-        const scopeLabel = record.historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
-          ? `${record.studentRetryStudentName || "학생"} · ${record.studentRetryRoundIndex || ""}차`
-        : `${record.schoolName || "반"} · 공통`;
+        const scopeLabel = record.assignmentMode === "student"
+          ? `${record.targetStudentName || record.studentRetryStudentName || "학생"} · 개인${record.sourceRound ? ` · ${record.sourceRound}` : ""}`
+          : (record.historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
+            ? `${record.studentRetryStudentName || "학생"} · ${record.studentRetryRoundIndex || ""}차`
+            : `${record.schoolName || "반"} · 공통`);
         return `
           <article class="exam-history-card">
             <header class="exam-history-card-header">
@@ -9311,6 +9957,7 @@
       if (elements.refreshSchoolCatalogButton) {
         elements.refreshSchoolCatalogButton.disabled = isBusy;
       }
+      renderPdfLabFirebaseAuthUi();
       if (elements.generateSchoolDraftButton) {
         elements.generateSchoolDraftButton.disabled = isBusy;
       }
@@ -10657,6 +11304,7 @@
       updateLogoUi();
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
+      renderPdfLabFirebaseAuthUi();
       applyExamAnswerModeToUi(state.examBuilder.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
       if (elements.librarySourceSelect) {
         elements.librarySourceSelect.value = state.selectedLibrarySourceKey;
@@ -11027,9 +11675,84 @@
             .then(async () => {
               setBusy(true);
               setStatus("Firebase 반 목록을 새로고침하는 중입니다...", "working", "반");
-              await syncSchoolCatalogFromFirebase(true);
+              const synced = await syncSchoolCatalogFromFirebase(true);
               renderSchoolList();
-              setStatus("Firebase 반 목록을 새로고침했습니다.", "idle", "반");
+              setStatus(
+                synced ? "Firebase 반 목록을 새로고침했습니다." : "Firebase 로그인 또는 설정 확인이 필요합니다.",
+                synced ? "idle" : "error",
+                "반"
+              );
+            })
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
+        });
+      }
+      if (elements.firebaseLoginButton) {
+        elements.firebaseLoginButton.addEventListener("click", () => {
+          Promise.resolve()
+            .then(async () => {
+              setBusy(true);
+              setStatus("Firebase 로그인 중입니다...", "working", "로그인");
+              const synced = await signInPdfLabFirebase();
+              setStatus(
+                synced ? "Firebase 로그인 후 반/학생 목록을 불러왔습니다." : "Firebase 로그인은 되었지만 반 목록을 불러오지 못했습니다.",
+                synced ? "idle" : "error",
+                "Firebase"
+              );
+            })
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
+        });
+      }
+      if (elements.firebaseGoogleLoginButton) {
+        elements.firebaseGoogleLoginButton.addEventListener("click", () => {
+          Promise.resolve()
+            .then(async () => {
+              setBusy(true);
+              setStatus("Google Firebase 로그인 중입니다...", "working", "로그인");
+              const synced = await signInPdfLabFirebaseWithGoogle();
+              setStatus(
+                synced ? "Google 로그인 후 반/학생 목록을 불러왔습니다." : "Google 로그인은 되었지만 반 목록을 불러오지 못했습니다.",
+                synced ? "idle" : "error",
+                "Firebase"
+              );
+            })
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
+        });
+      }
+      if (elements.firebaseLoginForm) {
+        elements.firebaseLoginForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          if (!elements.firebaseLoginButton || elements.firebaseLoginButton.disabled) {
+            return;
+          }
+          elements.firebaseLoginButton.click();
+        });
+      }
+      if (elements.firebasePasswordInput) {
+        elements.firebasePasswordInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" || !elements.firebaseLoginButton || elements.firebaseLoginButton.disabled) {
+            return;
+          }
+          event.preventDefault();
+          elements.firebaseLoginButton.click();
+        });
+      }
+      if (elements.firebaseLogoutButton) {
+        elements.firebaseLogoutButton.addEventListener("click", () => {
+          Promise.resolve()
+            .then(async () => {
+              setBusy(true);
+              setStatus("Firebase 로그아웃 중입니다...", "working", "로그아웃");
+              await signOutPdfLabFirebase();
+              setStatus("Firebase에서 로그아웃했습니다. 기존 로컬 흐름은 유지됩니다.", "idle", "반");
             })
             .catch(handleError)
             .finally(() => {
