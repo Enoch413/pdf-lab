@@ -7246,9 +7246,16 @@
     }
 
     function openPendingStandaloneWindow(message = "출력 문서를 준비하는 중입니다...") {
-      const popup = window.open("", "_blank");
+      let popup = null;
+      try {
+        popup = window.open("", "_blank");
+      } catch (error) {
+        console.warn("Standalone output popup was blocked", error);
+        return null;
+      }
       if (!popup) {
-        throw new Error("출력 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+        console.warn("Standalone output popup was blocked");
+        return null;
       }
       popup.document.open();
       popup.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>PDF LAB</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#153f3b;font-family:Georgia,'Times New Roman',serif}.pending{padding:36px 42px;border:1px solid rgba(21,63,59,.14);border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(24,35,30,.12);letter-spacing:.08em;text-transform:uppercase}</style></head><body><div class="pending">${escapeHtml(message)}</div></body></html>`);
@@ -7270,21 +7277,40 @@
       }));
     }
 
-    function openStandaloneHtmlPreview(htmlText, popup = null) {
+    function downloadStandaloneHtml(htmlText, titleText = "pdf-lab-preview") {
+      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      state.examBuilder.exportUrls.push(url);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${slugifyFileName(titleText || "pdf-lab-preview") || "pdf-lab-preview"}.html`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }
+
+    function openStandaloneHtmlPreview(htmlText, popup = null, titleText = "pdf-lab-preview") {
       if (popup && !popup.closed) {
         popup.document.open();
         popup.document.write(htmlText);
         popup.document.close();
         popup.focus();
-        return;
+        return "popup";
       }
       const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       state.examBuilder.exportUrls.push(url);
-      const previewPopup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!previewPopup) {
-        throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
+      let previewPopup = null;
+      try {
+        previewPopup = window.open(url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        console.warn("Standalone HTML preview popup was blocked", error);
       }
+      if (!previewPopup) {
+        downloadStandaloneHtml(htmlText, titleText);
+        return "download";
+      }
+      return "popup";
     }
 
     function printStandaloneHtml(htmlText, printWindow = null) {
@@ -7512,9 +7538,11 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html, previewWindow);
-        setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
-        setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+        const openMode = openStandaloneHtmlPreview(html, previewWindow, settings.title);
+        setStatus(openMode === "download" ? "시험지 HTML 파일을 저장했습니다." : "시험지 미리보기를 열었습니다.", "idle", settings.title);
+        setOptionalText(elements.examExportSummary, openMode === "download"
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기 창이 막혀 HTML 파일로 저장했습니다.`
+          : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
       } catch (error) {
         if (previewWindow && !previewWindow.closed) {
           previewWindow.close();
