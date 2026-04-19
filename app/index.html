@@ -91,8 +91,18 @@
       </section>
 
       <section class="panel-card">
-        <h2 class="panel-title">2. 라이브러리 저장 폴더</h2>
+        <h2 class="panel-title">2. 라이브러리 저장 대상</h2>
         <div class="field-grid">
+          <div class="field-row">
+            <label class="field-label" for="librarySaveModeSelect">외부 저장 방식</label>
+            <select class="select-input" id="librarySaveModeSelect">
+              <option value="auto">자동 (기존 방식)</option>
+              <option value="firebase">Firebase 공용 라이브러리만</option>
+              <option value="folder">선택 폴더만</option>
+              <option value="both">Firebase + 선택 폴더</option>
+            </select>
+            <p class="small-note" id="librarySaveModeSummary">브라우저 내부 캐시는 항상 함께 갱신됩니다.</p>
+          </div>
           <div class="field-row">
             <span class="field-label">저장 위치</span>
             <div class="action-row compact-action-row">
@@ -614,10 +624,12 @@
     const FIREBASE_ADMIN_LAST_SCHOOL_KEY_PREFIX = "pdfProblemTemplateRepacker.firebaseAdminLastSchool";
     const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const STUDENT_RETRY_STORAGE_KEY = "pdfProblemTemplateRepacker.studentRetry.v1";
+    const EXAM_RESET_ACK_STORAGE_KEY = "pdfProblemTemplateRepacker.examResetAck.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
     const LIBRARY_DB_VERSION = 8;
     const LIBRARY_SETTINGS_STORE = "settings";
     const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
+    const LIBRARY_SAVE_MODE_KEY = "librarySaveMode";
     const LIBRARY_IMPORT_STORE = "imports";
     const LIBRARY_PROBLEM_STORE = "problems";
     const LIBRARY_PROBLEM_ASSET_STORE = "problemAssets";
@@ -640,6 +652,10 @@
     const FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION = "pdfLabSharedLibraryProblems";
     const FIREBASE_SHARED_LIBRARY_ASSET_ROOT = "pdf-lab/shared-library";
     const LIBRARY_STUDENT_RETRY_FILE = "pdflab_student_retry.json";
+    const LIBRARY_SAVE_MODE_AUTO = "auto";
+    const LIBRARY_SAVE_MODE_FIREBASE = "firebase";
+    const LIBRARY_SAVE_MODE_FOLDER = "folder";
+    const LIBRARY_SAVE_MODE_BOTH = "both";
     const EXAM_HISTORY_SCOPE_SCHOOL = "school";
     const EXAM_HISTORY_SCOPE_STUDENT_RETRY = "student-retry";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
@@ -956,6 +972,45 @@
       return matched?.key || DEFAULT_LIBRARY_SOURCE_KEY;
     }
 
+    function normalizeLibrarySaveMode(value) {
+      const normalized = normalizeProblemText(value).toLowerCase();
+      return [
+        LIBRARY_SAVE_MODE_AUTO,
+        LIBRARY_SAVE_MODE_FIREBASE,
+        LIBRARY_SAVE_MODE_FOLDER,
+        LIBRARY_SAVE_MODE_BOTH
+      ].includes(normalized)
+        ? normalized
+        : LIBRARY_SAVE_MODE_AUTO;
+    }
+
+    function getLibrarySaveModeLabel(mode = state?.librarySaveMode) {
+      switch (normalizeLibrarySaveMode(mode)) {
+        case LIBRARY_SAVE_MODE_FIREBASE:
+          return "Firebase만";
+        case LIBRARY_SAVE_MODE_FOLDER:
+          return "폴더만";
+        case LIBRARY_SAVE_MODE_BOTH:
+          return "Firebase + 폴더";
+        default:
+          return "자동";
+      }
+    }
+
+    function doesLibrarySaveModeUseFirebase(mode = state?.librarySaveMode) {
+      const normalized = normalizeLibrarySaveMode(mode);
+      return normalized === LIBRARY_SAVE_MODE_AUTO
+        || normalized === LIBRARY_SAVE_MODE_FIREBASE
+        || normalized === LIBRARY_SAVE_MODE_BOTH;
+    }
+
+    function doesLibrarySaveModeUseFolder(mode = state?.librarySaveMode) {
+      const normalized = normalizeLibrarySaveMode(mode);
+      return normalized === LIBRARY_SAVE_MODE_AUTO
+        || normalized === LIBRARY_SAVE_MODE_FOLDER
+        || normalized === LIBRARY_SAVE_MODE_BOTH;
+    }
+
     function getLibrarySourceLabel(sourceKey) {
       return LIBRARY_SOURCE_OPTIONS.find((option) => option.key === normalizeLibrarySourceKey(sourceKey))?.label
         || LIBRARY_SOURCE_OPTIONS[0].label;
@@ -1049,6 +1104,7 @@
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
       selectedLibrarySourceKey: DEFAULT_LIBRARY_SOURCE_KEY,
+      librarySaveMode: LIBRARY_SAVE_MODE_AUTO,
       activeTab: INITIAL_WORKSPACE_MODE === WORKSPACE_MODE_LIBRARY ? "repack" : "exam",
       workspaceMode: INITIAL_WORKSPACE_MODE,
       libraryDirectoryHandle: null,
@@ -1173,6 +1229,8 @@
       exportHtmlButton: document.getElementById("exportHtmlButton"),
       saveLibraryButton: document.getElementById("saveLibraryButton"),
       librarySaveSummary: document.getElementById("librarySaveSummary"),
+      librarySaveModeSelect: document.getElementById("librarySaveModeSelect"),
+      librarySaveModeSummary: document.getElementById("librarySaveModeSummary"),
       chooseLibraryFolderButton: document.getElementById("chooseLibraryFolderButton"),
       clearLibraryFolderButton: document.getElementById("clearLibraryFolderButton"),
       libraryFolderSummary: document.getElementById("libraryFolderSummary"),
@@ -3236,6 +3294,127 @@
       }
     }
 
+    function readExamResetAckToken() {
+      try {
+        return normalizeProblemText(window.localStorage.getItem(EXAM_RESET_ACK_STORAGE_KEY) || "");
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function writeExamResetAckToken(token) {
+      try {
+        window.localStorage.setItem(EXAM_RESET_ACK_STORAGE_KEY, normalizeProblemText(token || ""));
+      } catch (error) {
+        console.warn("Failed to persist exam reset ack token", error);
+      }
+    }
+
+    function clearFirebaseAdminLastSchoolSelections() {
+      try {
+        const keys = [];
+        for (let index = 0; index < window.localStorage.length; index += 1) {
+          const key = String(window.localStorage.key(index) || "");
+          if (key.startsWith(FIREBASE_ADMIN_LAST_SCHOOL_KEY_PREFIX)) {
+            keys.push(key);
+          }
+        }
+        keys.forEach((key) => window.localStorage.removeItem(key));
+      } catch (error) {
+        console.warn("Failed to clear Firebase admin last school selections", error);
+      }
+    }
+
+    async function clearPdfLabOperationalStores() {
+      const db = await openLibraryDb();
+      const transaction = db.transaction([
+        LIBRARY_EXAM_STORE,
+        LIBRARY_EXAM_ITEM_STORE,
+        LIBRARY_CHECK_SET_STORE,
+        LIBRARY_WORK_STORE
+      ], "readwrite");
+      transaction.objectStore(LIBRARY_EXAM_STORE).clear();
+      transaction.objectStore(LIBRARY_EXAM_ITEM_STORE).clear();
+      transaction.objectStore(LIBRARY_CHECK_SET_STORE).clear();
+      transaction.objectStore(LIBRARY_WORK_STORE).clear();
+      await idbTransactionDone(transaction);
+    }
+
+    async function applyCodeLabExamResetIfNeeded(payload = {}) {
+      const resetToken = normalizeProblemText(payload?.pdfLabResetToken || "");
+      if (!resetToken || resetToken === readExamResetAckToken()) {
+        return false;
+      }
+
+      await clearPdfLabOperationalStores();
+
+      state.libraryCache.examSets = [];
+      state.libraryCache.examItems = [];
+      state.libraryCache.checkSetRecords = [];
+      state.libraryCache.savedWorks = [];
+      state.loadedRepackWorkId = "";
+      state.examBuilder.loadedExamId = "";
+      state.examBuilder.loadedWorkId = "";
+      state.examBuilder.loadedExamHistoryId = "";
+      state.schoolWorkflow.selectedSchoolKey = "";
+      state.schoolWorkflow.selectedPassageKeys = [];
+      state.schoolWorkflow.selectedTypeLabels = [];
+      state.schoolWorkflow.typeSelectionCustomized = false;
+
+      writeStoredSchools([]);
+      applyStudentRetryState({});
+      clearFirebaseAdminLastSchoolSelections();
+
+      const firebaseSchoolCatalog = Array.isArray(state.firebaseSchoolBridge.schoolCatalog)
+        ? state.firebaseSchoolBridge.schoolCatalog.filter((entry) => entry?.source === "firebase")
+        : [];
+      if (firebaseSchoolCatalog.length) {
+        writeStoredSchools(firebaseSchoolCatalog);
+        state.schoolWorkflow.selectedSchoolKey = shouldRememberFirebaseAdminSchool(
+          state.firebaseSchoolBridge.currentUser,
+          state.firebaseSchoolBridge.currentProfile
+        )
+          ? resolvePreferredSchoolKeyForCurrentAdmin()
+          : ensureSelectedSchoolProfile();
+        rememberLastUsedSchoolForCurrentAdmin(state.schoolWorkflow.selectedSchoolKey);
+      } else {
+        state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
+      }
+
+      state.firebaseSchoolBridge.studentCatalog = String(state.firebaseSchoolBridge.currentProfile?.role || "").toLowerCase() === "admin"
+        ? computeFirebaseStudentCatalogForSelectedSchool()
+        : [];
+      applySelectedSchoolClassIdsToCheckSetInput(true);
+      await refreshLibrarySummary();
+      await syncLibraryFolderFromStateIfConnected();
+      renderSchoolList();
+      renderExamLibraryList();
+      renderExamHistoryList();
+      renderExamCheckSetList();
+      renderSavedWorkLists();
+      renderStudentRetryPanel();
+      renderPdfLabFirebaseAuthUi();
+      writeExamResetAckToken(resetToken);
+      setStatus("CODE LAB에서 새 시험 초기화가 감지되어 PDF LAB 운영 데이터를 초기화했습니다.", "idle", "초기화");
+      return true;
+    }
+
+    async function syncCodeLabExamResetFromFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        return false;
+      }
+      const bridge = state.firebaseSchoolBridge;
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      if (!user || !bridge.db) {
+        return false;
+      }
+      const snapshot = await bridge.db.collection("portalContent").doc("exam-state").get();
+      const payload = snapshot.exists && snapshot.data() && typeof snapshot.data().payload === "object"
+        ? snapshot.data().payload
+        : null;
+      return await applyCodeLabExamResetIfNeeded(payload || {});
+    }
+
     function getSchoolProfiles() {
       return Array.isArray(state.schoolWorkflow?.schools) ? state.schoolWorkflow.schools : [];
     }
@@ -3426,6 +3605,11 @@
           } else {
             setOptionalText(elements.schoolSelectionSummary, "Firebase에서 반 정보는 읽었지만 사용할 수 있는 반 목록이 없습니다.");
           }
+        }
+        try {
+          await syncCodeLabExamResetFromFirebase();
+        } catch (error) {
+          console.warn("Failed to sync CODE LAB exam reset state", error);
         }
         renderStudentRetryPanel();
         renderPdfLabFirebaseAuthUi();
@@ -4021,56 +4205,97 @@
           renderLibraryWorkspaceDashboard();
         }
       };
-      const sharedLibraryActive = isSharedFirebaseLibraryActive();
-      const sharedLibraryLabel = sharedLibraryActive
+      const saveMode = normalizeLibrarySaveMode(state.librarySaveMode);
+      const usesFirebase = doesLibrarySaveModeUseFirebase(saveMode);
+      const usesFolder = doesLibrarySaveModeUseFolder(saveMode);
+      const firebaseAccess = getSharedFirebaseLibraryAccessState();
+      const firebaseSummary = firebaseAccess.enabled
         ? (
             state.firebaseSchoolBridge.sharedLibraryLastSyncedAt
-              ? `Firebase 공용 문제 라이브러리 연결됨 · 마지막 동기화 ${formatTimestamp(state.firebaseSchoolBridge.sharedLibraryLastSyncedAt)}`
-              : "Firebase 공용 문제 라이브러리 연결됨"
+              ? `Firebase 저장 준비됨 · 마지막 동기화 ${formatTimestamp(state.firebaseSchoolBridge.sharedLibraryLastSyncedAt)}`
+              : "Firebase 저장 준비됨"
           )
-        : normalizeProblemText(state.firebaseSchoolBridge.sharedLibraryError || "");
+        : normalizeProblemText(firebaseAccess.reason || state.firebaseSchoolBridge.sharedLibraryError || "Firebase 저장 준비 안 됨");
+      if (elements.librarySaveModeSelect) {
+        elements.librarySaveModeSelect.value = saveMode;
+        elements.librarySaveModeSelect.disabled = Boolean(state.isBusy);
+      }
+      if (elements.librarySaveModeSummary) {
+        const saveModeSummary = saveMode === LIBRARY_SAVE_MODE_AUTO
+          ? "자동은 현재처럼 Firebase가 가능하면 공용 라이브러리에 저장하고, 폴더가 연결되어 있으면 함께 동기화합니다."
+          : `${getLibrarySaveModeLabel(saveMode)}으로 저장합니다.`;
+        setOptionalText(
+          elements.librarySaveModeSummary,
+          `${saveModeSummary} 브라우저 내부 캐시는 항상 함께 갱신됩니다.`
+        );
+      }
       refreshDashboard();
       if (!elements.libraryFolderSummary || !elements.chooseLibraryFolderButton || !elements.clearLibraryFolderButton) {
         refreshDashboard();
         return;
       }
+      const syncSummaryParts = [];
+      if (usesFirebase) {
+        syncSummaryParts.push(firebaseSummary);
+      }
       if (!supportsLibraryFolderStorage()) {
         elements.chooseLibraryFolderButton.disabled = true;
         elements.clearLibraryFolderButton.disabled = true;
         elements.chooseLibraryFolderButton.textContent = "폴더 선택";
-        elements.libraryFolderSummary.textContent = sharedLibraryActive
-          ? "현재 실행 환경에서는 폴더 저장을 지원하지 않지만, Firebase 공용 문제 라이브러리는 계속 사용할 수 있습니다."
-          : "현재 실행 환경에서는 폴더 저장을 지원하지 않습니다. START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.";
-        setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "폴더 저장 미지원");
+        elements.libraryFolderSummary.textContent = usesFolder
+          ? "현재 실행 환경에서는 폴더 저장을 지원하지 않습니다. START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다."
+          : "현재 저장 방식에서는 선택 폴더를 사용하지 않습니다.";
+        if (usesFolder) {
+          syncSummaryParts.push("폴더 저장 미지원");
+        }
+        setOptionalText(elements.librarySyncSummary, syncSummaryParts.join(" · ") || "브라우저 내부 캐시만 사용 중");
         return;
       }
       if (!state.libraryDirectoryHandle) {
         elements.chooseLibraryFolderButton.disabled = false;
         elements.clearLibraryFolderButton.disabled = true;
         elements.chooseLibraryFolderButton.textContent = "폴더 선택";
-        elements.libraryFolderSummary.textContent = sharedLibraryActive
-          ? "Firebase 공용 문제 라이브러리 사용 중입니다. 폴더를 선택하면 시험 이력과 저장 작업물을 별도 백업합니다."
-          : "브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 이력을 그 위치에 함께 저장합니다.";
-        setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "브라우저 내부 저장소 사용 중");
+        elements.libraryFolderSummary.textContent = usesFolder
+          ? "선택 폴더가 아직 연결되지 않았습니다. 폴더를 선택하면 라이브러리와 작업 이력을 그 위치에 함께 동기화합니다."
+          : "현재 저장 방식에서는 선택 폴더를 사용하지 않습니다.";
+        if (usesFolder) {
+          syncSummaryParts.push("폴더 미연결");
+        }
+        setOptionalText(elements.librarySyncSummary, syncSummaryParts.join(" · ") || "브라우저 내부 캐시만 사용 중");
         return;
       }
       elements.chooseLibraryFolderButton.disabled = false;
       elements.clearLibraryFolderButton.disabled = false;
       elements.chooseLibraryFolderButton.textContent = state.libraryDirectoryPermission === "granted" ? "폴더 변경" : "폴더 다시 연결";
       if (state.libraryDirectoryPermission === "granted") {
-        elements.libraryFolderSummary.textContent = sharedLibraryActive
-          ? `현재 백업 폴더: ${state.libraryDirectoryHandle.name}`
-          : `현재 저장 폴더: ${state.libraryDirectoryHandle.name}`;
-        setOptionalText(
-          elements.librarySyncSummary,
-          state.libraryLastSyncedAt
-            ? [sharedLibraryLabel, `마지막 폴더 동기화 ${formatTimestamp(state.libraryLastSyncedAt)}`].filter(Boolean).join(" · ")
-            : (sharedLibraryLabel || "폴더 연결됨 · 아직 동기화 기록 없음")
-        );
+        elements.libraryFolderSummary.textContent = `현재 연결 폴더: ${state.libraryDirectoryHandle.name}`;
+        if (usesFolder) {
+          syncSummaryParts.push(
+            state.libraryLastSyncedAt
+              ? `폴더 준비됨 · 마지막 동기화 ${formatTimestamp(state.libraryLastSyncedAt)}`
+              : `폴더 준비됨 (${state.libraryDirectoryHandle.name})`
+          );
+        }
+        setOptionalText(elements.librarySyncSummary, syncSummaryParts.join(" · ") || "브라우저 내부 캐시만 사용 중");
         return;
       }
       elements.libraryFolderSummary.textContent = `선택된 폴더: ${state.libraryDirectoryHandle.name} · 다시 연결해 권한을 허용하면 계속 사용합니다.`;
-      setOptionalText(elements.librarySyncSummary, sharedLibraryLabel || "폴더 권한을 다시 허용해주세요.");
+      if (usesFolder) {
+        syncSummaryParts.push("폴더 권한을 다시 허용해주세요.");
+      }
+      setOptionalText(elements.librarySyncSummary, syncSummaryParts.join(" · ") || "브라우저 내부 캐시만 사용 중");
+    }
+
+    async function initializeLibrarySaveModeSetting() {
+      state.librarySaveMode = normalizeLibrarySaveMode(await readLibrarySetting(LIBRARY_SAVE_MODE_KEY));
+      updateLibraryStorageUi();
+    }
+
+    async function setLibrarySaveMode(mode) {
+      const normalized = normalizeLibrarySaveMode(mode);
+      state.librarySaveMode = normalized;
+      await writeLibrarySetting(LIBRARY_SAVE_MODE_KEY, normalized);
+      updateLibraryStorageUi();
     }
 
     async function queryLibraryDirectoryPermission(handle, readWrite = true) {
@@ -4542,12 +4767,14 @@
 
     async function createLibrarySnapshotFromState() {
       const sharedLibraryActive = isSharedFirebaseLibraryActive();
+      const includeLibraryRecordsInFolder = !sharedLibraryActive
+        || [LIBRARY_SAVE_MODE_FOLDER, LIBRARY_SAVE_MODE_BOTH].includes(normalizeLibrarySaveMode(state.librarySaveMode));
       return {
         textbooks: [...state.storedTextbooks],
         schools: [...getSchoolProfiles()],
-        imports: sharedLibraryActive ? [] : [...(state.libraryCache.imports || [])],
-        problemRecords: sharedLibraryActive ? [] : [...(state.libraryCache.problemRecords || [])],
-        problemAssets: sharedLibraryActive ? [] : await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
+        imports: includeLibraryRecordsInFolder ? [...(state.libraryCache.imports || [])] : [],
+        problemRecords: includeLibraryRecordsInFolder ? [...(state.libraryCache.problemRecords || [])] : [],
+        problemAssets: includeLibraryRecordsInFolder ? await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE) : [],
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
         checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
@@ -4607,6 +4834,63 @@
         return false;
       }
       return await syncLibraryFolderFromState();
+    }
+
+    async function ensureExplicitLibrarySaveTargetsReady(mode = state.librarySaveMode) {
+      const normalized = normalizeLibrarySaveMode(mode);
+      if (normalized === LIBRARY_SAVE_MODE_AUTO) {
+        return;
+      }
+      if (normalized === LIBRARY_SAVE_MODE_FIREBASE || normalized === LIBRARY_SAVE_MODE_BOTH) {
+        const firebaseAccess = getSharedFirebaseLibraryAccessState();
+        if (!firebaseAccess.enabled) {
+          throw new Error(firebaseAccess.reason || "Firebase 공용 문제 라이브러리를 사용할 수 없습니다.");
+        }
+      }
+      if (normalized === LIBRARY_SAVE_MODE_FOLDER || normalized === LIBRARY_SAVE_MODE_BOTH) {
+        if (!supportsLibraryFolderStorage()) {
+          throw new Error("폴더 저장은 START.bat으로 연 localhost의 Edge/Chrome에서 사용할 수 있습니다.");
+        }
+        if (!state.libraryDirectoryHandle) {
+          throw new Error("선택 폴더 저장을 쓰려면 먼저 저장 폴더를 연결해주세요.");
+        }
+        const permitted = await ensureLibraryDirectoryPermission(state.libraryDirectoryHandle, true);
+        if (!permitted) {
+          throw new Error("선택한 저장 폴더에 접근할 수 없습니다. 폴더를 다시 연결해주세요.");
+        }
+      }
+    }
+
+    async function syncSelectedLibraryDestinations(sourceRecord, problemRecords = []) {
+      const mode = normalizeLibrarySaveMode(state.librarySaveMode);
+      const result = {
+        mode,
+        firebase: { attempted: false, synced: false, reason: "" },
+        folder: { attempted: false, synced: false, reason: "" }
+      };
+      if (doesLibrarySaveModeUseFirebase(mode)) {
+        result.firebase.attempted = true;
+        const syncResult = await syncSourceRecordToSharedFirebaseLibrary(sourceRecord, problemRecords);
+        result.firebase.synced = Boolean(syncResult?.synced);
+        result.firebase.reason = normalizeProblemText(syncResult?.reason || "");
+      }
+      if (doesLibrarySaveModeUseFolder(mode)) {
+        result.folder.attempted = true;
+        if (mode === LIBRARY_SAVE_MODE_AUTO) {
+          try {
+            result.folder.synced = await syncLibraryFolderFromStateIfConnected();
+            result.folder.reason = result.folder.synced
+              ? ""
+              : (state.libraryDirectoryHandle ? "폴더 동기화를 건너뛰었습니다." : "폴더 미연결");
+          } catch (error) {
+            result.folder.reason = error?.message || "폴더 동기화에 실패했습니다.";
+          }
+        } else {
+          result.folder.synced = await syncLibraryFolderFromState();
+          result.folder.reason = result.folder.synced ? "" : "폴더 동기화에 실패했습니다.";
+        }
+      }
+      return result;
     }
 
     async function restoreLibraryDirectoryHandle() {
@@ -5247,6 +5531,7 @@
       if (!state.selectedTextbookName) {
         throw new Error("교재명이 정해지지 않아 문제 라이브러리에 저장할 수 없습니다.");
       }
+      await ensureExplicitLibrarySaveTargetsReady(state.librarySaveMode);
 
       setBusy(true);
       setStatus("문제 라이브러리에 저장할 이미지를 준비하는 중입니다...", "working", "라이브러리");
@@ -5315,18 +5600,30 @@
       });
       await idbTransactionDone(transaction);
 
-      const sharedSyncResult = await syncSourceRecordToSharedFirebaseLibrary(sourceRecord, problemRecords);
+      const destinationSyncResult = await syncSelectedLibraryDestinations(sourceRecord, problemRecords);
       await refreshLibrarySummary();
-      await syncLibraryFolderFromStateIfConnected();
+      const destinationSummary = [];
+      if (destinationSyncResult.firebase.attempted) {
+        destinationSummary.push(
+          destinationSyncResult.firebase.synced
+            ? "Firebase 공용 라이브러리 동기화 완료"
+            : (destinationSyncResult.firebase.reason ? `Firebase 보류: ${destinationSyncResult.firebase.reason}` : "Firebase 동기화 미실행")
+        );
+      }
+      if (destinationSyncResult.folder.attempted) {
+        destinationSummary.push(
+          destinationSyncResult.folder.synced
+            ? "선택 폴더 동기화 완료"
+            : (destinationSyncResult.folder.reason || "폴더 동기화 미실행")
+        );
+      }
       setOptionalText(
         elements.librarySaveSummary,
         [
           `${sourceRecord.librarySourceName} · ${sourceRecord.textbookName} / ${sourceRecord.fileName} 저장 완료`,
           getAnswerImportSummary(state.problems),
           formatTimestamp(sourceRecord.importedAt),
-          sharedSyncResult.synced
-            ? `Firebase 공용 라이브러리 동기화 완료`
-            : (sharedSyncResult.reason || "")
+          ...destinationSummary
         ].filter(Boolean).join(" · ")
       );
       setBusy(false);
@@ -5334,14 +5631,31 @@
         setLibraryProgressState({
           phaseKey: "saved",
           phaseLabel: "저장 완료",
-          message: `${getQuestionCount(state.problems)}문항을 공용 라이브러리에 저장했습니다.`,
+          message: `${getQuestionCount(state.problems)}문항을 ${getLibrarySaveModeLabel(destinationSyncResult.mode)} 저장 방식으로 정리했습니다.`,
           current: getQuestionCount(state.problems),
           total: Math.max(getQuestionCount(state.problems), 1),
           percent: 100
         });
       }
+      const statusTail = [];
+      if (destinationSyncResult.firebase.attempted) {
+        statusTail.push(
+          destinationSyncResult.firebase.synced
+            ? "Firebase 공용 라이브러리에도 반영했습니다."
+            : (destinationSyncResult.firebase.reason ? `Firebase 반영은 보류되었습니다: ${destinationSyncResult.firebase.reason}` : "")
+        );
+      }
+      if (destinationSyncResult.folder.attempted) {
+        statusTail.push(
+          destinationSyncResult.folder.synced
+            ? "선택 폴더에도 동기화했습니다."
+            : (destinationSyncResult.folder.reason && destinationSyncResult.folder.reason !== "폴더 미연결"
+                ? `폴더 동기화는 보류되었습니다: ${destinationSyncResult.folder.reason}`
+                : "")
+        );
+      }
       setStatus(
-        `페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다.${sharedSyncResult.synced ? " Firebase 공용 라이브러리에도 반영했습니다." : (sharedSyncResult.reason ? ` Firebase 동기화는 보류되었습니다: ${sharedSyncResult.reason}` : "")}`,
+        `페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다. ${statusTail.filter(Boolean).join(" ")}`.trim(),
         "idle",
         "저장 완료"
       );
@@ -10958,6 +11272,9 @@
       elements.printButton.disabled = isBusy || !activeProblems.length;
       elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
       elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
+      if (elements.librarySaveModeSelect) {
+        elements.librarySaveModeSelect.disabled = isBusy;
+      }
       elements.saveRepackWorkButton.disabled = isBusy || !state.problems.length;
       if (elements.loadMoreButton) {
         elements.loadMoreButton.disabled = isBusy;
@@ -12311,6 +12628,7 @@
       applyStoredLogoSettings();
       applySettingsToUi();
       updateLogoUi();
+      await initializeLibrarySaveModeSetting();
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
       renderPdfLabFirebaseAuthUi();
@@ -12350,6 +12668,11 @@
       if (elements.clearLibraryFolderButton) {
         elements.clearLibraryFolderButton.addEventListener("click", () => {
           clearLibraryFolderConnection().catch(handleError);
+        });
+      }
+      if (elements.librarySaveModeSelect) {
+        elements.librarySaveModeSelect.addEventListener("change", () => {
+          setLibrarySaveMode(elements.librarySaveModeSelect.value).catch(handleError);
         });
       }
       elements.choosePdfButton.addEventListener("click", () => elements.pdfInput.click());
