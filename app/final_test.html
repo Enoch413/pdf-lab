@@ -81,13 +81,13 @@
           <input class="visually-hidden" type="file" id="pdfInput" accept="application/pdf">
           <p class="file-name" id="fileName">아직 불러온 PDF가 없습니다.</p>
         </div>
-        <div class="single-action-row">
+        <div class="single-action-row" hidden aria-hidden="true">
           <button class="ghost-button" type="button" id="saveLibraryButton" disabled="">문제 라이브러리에 저장</button>
         </div>
-        <p class="small-note" id="librarySaveSummary">문제를 저장해두면 PDF LAB에서 학교별 출제를 바로 이어서 진행할 수 있습니다.</p>
+        <p class="small-note" id="librarySaveSummary" hidden aria-hidden="true">문제를 저장해두면 PDF LAB에서 학교별 출제를 바로 이어서 진행할 수 있습니다.</p>
       </section>
 
-      <section class="panel-card">
+      <section class="panel-card" hidden aria-hidden="true">
         <h2 class="panel-title">2. 라이브러리 저장 폴더</h2>
         <div class="field-grid">
           <div class="field-row">
@@ -103,7 +103,7 @@
       </section>
 
       <section class="panel-card">
-        <h2 class="panel-title">3. 라이브러리 진행 현황</h2>
+        <h2 class="panel-title">2. 라이브러리 진행 현황</h2>
         <div class="library-stat-grid">
           <article class="library-stat-card">
             <span class="library-stat-label">교재</span>
