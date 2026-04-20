@@ -1931,6 +1931,54 @@ button:disabled {
   line-height: 1.58;
 }
 
+.answer-image-sheet .sheet-title {
+  color: #173f43;
+}
+
+.answer-image-sheet.is-answer-start {
+  break-before: page;
+  page-break-before: always;
+}
+
+.answer-image-card {
+  border-radius: 12px;
+  padding: 2mm;
+}
+
+.answer-image-card::before {
+  width: 2px;
+}
+
+.answer-image-card .problem-card-header {
+  margin-bottom: 1.2mm;
+  border-bottom-color: rgba(24, 107, 99, 0.1);
+}
+
+.answer-image-card .problem-badge {
+  min-height: 5.8mm;
+  padding: 0 2.4mm;
+  font-size: 2.8mm;
+}
+
+.answer-image-card .problem-type-badge {
+  min-height: 5.2mm;
+  padding: 0 2.1mm;
+  font-size: 2.4mm;
+}
+
+.answer-image-card .problem-segments {
+  gap: 0.8mm;
+}
+
+.answer-image-card .problem-segment-frame {
+  border-radius: 6px;
+}
+
+.problem-type-badge.is-answer-image {
+  background: rgba(217, 187, 139, 0.18);
+  color: #73572e;
+}
+
 .exam-history-delete-button {
   min-width: 110px;
 }

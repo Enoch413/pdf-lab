@@ -211,6 +211,13 @@
                 <option value="기타"></option>
               </datalist>
             </label>
+            <label class="field-row">
+              <span class="field-label">출력 구성</span>
+              <select class="select-input" id="answerOutputModeSelect">
+                <option value="problem-only" selected>문제만</option>
+                <option value="problem-answer">문제+답지</option>
+              </select>
+            </label>
             <p class="small-note" id="questionFilterSummary"></p>
           </div>
         </section>
@@ -873,6 +880,8 @@
     ]);
     const DEFAULT_LOGO_SRC = "./assets/code-logo.png";
     const DEFAULT_LIBRARY_SOURCE_KEY = "neoreunteo";
+    const REPACK_ANSWER_MODE_PROBLEM_ONLY = "problem-only";
+    const REPACK_ANSWER_MODE_WITH_ANSWER = "problem-answer";
     const EXAM_ANSWER_MODE_QUESTION_ONLY = "question-only";
     const EXAM_ANSWER_MODE_WITH_ANSWER_KEY = "question-answer";
     const LIBRARY_SOURCE_OPTIONS = Object.freeze([
@@ -954,6 +963,29 @@
       return getLibrarySourceLabel(getRecordSourceKey(record));
     }
 
+    function normalizeRepackAnswerOutputMode(value) {
+      return value === REPACK_ANSWER_MODE_WITH_ANSWER
+        ? REPACK_ANSWER_MODE_WITH_ANSWER
+        : REPACK_ANSWER_MODE_PROBLEM_ONLY;
+    }
+
+    function getSelectedRepackAnswerOutputMode() {
+      return normalizeRepackAnswerOutputMode(
+        elements?.answerOutputModeSelect?.value ||
+        state?.answerOutputMode ||
+        REPACK_ANSWER_MODE_PROBLEM_ONLY
+      );
+    }
+
+    function applyRepackAnswerOutputModeToUi(value) {
+      const normalized = normalizeRepackAnswerOutputMode(value);
+      state.answerOutputMode = normalized;
+      if (elements.answerOutputModeSelect) {
+        elements.answerOutputModeSelect.value = normalized;
+      }
+      return normalized;
+    }
+
     function normalizeExamAnswerMode(value) {
       return value === EXAM_ANSWER_MODE_QUESTION_ONLY
         ? EXAM_ANSWER_MODE_QUESTION_ONLY
@@ -1024,6 +1056,7 @@
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
       selectedLibrarySourceKey: DEFAULT_LIBRARY_SOURCE_KEY,
+      answerOutputMode: REPACK_ANSWER_MODE_PROBLEM_ONLY,
       activeTab: INITIAL_WORKSPACE_MODE === WORKSPACE_MODE_LIBRARY ? "repack" : "exam",
       workspaceMode: INITIAL_WORKSPACE_MODE,
       libraryDirectoryHandle: null,
@@ -1138,6 +1171,7 @@
       fileName: document.getElementById("fileName"),
       questionFilterInput: document.getElementById("questionFilterInput"),
       typeFilterInput: document.getElementById("typeFilterInput"),
+      answerOutputModeSelect: document.getElementById("answerOutputModeSelect"),
       questionFilterSummary: document.getElementById("questionFilterSummary"),
       kickerInput: document.getElementById("kickerInput"),
       titleInput: document.getElementById("titleInput"),
@@ -6545,6 +6579,7 @@
           stats: state.stats,
           questionFilterText: elements.questionFilterInput.value,
           typeFilterText: elements.typeFilterInput.value,
+          answerOutputMode: getSelectedRepackAnswerOutputMode(),
           layoutSettings: captureSharedLayoutSettings(),
           problems
         };
@@ -6713,6 +6748,7 @@
         applySharedLayoutSettingsSnapshot(record.payload?.layoutSettings || {});
         elements.questionFilterInput.value = record.payload?.questionFilterText || "";
         elements.typeFilterInput.value = record.payload?.typeFilterText || "";
+        applyRepackAnswerOutputModeToUi(record.payload?.answerOutputMode || REPACK_ANSWER_MODE_PROBLEM_ONLY);
         state.problems = Array.isArray(record.payload?.problems)
           ? record.payload.problems.map(hydrateProblemFromSavedWork)
           : [];
@@ -8082,7 +8118,8 @@
         columnGap: FIXED_LAYOUT_SETTINGS.columnGap,
         cardGap: FIXED_LAYOUT_SETTINGS.cardGap,
         previewZoom: FIXED_LAYOUT_SETTINGS.previewZoom,
-        accent: normalizeHex(elements.accentTextInput.value) || elements.accentInput.value
+        accent: normalizeHex(elements.accentTextInput.value) || elements.accentInput.value,
+        answerOutputMode: getSelectedRepackAnswerOutputMode()
       };
     }
 
@@ -8148,6 +8185,9 @@
       elements.existingTextbookSelect.disabled = isBusy || !elements.textbookModeExisting.checked;
       elements.printButton.disabled = isBusy || !activeProblems.length;
       elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
+      if (elements.answerOutputModeSelect) {
+        elements.answerOutputModeSelect.disabled = isBusy;
+      }
       elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
       elements.saveRepackWorkButton.disabled = isBusy || !state.problems.length;
       elements.loadMoreButton.disabled = isBusy;
@@ -9023,19 +9063,21 @@
       }
     }
 
-    function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta) {
+    function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta, options = {}) {
       const pageNumber = sheetIndex + 1;
       const isOddPage = pageNumber % 2 === 1;
       const extraLeftMm = isOddPage ? BINDING_MARGIN_MM : 0;
       const extraRightMm = isOddPage ? 0 : BINDING_MARGIN_MM;
       const contentCenterOffsetMm = (extraLeftMm - extraRightMm) / 2;
+      const cardRenderer = typeof options.cardRenderer === "function" ? options.cardRenderer : createProblemCardMarkup;
+      const extraClassName = options.extraClassName ? ` ${options.extraClassName}` : "";
       const kickerMarkup = settings.kicker ? `<p class="sheet-kicker">${escapeHtml(settings.kicker)}</p>` : "";
       const subtitleMarkup = settings.subtitle ? `<p class="sheet-subtitle">${escapeHtml(settings.subtitle)}</p>` : "";
       const logoSrc = resolveStandaloneAssetSrc(settings.logoSrc);
       const logoMarkup = logoSrc
         ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
-      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
+      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(cardRenderer).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
         ? `
           <header class="sheet-header">
@@ -9051,11 +9093,103 @@
         `
         : "";
       return `
-        <section class="sheet${sheet.hasHeader ? " has-sheet-header" : " is-continuation-sheet"}" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${sheet.columnHeightMm}mm;--sheet-header-height:${sheet.headerHeightMm}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
+        <section class="sheet${sheet.hasHeader ? " has-sheet-header" : " is-continuation-sheet"}${extraClassName}" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${sheet.columnHeightMm}mm;--sheet-header-height:${sheet.headerHeightMm}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
           ${headerMarkup}
           <div class="sheet-columns">${columnsMarkup}</div>
         </section>
       `;
+    }
+
+    function getAnswerImagePairs(problem) {
+      const answerImages = Array.isArray(problem?.answerSegmentImages) ? problem.answerSegmentImages : [];
+      const answerSegments = Array.isArray(problem?.answerSegments) ? problem.answerSegments : [];
+      return answerImages
+        .map((image, index) => {
+          if (!image?.url) {
+            return null;
+          }
+          const segment = answerSegments[index] || {
+            x0: 0,
+            x1: image.width || 1,
+            y0: 0,
+            y1: image.height || 1
+          };
+          return { image, segment };
+        })
+        .filter(Boolean);
+    }
+
+    function createAnswerImageProblems(problems) {
+      return (Array.isArray(problems) ? problems : [])
+        .filter((problem) => problem?.kind !== "shared")
+        .map((problem) => {
+          const pairs = getAnswerImagePairs(problem);
+          if (!pairs.length) {
+            return null;
+          }
+          return {
+            ...problem,
+            id: `answer-${problem.id}`,
+            kind: "problem",
+            problemType: "답지",
+            typeTags: ["답지"],
+            segments: pairs.map((pair) => ({ ...pair.segment })),
+            segmentImages: pairs.map((pair) => pair.image),
+            manualSquashPercent: null
+          };
+        })
+        .filter(Boolean);
+    }
+
+    function createAnswerImageCardMarkup(entry) {
+      const { problem, fitScale } = entry;
+      const displayNumber = problem.displayNumber ?? problem.number ?? "-";
+      const images = (problem.segmentImages || [])
+        .filter(Boolean)
+        .map((image, index) => (
+          `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${image.height};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(displayNumber)}번 답지 이미지 ${index + 1}"></div>`
+        ))
+        .join("");
+      return `
+        <article class="problem-card answer-image-card ${fitScale < 0.999 ? "is-scaled" : ""}">
+          <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
+            <header class="problem-card-header">
+              <div class="problem-heading-stack">
+                <span class="problem-badge">${escapeHtml(displayNumber)}번 답지</span>
+                <span class="problem-type-badge is-answer-image">답지 이미지</span>
+              </div>
+            </header>
+            <div class="problem-segments">${images || `<div class="problem-placeholder">답지 이미지가 없습니다.</div>`}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function createAnswerImageSheetsMarkup(settings, problems) {
+      if (settings.answerOutputMode !== REPACK_ANSWER_MODE_WITH_ANSWER) {
+        return "";
+      }
+      const answerProblems = createAnswerImageProblems(problems);
+      if (!answerProblems.length) {
+        return "";
+      }
+      const answerSettings = {
+        ...settings,
+        maxPerColumn: 24,
+        pagePadding: Math.min(settings.pagePadding, 7),
+        columnGap: Math.min(settings.columnGap, 4),
+        cardGap: 1.4,
+        kicker: "ANSWER IMAGE",
+        title: "답지",
+        subtitle: "선택한 문항의 답지만 이미지로 정리했습니다."
+      };
+      const answerLayoutMeta = buildLayoutPages(answerSettings, answerProblems, { repeatHeaderEveryPage: false });
+      return answerLayoutMeta.sheets
+        .map((sheet, index) => createSheetMarkup(sheet, answerSettings, index, answerLayoutMeta, {
+          cardRenderer: createAnswerImageCardMarkup,
+          extraClassName: `answer-image-sheet${index === 0 ? " is-answer-start" : ""}`
+        }))
+        .join("");
     }
 
     function updateProblemSquash(problemId, squashValue) {
@@ -9143,10 +9277,12 @@
       state.previewSheetCount = state.layoutPages.length
         ? Math.max(Math.min(state.previewSheetCount || initialPreviewTarget, state.layoutPages.length), initialPreviewTarget)
         : 0;
-      elements.previewRoot.innerHTML = state.layoutPages
+      const problemSheetMarkup = state.layoutPages
         .slice(0, state.previewSheetCount)
         .map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta))
         .join("");
+      const answerSheetMarkup = createAnswerImageSheetsMarkup(settings, visibleProblems);
+      elements.previewRoot.innerHTML = problemSheetMarkup + answerSheetMarkup;
       updatePreviewActionRow();
     }
 
@@ -9202,19 +9338,26 @@
       state.problems = problems;
       state.renderScale = renderScale;
       state.stats = { pageCount: pdf.numPages };
-      const missingAnswerTextCandidates = problems.filter((problem) =>
+      const answerImageCandidates = problems.filter((problem) =>
+        problem.kind !== "shared" &&
+        Array.isArray(problem.answerSegments) &&
+        problem.answerSegments.length
+      );
+      if (answerImageCandidates.length) {
+        await generateSegmentImages(pdf, answerImageCandidates, renderScale, {
+          segmentKey: "answerSegments",
+          imageKey: "answerSegmentImages",
+          statusLabel: "답지 이미지",
+          progressPhaseLabel: "답지 이미지 준비"
+        });
+      }
+      const missingAnswerTextCandidates = answerImageCandidates.filter((problem) =>
         problem.kind !== "shared" &&
         Array.isArray(problem.answerSegments) &&
         problem.answerSegments.length &&
         (!problem.answerText || !problem.explanationText)
       );
       if (missingAnswerTextCandidates.length) {
-        await generateSegmentImages(pdf, missingAnswerTextCandidates, renderScale, {
-          segmentKey: "answerSegments",
-          imageKey: "answerSegmentImages",
-          statusLabel: "답안 이미지",
-          progressPhaseLabel: "답안 이미지 준비"
-        });
         const ocrResult = await enrichAnswersWithOcrFallback(missingAnswerTextCandidates, {
           phaseLabel: "답안 OCR"
         });
@@ -9507,19 +9650,24 @@
       elements.renderAllButton.addEventListener("click", () => {
         ensureSheetRangeRendered(state.layoutPages.length).catch(handleError);
       });
+      const refreshPreviewFromSetting = () => {
+        applySettingsToUi();
+        if (state.problems.length) {
+          renderPreview();
+        }
+      };
       [
         elements.questionFilterInput,
         elements.typeFilterInput,
+        elements.answerOutputModeSelect,
         elements.kickerInput,
         elements.titleInput,
         elements.subtitleInput
-      ].forEach((input) => {
-        input.addEventListener("input", () => {
-          applySettingsToUi();
-          if (state.problems.length) {
-            renderPreview();
-          }
-        });
+      ].filter(Boolean).forEach((input) => {
+        input.addEventListener("input", refreshPreviewFromSetting);
+        if (input instanceof HTMLSelectElement) {
+          input.addEventListener("change", refreshPreviewFromSetting);
+        }
       });
       elements.accentInput.addEventListener("input", () => {
         elements.accentTextInput.value = elements.accentInput.value;
