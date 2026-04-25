@@ -74,6 +74,14 @@
             </div>
             <p class="small-note" id="textbookDeleteSummary"></p>
           </label>
+          <label class="field-row">
+            <span class="field-label">문항 추출 방식</span>
+            <select class="select-input" id="libraryExtractionModeSelect">
+              <option value="image">이미지 중심 추출</option>
+              <option value="text">텍스트 중심 추출</option>
+            </select>
+            <p class="small-note" id="libraryExtractionModeSummary">이미지 중심은 기존처럼 원문 블록을 유지하고, 텍스트 중심은 검수용 텍스트 편집을 바로 열기 좋게 관리합니다.</p>
+          </label>
         </div>
         <div class="upload-box" id="dropZone">
           <p class="upload-title">드래그하거나 파일 선택</p>
@@ -244,6 +252,66 @@
           <div class="empty-kicker">READY TO IMPORT</div>
         </section>
       </div>
+      <div class="library-text-editor-root" id="libraryTextEditorRoot" hidden>
+        <article class="library-text-editor-card">
+          <header class="library-text-editor-header">
+            <div class="library-text-editor-copy">
+              <p class="exam-slot-label">문항 텍스트 수정</p>
+              <h3 id="libraryTextEditorTitle">문항 텍스트 수정</h3>
+              <p class="library-text-editor-note" id="libraryTextEditorSummary">추출한 텍스트를 검수하고 저장하면 라이브러리 메타데이터에 바로 반영됩니다.</p>
+              <p class="library-text-editor-reference" id="libraryTextEditorMeta"></p>
+            </div>
+            <div class="library-text-editor-actions">
+              <button class="ghost-button" type="button" id="libraryTextEditorReloadButton">원본 다시 불러오기</button>
+              <button class="ghost-button" type="button" id="libraryTextEditorCloseButton">닫기</button>
+            </div>
+          </header>
+          <div class="library-text-editor-workspace">
+            <div class="library-text-editor-text-field">
+              <div class="library-text-editor-text-stack">
+                <div class="library-text-editor-input-group">
+                  <div class="library-text-editor-template-head">
+                    <label class="field-label" for="libraryTextEditorTextarea">유형별 문항 템플릿</label>
+                    <span class="stats-pill" id="libraryTextEditorTemplateBadge">공통 객관식</span>
+                  </div>
+                  <p class="small-note" id="libraryTextEditorTemplateSummary">객관식 유형을 공통형과 특수형으로 나눠서 문제, 본문, 선택지를 따로 검수할 수 있습니다.</p>
+                  <div class="library-text-editor-structured-fields" id="libraryTextEditorStructuredFields"></div>
+                </div>
+                <details class="library-text-editor-raw-details">
+                  <summary>원문 전체 텍스트 직접 수정</summary>
+                  <div class="library-text-editor-raw-actions">
+                    <p class="small-note">원문을 직접 고친 뒤 <strong>원문 기준 다시 나누기</strong>를 누르면 현재 유형 템플릿에 맞춰 필드가 다시 채워집니다.</p>
+                    <button class="ghost-button" type="button" id="libraryTextEditorReparseButton">원문 기준 다시 나누기</button>
+                  </div>
+                  <div class="library-text-editor-input-group">
+                    <label class="field-label" for="libraryTextEditorTextarea">원문 전체 텍스트</label>
+                    <textarea class="library-text-editor-textarea library-text-editor-raw-textarea" id="libraryTextEditorTextarea" placeholder="추출한 문제 텍스트가 여기에 표시됩니다."></textarea>
+                  </div>
+                </details>
+                <div class="library-text-editor-input-group">
+                  <label class="field-label" for="libraryTextEditorAnswerTextarea">정답 텍스트</label>
+                  <textarea class="library-text-editor-textarea library-text-editor-secondary-textarea library-text-editor-answer-textarea" id="libraryTextEditorAnswerTextarea" placeholder="답안 이미지에서 추출한 정답 텍스트를 직접 수정할 수 있습니다."></textarea>
+                </div>
+                <div class="library-text-editor-input-group">
+                  <label class="field-label" for="libraryTextEditorExplanationTextarea">해설 텍스트</label>
+                  <textarea class="library-text-editor-textarea library-text-editor-secondary-textarea" id="libraryTextEditorExplanationTextarea" placeholder="답안 이미지에서 추출한 해설 텍스트를 직접 수정할 수 있습니다."></textarea>
+                </div>
+              </div>
+            </div>
+            <aside class="library-text-editor-image-panel" id="libraryTextEditorImagePanel" aria-label="문제/답안 이미지">
+              <div class="library-text-editor-image-panel-head">
+                <p class="exam-slot-label">문제/답안 이미지</p>
+                <strong id="libraryTextEditorImageStatus">이미지 준비 전</strong>
+              </div>
+              <div id="libraryTextEditorImageList"></div>
+            </aside>
+          </div>
+          <footer class="library-text-editor-footer">
+            <button class="ghost-button" type="button" id="libraryTextEditorDeleteButton">현재 항목 삭제</button>
+            <button class="solid-button" type="button" id="libraryTextEditorSaveButton">텍스트 저장</button>
+          </footer>
+        </article>
+      </div>
     </main>
   </div>
     </section>
@@ -278,6 +346,7 @@
               <label class="field-row">
                 <span class="field-label">문제 출처</span>
                 <select class="select-input" id="schoolSourceFilterSelect">
+                  <option value="all">전체</option>
                   <option value="neoreunteo">너른터</option>
                   <option value="thelab4you">더랩포유</option>
                 </select>
@@ -333,6 +402,13 @@
                 <select class="select-input" id="examAnswerModeSelect">
                   <option value="question-only">문제만 뽑기</option>
                   <option value="question-answer" selected>문제+답안 뽑기</option>
+                </select>
+              </label>
+              <label class="field-row">
+                <span class="field-label">문제 렌더링</span>
+                <select class="select-input" id="examContentModeSelect">
+                  <option value="image" selected>이미지 출제</option>
+                  <option value="text">텍스트 출제</option>
                 </select>
               </label>
               <div class="field-row">
@@ -577,6 +653,9 @@
     const FOOTER_HEIGHT_MM = 0;
     const BINDING_MARGIN_MM = 5;
     const CARD_FIXED_HEIGHT_MM = 10.2;
+    const TEXT_CARD_FIXED_HEIGHT_MM = 17.8;
+    const TEXT_LINE_HEIGHT_MM = 4.4;
+    const TEXT_CHAR_PER_LINE_FACTOR = 0.45;
     const SEGMENT_GAP_MM = 1.8;
     const MIN_FIT_SCALE = 0.66;
     const AUTO_BALANCED_MAX_SQUASH = 10;
@@ -604,7 +683,7 @@
     const ANSWER_ENTRY_START_LINE_PATTERN = new RegExp(`^(\\d{1,3}\\s*(?:번\\s*)?(?:[.)]\\s*)?(?:${ANSWER_ENTRY_LABEL_PATTERN}\\s*)?${ANSWER_ENTRY_SEPARATOR_PATTERN})\\s*(.*)$`);
     const ANSWER_INLINE_CHOICE_PREFIX_PATTERN = new RegExp(`^\\(?\\s*${ANSWER_CHOICE_CAPTURE}`);
     const ANSWER_FLOATING_CHOICE_LINE_PATTERN = new RegExp(`^(${FLOATING_ANSWER_CHOICE_TOKEN_PATTERN}(?:\\s*${FLOATING_ANSWER_CHOICE_TOKEN_PATTERN})*)$`);
-    const ANSWER_LABELED_LINE_PATTERN = new RegExp(`^(?:${ANSWER_ENTRY_LABEL_PATTERN})\\s*[:：]\\s*\\(?\\s*${ANSWER_CHOICE_CAPTURE}`);
+    const ANSWER_LABELED_LINE_PATTERN = new RegExp(`^(?:${ANSWER_ENTRY_LABEL_PATTERN})\\s*[:：-]\\s*\\S`);
     const ANSWER_PAGE_PATTERN = /정답지/;
     const PROBLEM_TYPE_OTHER = "기타";
     const PROBLEM_TYPE_TAIL = "꼬리문제";
@@ -619,6 +698,15 @@
     const SUBJECTIVE_TYPE_CONNECTION = "연결사(주관식)";
     const SUBJECTIVE_TYPE_ARRANGEMENT = "배열";
     const SUBJECTIVE_TYPE_OTHER = "기타주관식";
+    const EDITOR_TEMPLATE_OBJECTIVE_COMMON = "objective-common";
+    const EDITOR_TEMPLATE_OBJECTIVE_ABC = "objective-abc";
+    const EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE = "objective-sequence";
+    const EDITOR_TEMPLATE_OBJECTIVE_INSERTION = "objective-insertion";
+    const EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR = "objective-connector";
+    const EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY = "objective-body-only";
+    const EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB = "objective-summary-ab";
+    const EDITOR_TEMPLATE_SUBJECTIVE_FREE = "subjective-free";
+    const DEFAULT_STRUCTURED_CHOICE_MARKERS = ["①", "②", "③", "④", "⑤"];
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
     const FIREBASE_ADMIN_LAST_SCHOOL_KEY_PREFIX = "pdfProblemTemplateRepacker.firebaseAdminLastSchool";
@@ -630,6 +718,7 @@
     const LIBRARY_SETTINGS_STORE = "settings";
     const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
     const LIBRARY_SAVE_MODE_KEY = "librarySaveMode";
+    const LIBRARY_EXTRACTION_MODE_KEY = "libraryExtractionMode";
     const LIBRARY_IMPORT_STORE = "imports";
     const LIBRARY_PROBLEM_STORE = "problems";
     const LIBRARY_PROBLEM_ASSET_STORE = "problemAssets";
@@ -656,6 +745,8 @@
     const LIBRARY_SAVE_MODE_FIREBASE = "firebase";
     const LIBRARY_SAVE_MODE_FOLDER = "folder";
     const LIBRARY_SAVE_MODE_BOTH = "both";
+    const LIBRARY_EXTRACTION_MODE_IMAGE = "image";
+    const LIBRARY_EXTRACTION_MODE_TEXT = "text";
     const EXAM_HISTORY_SCOPE_SCHOOL = "school";
     const EXAM_HISTORY_SCOPE_STUDENT_RETRY = "student-retry";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
@@ -676,6 +767,7 @@
     ];
     const EXAM_SLOT_RENDER_BATCH_SIZE = 120;
     const EXAM_HTML_PREVIEW_PROBLEM_LIMIT = 80;
+    const LIBRARY_REVIEW_PAGE_SIZE = 24;
     const PROBLEM_TYPE_RULES = [
       {
         type: "연결사",
@@ -827,7 +919,7 @@
         ]
       },
       {
-        type: "심경",
+        type: PROBLEM_TYPE_OTHER,
         phrases: [
           "어조로 가장 적절한 것은",
           "필자의 어조"
@@ -903,17 +995,39 @@
       ["무관문", PROBLEM_TYPE_ODD_SENTENCE],
       ["무관", PROBLEM_TYPE_ODD_SENTENCE],
       ["원인", "함축의미"],
-      ["어조", "심경"],
-      ["필자의어조", "심경"],
+      ["어조", PROBLEM_TYPE_OTHER],
+      ["필자의어조", PROBLEM_TYPE_OTHER],
       ["문법적쓰임", "밑줄어법"],
       ["함축", "함축의미"],
       ["배열", SUBJECTIVE_TYPE_ARRANGEMENT],
       ["기타주관식", SUBJECTIVE_TYPE_OTHER]
     ]);
+    const OBJECTIVE_EDITOR_SPECIAL_TYPE_MAP = new Map([
+      ["연결사", EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR],
+      ["선택어법", EDITOR_TEMPLATE_OBJECTIVE_ABC],
+      ["선택어휘", EDITOR_TEMPLATE_OBJECTIVE_ABC],
+      ["순서", EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE],
+      ["삽입", EDITOR_TEMPLATE_OBJECTIVE_INSERTION],
+      ["무관", EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY],
+      ["지칭", EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY],
+      ["요약", EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB]
+    ]);
+    const OBJECTIVE_EDITOR_COMMON_TYPES = Object.freeze([
+      ...PROBLEM_TYPE_RULES
+        .map((rule) => rule.type)
+        .filter((type) => !OBJECTIVE_EDITOR_SPECIAL_TYPE_MAP.has(type)),
+      PROBLEM_TYPE_GRAMMAR,
+      PROBLEM_TYPE_VOCAB,
+      PROBLEM_TYPE_ODD_SENTENCE,
+      PROBLEM_TYPE_OTHER
+    ]);
     const DEFAULT_LOGO_SRC = "./assets/code-logo.png";
     const DEFAULT_LIBRARY_SOURCE_KEY = "neoreunteo";
+    const LIBRARY_SOURCE_FILTER_ALL = "all";
     const EXAM_ANSWER_MODE_QUESTION_ONLY = "question-only";
     const EXAM_ANSWER_MODE_WITH_ANSWER_KEY = "question-answer";
+    const EXAM_CONTENT_MODE_IMAGE = "image";
+    const EXAM_CONTENT_MODE_TEXT = "text";
     const LIBRARY_SOURCE_OPTIONS = Object.freeze([
       { key: DEFAULT_LIBRARY_SOURCE_KEY, label: "너른터", aliases: [] },
       { key: "thelab4you", label: "더랩포유", aliases: ["exam4you", "이그잼포유"] }
@@ -984,6 +1098,19 @@
         : LIBRARY_SAVE_MODE_AUTO;
     }
 
+    function normalizeLibraryExtractionMode(value) {
+      const normalized = normalizeProblemText(value).toLowerCase();
+      return normalized === LIBRARY_EXTRACTION_MODE_TEXT
+        ? LIBRARY_EXTRACTION_MODE_TEXT
+        : LIBRARY_EXTRACTION_MODE_IMAGE;
+    }
+
+    function getLibraryExtractionModeLabel(mode = state?.libraryExtractionMode) {
+      return normalizeLibraryExtractionMode(mode) === LIBRARY_EXTRACTION_MODE_TEXT
+        ? "텍스트 중심"
+        : "이미지 중심";
+    }
+
     function getLibrarySaveModeLabel(mode = state?.librarySaveMode) {
       switch (normalizeLibrarySaveMode(mode)) {
         case LIBRARY_SAVE_MODE_FIREBASE:
@@ -1011,7 +1138,17 @@
         || normalized === LIBRARY_SAVE_MODE_BOTH;
     }
 
+    function normalizeSchoolSourceFilterKey(value) {
+      const compact = normalizeProblemTypeToken(value || "");
+      return compact === normalizeProblemTypeToken(LIBRARY_SOURCE_FILTER_ALL)
+        ? LIBRARY_SOURCE_FILTER_ALL
+        : normalizeLibrarySourceKey(value);
+    }
+
     function getLibrarySourceLabel(sourceKey) {
+      if (normalizeProblemTypeToken(sourceKey || "") === normalizeProblemTypeToken(LIBRARY_SOURCE_FILTER_ALL)) {
+        return "전체 출처";
+      }
       return LIBRARY_SOURCE_OPTIONS.find((option) => option.key === normalizeLibrarySourceKey(sourceKey))?.label
         || LIBRARY_SOURCE_OPTIONS[0].label;
     }
@@ -1021,7 +1158,7 @@
     }
 
     function getSchoolSourceFilterKey() {
-      return normalizeLibrarySourceKey(state?.schoolWorkflow?.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      return normalizeSchoolSourceFilterKey(state?.schoolWorkflow?.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
     }
 
     function getRecordSourceKey(record) {
@@ -1057,6 +1194,35 @@
       state.examBuilder.answerOutputMode = normalized;
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.value = normalized;
+      }
+      return normalized;
+    }
+
+    function normalizeExamContentMode(value) {
+      return String(value || "").trim().toLowerCase() === EXAM_CONTENT_MODE_TEXT
+        ? EXAM_CONTENT_MODE_TEXT
+        : EXAM_CONTENT_MODE_IMAGE;
+    }
+
+    function getExamContentModeLabel(value) {
+      return normalizeExamContentMode(value) === EXAM_CONTENT_MODE_TEXT
+        ? "텍스트 출제"
+        : "이미지 출제";
+    }
+
+    function getSelectedExamContentMode() {
+      return normalizeExamContentMode(
+        elements?.examContentModeSelect?.value ||
+        state?.examBuilder?.contentRenderMode ||
+        EXAM_CONTENT_MODE_IMAGE
+      );
+    }
+
+    function applyExamContentModeToUi(value) {
+      const normalized = normalizeExamContentMode(value);
+      state.examBuilder.contentRenderMode = normalized;
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.value = normalized;
       }
       return normalized;
     }
@@ -1104,6 +1270,7 @@
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
       selectedLibrarySourceKey: DEFAULT_LIBRARY_SOURCE_KEY,
+      libraryExtractionMode: LIBRARY_EXTRACTION_MODE_IMAGE,
       librarySaveMode: LIBRARY_SAVE_MODE_AUTO,
       activeTab: INITIAL_WORKSPACE_MODE === WORKSPACE_MODE_LIBRARY ? "repack" : "exam",
       workspaceMode: INITIAL_WORKSPACE_MODE,
@@ -1161,6 +1328,7 @@
         loadedExamId: "",
         loadedWorkId: "",
         answerOutputMode: EXAM_ANSWER_MODE_WITH_ANSWER_KEY,
+        contentRenderMode: EXAM_CONTENT_MODE_IMAGE,
         answerEditSlotId: "",
         answerEditBaseText: "",
         answerEditDraftText: "",
@@ -1177,7 +1345,7 @@
         selectedSchoolKey: "",
         selectedPassageKeys: [],
         selectedTypeLabels: [],
-        sourceFilterKey: DEFAULT_LIBRARY_SOURCE_KEY,
+        sourceFilterKey: LIBRARY_SOURCE_FILTER_ALL,
         typeSelectionCustomized: false,
         draftMode: "distinct",
         passageTextbookName: "",
@@ -1187,6 +1355,36 @@
         warnings: []
       },
       studentRetry: createStudentRetryState(),
+      libraryReview: {
+        currentRange: "",
+        currentSearch: "",
+        currentPage: 1,
+        storedSourceKey: "",
+        storedTextbookName: "",
+        storedImportSourceId: "",
+        storedRange: "",
+        storedSearch: "",
+        storedPage: 1,
+        editorScope: "",
+        editorTargetId: "",
+        editorBaseText: "",
+        editorDraftText: "",
+        editorBaseAnswerText: "",
+        editorDraftAnswerText: "",
+        editorBaseExplanationText: "",
+        editorDraftExplanationText: "",
+        editorTemplateKey: "",
+        editorStructuredDraft: null,
+        editorRawChanged: false,
+        editorTitle: "",
+        editorMetaText: "",
+        editorDeleteLabel: "현재 항목 삭제",
+        editorDeleteTone: "current",
+        editorImages: [],
+        editorImageStatus: "idle",
+        editorImageError: "",
+        editorUrls: []
+      },
       renderScale: DEFAULT_RENDER_SCALE,
       renderedSheetIndices: new Set(),
       previewSheetCount: 0,
@@ -1206,6 +1404,24 @@
       repackTabPanel: document.getElementById("repackTabPanel"),
       examBuilderTabPanel: document.getElementById("examBuilderTabPanel"),
       previewRoot: document.getElementById("previewRoot"),
+      libraryTextEditorRoot: document.getElementById("libraryTextEditorRoot"),
+      libraryTextEditorTitle: document.getElementById("libraryTextEditorTitle"),
+      libraryTextEditorSummary: document.getElementById("libraryTextEditorSummary"),
+      libraryTextEditorMeta: document.getElementById("libraryTextEditorMeta"),
+      libraryTextEditorTemplateBadge: document.getElementById("libraryTextEditorTemplateBadge"),
+      libraryTextEditorTemplateSummary: document.getElementById("libraryTextEditorTemplateSummary"),
+      libraryTextEditorStructuredFields: document.getElementById("libraryTextEditorStructuredFields"),
+      libraryTextEditorTextarea: document.getElementById("libraryTextEditorTextarea"),
+      libraryTextEditorReparseButton: document.getElementById("libraryTextEditorReparseButton"),
+      libraryTextEditorAnswerTextarea: document.getElementById("libraryTextEditorAnswerTextarea"),
+      libraryTextEditorExplanationTextarea: document.getElementById("libraryTextEditorExplanationTextarea"),
+      libraryTextEditorImagePanel: document.getElementById("libraryTextEditorImagePanel"),
+      libraryTextEditorImageStatus: document.getElementById("libraryTextEditorImageStatus"),
+      libraryTextEditorImageList: document.getElementById("libraryTextEditorImageList"),
+      libraryTextEditorReloadButton: document.getElementById("libraryTextEditorReloadButton"),
+      libraryTextEditorDeleteButton: document.getElementById("libraryTextEditorDeleteButton"),
+      libraryTextEditorSaveButton: document.getElementById("libraryTextEditorSaveButton"),
+      libraryTextEditorCloseButton: document.getElementById("libraryTextEditorCloseButton"),
       statusBar: document.getElementById("statusBar"),
       statusCopy: document.getElementById("statusCopy"),
       statsPill: document.getElementById("statsPill"),
@@ -1222,6 +1438,8 @@
       existingTextbookRow: document.getElementById("existingTextbookRow"),
       newTextbookInput: document.getElementById("newTextbookInput"),
       existingTextbookSelect: document.getElementById("existingTextbookSelect"),
+      libraryExtractionModeSelect: document.getElementById("libraryExtractionModeSelect"),
+      libraryExtractionModeSummary: document.getElementById("libraryExtractionModeSummary"),
       deleteTextbookButton: document.getElementById("deleteTextbookButton"),
       textbookDeleteSummary: document.getElementById("textbookDeleteSummary"),
       textbookSummary: document.getElementById("textbookSummary"),
@@ -1273,6 +1491,7 @@
       examTitleInput: document.getElementById("examTitleInput"),
       examSubtitleInput: document.getElementById("examSubtitleInput"),
       examAnswerModeSelect: document.getElementById("examAnswerModeSelect"),
+      examContentModeSelect: document.getElementById("examContentModeSelect"),
       previewExamButton: document.getElementById("previewExamButton"),
       printExamButton: document.getElementById("printExamButton"),
       commitExamButton: document.getElementById("commitExamButton"),
@@ -1380,10 +1599,289 @@
         : `${state.libraryDirectoryHandle.name} 폴더(권한 필요)`;
     }
 
+    function createPaginationState(items = [], currentPage = 1, pageSize = LIBRARY_REVIEW_PAGE_SIZE) {
+      const rows = Array.isArray(items) ? items : [];
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      const page = Math.max(1, Math.min(totalPages, Number.parseInt(currentPage, 10) || 1));
+      const startIndex = (page - 1) * pageSize;
+      return {
+        items: rows.slice(startIndex, startIndex + pageSize),
+        page,
+        totalPages,
+        totalItems: rows.length
+      };
+    }
+
+    function buildLibraryPaginationMarkup(scope, pagination) {
+      if (!pagination || pagination.totalPages <= 1) {
+        return "";
+      }
+      return `
+        <div class="library-review-pagination">
+          <button class="ghost-button" type="button" data-library-page="${escapeHtml(scope)}" data-library-page-shift="-1"${pagination.page <= 1 ? " disabled" : ""}>이전</button>
+          <span>${pagination.page} / ${pagination.totalPages}</span>
+          <button class="ghost-button" type="button" data-library-page="${escapeHtml(scope)}" data-library-page-shift="1"${pagination.page >= pagination.totalPages ? " disabled" : ""}>다음</button>
+        </div>
+      `;
+    }
+
+    function compareLibraryProblemOrder(left, right) {
+      const leftNumber = Number.parseInt(left?.number, 10);
+      const rightNumber = Number.parseInt(right?.number, 10);
+      const leftHasNumber = Number.isFinite(leftNumber);
+      const rightHasNumber = Number.isFinite(rightNumber);
+      if (leftHasNumber && rightHasNumber && leftNumber !== rightNumber) {
+        return leftNumber - rightNumber;
+      }
+      if (leftHasNumber !== rightHasNumber) {
+        return leftHasNumber ? -1 : 1;
+      }
+      return String(left?.recordId || left?.id || "")
+        .localeCompare(String(right?.recordId || right?.id || ""), "ko-KR");
+    }
+
+    function getLibraryFilteredProblems(records = [], rangeText = "", searchText = "") {
+      const baseRecords = Array.isArray(records) ? records.filter((record) => record?.kind === "problem") : [];
+      const questionInfo = parseQuestionFilter(rangeText);
+      const normalizedSearch = normalizeProblemTypeToken(searchText || "");
+      const filtered = baseRecords.filter((record) => {
+        if (questionInfo.hasFilter && !questionInfo.selectedNumbers.has(Number(record.number))) {
+          return false;
+        }
+        if (!normalizedSearch) {
+          return true;
+        }
+        const searchable = normalizeProblemTypeToken([
+          record.number,
+          record.textbookName,
+          record.sourceName,
+          record.passageLabel,
+          record.problemType,
+          record.selectableType,
+          record.promptText,
+          record.analysisText
+        ].filter(Boolean).join(" "));
+        return searchable.includes(normalizedSearch);
+      }).sort(compareLibraryProblemOrder);
+      return {
+        records: filtered,
+        invalidTokens: questionInfo.invalidTokens || []
+      };
+    }
+
+    function getCurrentLibraryReviewPayload() {
+      const filtered = getLibraryFilteredProblems(
+        state.problems,
+        state.libraryReview.currentRange,
+        state.libraryReview.currentSearch
+      );
+      const pagination = createPaginationState(filtered.records, state.libraryReview.currentPage);
+      state.libraryReview.currentPage = pagination.page;
+      return {
+        ...filtered,
+        pagination
+      };
+    }
+
+    function getStoredLibraryReviewPayload() {
+      const sourceKeyFilter = normalizeLibrarySourceKey(
+        state.libraryReview.storedSourceKey || getSelectedLibrarySourceKey()
+      );
+      const textbookFilter = normalizeTextbookName(state.libraryReview.storedTextbookName || "");
+      const importSourceIdFilter = normalizeProblemText(state.libraryReview.storedImportSourceId || "");
+      const candidateRecords = getProblemRecordsOnly()
+        .filter((record) => getRecordSourceKey(record) === sourceKeyFilter)
+        .filter((record) => !textbookFilter || normalizeTextbookName(record.textbookName || "") === textbookFilter)
+        .filter((record) => !importSourceIdFilter || normalizeProblemText(record.sourceId || "") === importSourceIdFilter);
+      const filtered = getLibraryFilteredProblems(
+        candidateRecords,
+        state.libraryReview.storedRange,
+        state.libraryReview.storedSearch
+      );
+      const pagination = createPaginationState(filtered.records, state.libraryReview.storedPage);
+      state.libraryReview.storedPage = pagination.page;
+      return {
+        sourceKeyFilter,
+        textbookFilter,
+        importSourceIdFilter,
+        ...filtered,
+        pagination
+      };
+    }
+
+    function getStoredLibraryTextbookOptions(sourceKey) {
+      const targetSourceKey = normalizeLibrarySourceKey(sourceKey || getSelectedLibrarySourceKey());
+      return Array.from(new Set(
+        (state.libraryCache.imports || [])
+          .filter((record) => getRecordSourceKey(record) === targetSourceKey)
+          .map((record) => normalizeTextbookName(record.textbookName || ""))
+          .filter(Boolean)
+      )).sort((left, right) => left.localeCompare(right, "ko-KR"));
+    }
+
+    function getStoredLibraryImportOptions(sourceKey, textbookName = "") {
+      const targetSourceKey = normalizeLibrarySourceKey(sourceKey || getSelectedLibrarySourceKey());
+      const targetTextbookName = normalizeTextbookName(textbookName || "");
+      return (state.libraryCache.imports || [])
+        .filter((record) => getRecordSourceKey(record) === targetSourceKey)
+        .filter((record) => !targetTextbookName || normalizeTextbookName(record.textbookName || "") === targetTextbookName)
+        .sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0));
+    }
+
+    function buildLibraryReviewCardMarkup(record, scope = "current") {
+      const metaLabel = scope === "stored"
+        ? `${record.textbookName || "교재"} · ${record.sourceName || "저장본"}`
+        : `${state.selectedTextbookName || getSelectedTextbookName() || "현재 교재"} · ${state.fileName || "현재 PDF"}`;
+      const deleteLabel = scope === "stored" ? "라이브러리 삭제" : "저장 전 제외";
+      const answerPreview = getLibraryProblemAnswerPreview(record);
+      const explanationPreview = getLibraryProblemExplanationPreview(record, 140);
+      return `
+        <article class="library-review-card">
+          <header class="library-review-card-head">
+            <div>
+              <strong>${escapeHtml(`${record.number || "-"}번 · ${record.selectableType || record.problemType || PROBLEM_TYPE_OTHER}`)}</strong>
+              <p>${escapeHtml(record.passageLabel || metaLabel)}</p>
+            </div>
+            <span class="library-review-mode-badge">${escapeHtml(getLibraryExtractionModeLabel(getLibraryProblemMode(record)))}</span>
+          </header>
+          <p class="library-review-card-copy">${escapeHtml(getLibraryProblemExcerpt(record, 240))}</p>
+          <div class="library-review-card-summary">
+            <p class="library-review-card-summary-line">
+              <strong>정답</strong>
+              <span class="${answerPreview ? "" : "is-empty"}">${escapeHtml(answerPreview || "아직 없습니다.")}</span>
+            </p>
+            <p class="library-review-card-summary-line">
+              <strong>해설</strong>
+              <span class="${explanationPreview ? "" : "is-empty"}">${escapeHtml(explanationPreview || "아직 없습니다.")}</span>
+            </p>
+          </div>
+          <footer class="library-review-card-footer">
+            <span>${escapeHtml(metaLabel)}</span>
+            <div class="library-review-card-actions">
+              <button class="ghost-button" type="button" data-library-edit-scope="${escapeHtml(scope)}" data-library-edit-id="${escapeHtml(scope === "stored" ? record.recordId : record.id)}">텍스트 수정</button>
+              <button class="ghost-button ghost-button-danger" type="button" data-library-delete-scope="${escapeHtml(scope)}" data-library-delete-id="${escapeHtml(scope === "stored" ? record.recordId : record.id)}">${deleteLabel}</button>
+            </div>
+          </footer>
+        </article>
+      `;
+    }
+
+    function buildCurrentLibraryReviewMarkup() {
+      const review = getCurrentLibraryReviewPayload();
+      const itemsMarkup = review.pagination.items.length
+        ? review.pagination.items.map((problem) => buildLibraryReviewCardMarkup(problem, "current")).join("")
+        : `<div class="library-review-empty">
+            <h3>검수할 현재 추출 문항이 없습니다</h3>
+            <p>${state.problems.length ? "범위나 검색어를 다시 확인해주세요." : "PDF를 불러오면 저장 전 텍스트 검수 목록이 여기에 표시됩니다."}</p>
+          </div>`;
+      const invalidCopy = review.invalidTokens.length
+        ? `<p class="small-note">번호 범위에서 읽지 못한 값: ${escapeHtml(review.invalidTokens.join(", "))}</p>`
+        : "";
+      return `
+        <section class="library-review-section">
+          <header class="library-review-section-head">
+            <div>
+              <p class="library-progress-eyebrow">CURRENT IMPORT REVIEW</p>
+              <h3>저장 전 문항 검수</h3>
+              <p>현재 추출한 ${getQuestionCount(state.problems)}문항을 저장 전에 검수하고, 필요 없는 문제는 제외할 수 있습니다.</p>
+            </div>
+            <span class="library-review-count">${review.pagination.totalItems}문항</span>
+          </header>
+          <div class="library-review-filter-grid">
+            <label class="field-row">
+              <span class="field-label">문항 범위</span>
+              <input class="text-input" type="text" value="${escapeHtml(state.libraryReview.currentRange)}" placeholder="예: 1-20, 35, 40-45" data-library-current-range>
+            </label>
+            <label class="field-row">
+              <span class="field-label">텍스트 검색</span>
+              <input class="text-input" type="text" value="${escapeHtml(state.libraryReview.currentSearch)}" placeholder="예: climate, 빈칸" data-library-current-search>
+            </label>
+          </div>
+          ${invalidCopy}
+          <div class="library-review-list">${itemsMarkup}</div>
+          ${buildLibraryPaginationMarkup("current", review.pagination)}
+        </section>
+      `;
+    }
+
+    function buildStoredLibraryReviewMarkup() {
+      const sourceKeyFilter = normalizeLibrarySourceKey(state.libraryReview.storedSourceKey || getSelectedLibrarySourceKey());
+      const textbookOptions = getStoredLibraryTextbookOptions(sourceKeyFilter);
+      const safeTextbookFilter = textbookOptions.includes(normalizeTextbookName(state.libraryReview.storedTextbookName || ""))
+        ? normalizeTextbookName(state.libraryReview.storedTextbookName || "")
+        : "";
+      if (safeTextbookFilter !== state.libraryReview.storedTextbookName) {
+        state.libraryReview.storedTextbookName = safeTextbookFilter;
+      }
+      const importOptions = getStoredLibraryImportOptions(sourceKeyFilter, safeTextbookFilter);
+      const safeImportFilter = importOptions.some((record) => record.sourceId === state.libraryReview.storedImportSourceId)
+        ? state.libraryReview.storedImportSourceId
+        : "";
+      if (safeImportFilter !== state.libraryReview.storedImportSourceId) {
+        state.libraryReview.storedImportSourceId = safeImportFilter;
+      }
+      const review = getStoredLibraryReviewPayload();
+      const itemsMarkup = review.pagination.items.length
+        ? review.pagination.items.map((record) => buildLibraryReviewCardMarkup(record, "stored")).join("")
+        : `<div class="library-review-empty">
+            <h3>조건에 맞는 저장 문제가 없습니다</h3>
+            <p>교재, PDF 범위, 번호 조건을 바꾸면 저장된 문제를 바로 다시 불러올 수 있습니다.</p>
+          </div>`;
+      const invalidCopy = review.invalidTokens.length
+        ? `<p class="small-note">번호 범위에서 읽지 못한 값: ${escapeHtml(review.invalidTokens.join(", "))}</p>`
+        : "";
+      return `
+        <section class="library-review-section">
+          <header class="library-review-section-head">
+            <div>
+              <p class="library-progress-eyebrow">STORED LIBRARY MANAGER</p>
+              <h3>저장된 라이브러리 관리</h3>
+              <p>저장 후에도 교재/PDF/번호 범위별로 문제를 불러와 텍스트를 수정하거나 필요 없는 문제를 삭제할 수 있습니다.</p>
+            </div>
+            <span class="library-review-count">${review.pagination.totalItems}문항</span>
+          </header>
+          <div class="library-review-filter-grid library-review-filter-grid-wide">
+            <label class="field-row">
+              <span class="field-label">문제 출처</span>
+              <select class="select-input" data-library-stored-source>
+                ${LIBRARY_SOURCE_OPTIONS.map((option) => `<option value="${escapeHtml(option.key)}"${option.key === sourceKeyFilter ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+              </select>
+            </label>
+            <label class="field-row">
+              <span class="field-label">교재</span>
+              <select class="select-input" data-library-stored-textbook>
+                <option value="">전체 교재</option>
+                ${textbookOptions.map((textbookName) => `<option value="${escapeHtml(textbookName)}"${textbookName === safeTextbookFilter ? " selected" : ""}>${escapeHtml(textbookName)}</option>`).join("")}
+              </select>
+            </label>
+            <label class="field-row">
+              <span class="field-label">등록 PDF</span>
+              <select class="select-input" data-library-stored-import>
+                <option value="">전체 PDF</option>
+                ${importOptions.map((record) => `<option value="${escapeHtml(record.sourceId)}"${record.sourceId === safeImportFilter ? " selected" : ""}>${escapeHtml(record.fileName || record.sourceId)}</option>`).join("")}
+              </select>
+            </label>
+            <label class="field-row">
+              <span class="field-label">문항 범위</span>
+              <input class="text-input" type="text" value="${escapeHtml(state.libraryReview.storedRange)}" placeholder="예: 1-20, 35, 40-45" data-library-stored-range>
+            </label>
+            <label class="field-row">
+              <span class="field-label">텍스트 검색</span>
+              <input class="text-input" type="text" value="${escapeHtml(state.libraryReview.storedSearch)}" placeholder="예: summary, climate" data-library-stored-search>
+            </label>
+          </div>
+          ${invalidCopy}
+          <div class="library-review-list">${itemsMarkup}</div>
+          ${buildLibraryPaginationMarkup("stored", review.pagination)}
+        </section>
+      `;
+    }
+
     function renderLibraryWorkspaceDashboard() {
       if (!elements.previewRoot || !isLibraryWorkspaceMode()) {
         return;
       }
+      elements.previewRoot.classList.add("is-library-dashboard");
       const progress = state.libraryProgress || createLibraryProgressState();
       const hasProblems = state.problems.length > 0;
       const problemCount = getQuestionCount(state.problems);
@@ -1411,6 +1909,7 @@
       const message = shouldUseReadySnapshot ? readyMessage : (progress.message || readyMessage);
 
       elements.previewRoot.innerHTML = `
+        <div class="library-dashboard-stack">
         <section class="library-progress-board">
           <article class="library-progress-hero">
             <div class="library-progress-eyebrow-row">
@@ -1440,7 +1939,7 @@
             <article class="library-progress-card">
               <span class="library-progress-card-label">원본 PDF</span>
               <strong class="library-progress-card-value">${escapeHtml(sourceLabel)}</strong>
-              <p class="library-progress-card-note">페이지 ${pageCount}쪽 · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)}</p>
+              <p class="library-progress-card-note">페이지 ${pageCount}쪽 · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)} · ${escapeHtml(getLibraryExtractionModeLabel(state.libraryExtractionMode))}</p>
             </article>
             <article class="library-progress-card">
               <span class="library-progress-card-label">저장 위치</span>
@@ -1449,7 +1948,817 @@
             </article>
           </section>
         </section>
+        ${buildCurrentLibraryReviewMarkup()}
+        ${buildStoredLibraryReviewMarkup()}
+        </div>
       `;
+    }
+
+    function cleanupLibraryTextEditorUrls() {
+      const urls = Array.isArray(state.libraryReview.editorUrls) ? state.libraryReview.editorUrls : [];
+      urls.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn("Failed to revoke library text editor URL", error);
+        }
+      });
+      state.libraryReview.editorUrls = [];
+    }
+
+    function resetLibraryTextEditorState() {
+      cleanupLibraryTextEditorUrls();
+      Object.assign(state.libraryReview, {
+        editorScope: "",
+        editorTargetId: "",
+        editorBaseText: "",
+        editorDraftText: "",
+        editorBaseAnswerText: "",
+        editorDraftAnswerText: "",
+        editorBaseExplanationText: "",
+        editorDraftExplanationText: "",
+        editorTemplateKey: "",
+        editorStructuredDraft: null,
+        editorRawChanged: false,
+        editorTitle: "",
+        editorMetaText: "",
+        editorDeleteLabel: "현재 항목 삭제",
+        editorDeleteTone: "current",
+        editorImages: [],
+        editorImageStatus: "idle",
+        editorImageError: ""
+      });
+    }
+
+    function getCurrentImportProblemById(problemId) {
+      return (state.problems || []).find((problem) => String(problem?.id || "") === String(problemId || "")) || null;
+    }
+
+    function getStoredLibraryProblemById(recordId) {
+      return getProblemRecordsOnly().find((record) => String(record?.recordId || "") === String(recordId || "")) || null;
+    }
+
+    function getActiveLibraryEditorTarget() {
+      if (state.libraryReview.editorScope === "current") {
+        return getCurrentImportProblemById(state.libraryReview.editorTargetId);
+      }
+      if (state.libraryReview.editorScope === "stored") {
+        return getStoredLibraryProblemById(state.libraryReview.editorTargetId);
+      }
+      return null;
+    }
+
+    function isLibraryTextEditorDirty() {
+      return (
+        state.libraryReview.editorDraftText !== state.libraryReview.editorBaseText ||
+        state.libraryReview.editorDraftAnswerText !== state.libraryReview.editorBaseAnswerText ||
+        state.libraryReview.editorDraftExplanationText !== state.libraryReview.editorBaseExplanationText
+      );
+    }
+
+    function buildLibraryTextEditorImageEntryFromBlob(record, blob, index, options = {}) {
+      if (!(blob instanceof Blob)) {
+        return null;
+      }
+      const url = URL.createObjectURL(blob);
+      state.libraryReview.editorUrls.push(url);
+      const segments = Array.isArray(options.segments) ? options.segments : (record?.segmentMeta || record?.segments || []);
+      const segment = segments[index] || {};
+      const bucket = options.bucket || "problem";
+      const bucketLabel = options.bucketLabel || "문제 원문";
+      return {
+        id: `${record.recordId || record.id || "problem"}-${bucket}-editor-${index + 1}`,
+        url,
+        bucket,
+        bucketLabel,
+        alt: `${bucketLabel} ${index + 1}`,
+        width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || Number(segment.width) || 1),
+        height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || Number(segment.height) || 1)
+      };
+    }
+
+    function buildLibraryTextEditorImageEntryFromRuntimeImage(record, image, index, options = {}) {
+      if (!image?.url) {
+        return null;
+      }
+      const bucket = options.bucket || "problem";
+      const bucketLabel = options.bucketLabel || "문제 원문";
+      return {
+        id: `${record.recordId || record.id || "problem"}-${bucket}-runtime-${index + 1}`,
+        url: image.url,
+        bucket,
+        bucketLabel,
+        alt: `${bucketLabel} ${index + 1}`,
+        width: Number(image.width) || 1,
+        height: Number(image.height) || 1
+      };
+    }
+
+    function buildLibraryTextEditorImagesFromProblem(problem) {
+      const images = [];
+      if (Array.isArray(problem?.segmentBlobs) && problem.segmentBlobs.length) {
+        images.push(
+          ...problem.segmentBlobs
+            .map((blob, index) => buildLibraryTextEditorImageEntryFromBlob(problem, blob, index, {
+              segments: problem.segmentMeta || problem.segments,
+              bucket: "problem",
+              bucketLabel: "문제 원문"
+            }))
+            .filter(Boolean)
+        );
+      } else if (Array.isArray(problem?.segmentImages) && problem.segmentImages.length) {
+        images.push(
+          ...problem.segmentImages
+            .map((image, index) => buildLibraryTextEditorImageEntryFromRuntimeImage(problem, image, index, {
+              bucket: "problem",
+              bucketLabel: "문제 원문"
+            }))
+            .filter(Boolean)
+        );
+      }
+      if (Array.isArray(problem?.answerSegmentBlobs) && problem.answerSegmentBlobs.length) {
+        images.push(
+          ...problem.answerSegmentBlobs
+            .map((blob, index) => buildLibraryTextEditorImageEntryFromBlob(problem, blob, index, {
+              segments: problem.answerSegmentMeta || problem.answerSegments,
+              bucket: "answer",
+              bucketLabel: "답안 이미지"
+            }))
+            .filter(Boolean)
+        );
+      } else if (Array.isArray(problem?.answerSegmentImages) && problem.answerSegmentImages.length) {
+        images.push(
+          ...problem.answerSegmentImages
+            .map((image, index) => buildLibraryTextEditorImageEntryFromRuntimeImage(problem, image, index, {
+              bucket: "answer",
+              bucketLabel: "답안 이미지"
+            }))
+            .filter(Boolean)
+        );
+      }
+      return images;
+    }
+
+    function getLibraryTextEditorTemplateSummary(problemType, templateKey) {
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return "문제, 참조, 주어진문장, 본문, ABC 선택지를 따로 수정합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_ABC) {
+        return "선택어법/선택어휘처럼 (A)(B)(C) 기준이 중요한 객관식으로 보고 문제, 참조, 본문, ABC 선택지를 따로 수정합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return "문제, 참조, 본문, 요약, AB 선택지를 따로 수정합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return "문제, 참조, 주어진문장, 본문을 따로 수정합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR) {
+        return "연결사형 객관식으로 보고 문제, 참조, 본문, AB 선택지를 나눠 검수합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return "문제, 참조, 본문만 분리해서 검수합니다.";
+      }
+      if (templateKey === EDITOR_TEMPLATE_SUBJECTIVE_FREE) {
+        return "주관식은 문제, 참조, 본문 중심으로 단순 분리합니다.";
+      }
+      if (OBJECTIVE_EDITOR_COMMON_TYPES.includes(problemType)) {
+        return "문제, 참조, 본문, 선택지를 공통 객관식 틀로 나눠 검수합니다.";
+      }
+      return "현재 유형을 공통 편집 템플릿으로 열었습니다.";
+    }
+
+    function buildLibraryTextEditorChoiceFieldsMarkup(choices = []) {
+      const entries = normalizeStructuredChoiceEntries(choices);
+      return `
+        <div class="library-text-editor-choice-list">
+          ${entries.map((choice, index) => `
+            <label class="library-text-editor-choice-row">
+              <span class="library-text-editor-choice-marker">${escapeHtml(choice.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1))}</span>
+              <textarea
+                class="library-text-editor-textarea library-text-editor-secondary-textarea library-text-editor-choice-textarea"
+                data-structured-choice-index="${index}"
+                placeholder="선택지 ${index + 1}"
+              >${escapeHtml(choice.text || "")}</textarea>
+            </label>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function getLibraryTextEditorChoiceSectionLabel(templateKey) {
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR || templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return "AB 선택지";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_ABC || templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return "ABC 선택지";
+      }
+      return "선택지";
+    }
+
+    function buildLibraryTextEditorStructuredFieldsMarkup(problemType, isSubjective, data) {
+      const template = getProblemEditorTemplateInfo(problemType, isSubjective);
+      const structured = normalizeStructuredProblemData(data, problemType, isSubjective);
+      const renderField = (fieldKey, label, placeholder, className = "") => `
+        <label class="library-text-editor-input-group ${className}">
+          <span class="field-label">${escapeHtml(label)}</span>
+          <textarea
+            class="library-text-editor-textarea library-text-editor-secondary-textarea"
+            data-structured-field="${escapeHtml(fieldKey)}"
+            placeholder="${escapeHtml(placeholder)}"
+          >${escapeHtml(structured[fieldKey] || "")}</textarea>
+        </label>
+      `;
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return `
+          <div class="library-text-editor-structured-grid is-sequence">
+            ${renderField("questionText", "문제", "순서 문제 문구를 정리합니다.", "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 보기 지시문 등", "is-span-2")}
+            ${renderField("givenText", "주어진문장", "주어진 글 또는 문장을 정리합니다.", "is-span-2")}
+            ${renderField("bodyText", "본문", "(A)(B)(C)를 포함한 본문을 정리합니다.", "is-span-2")}
+            <div class="library-text-editor-input-group is-span-2">
+              <span class="field-label">${getLibraryTextEditorChoiceSectionLabel(template.key)}</span>
+              ${buildLibraryTextEditorChoiceFieldsMarkup(structured.choices)}
+            </div>
+          </div>
+        `;
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return `
+          <div class="library-text-editor-structured-grid">
+            ${renderField("questionText", "문제", "삽입 문제 문구를 정리합니다.", "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 보기 지시문 등", "is-span-2")}
+            ${renderField("givenText", "주어진문장", "본문에 삽입할 문장을 적습니다.", "is-span-2")}
+            ${renderField("bodyText", "본문", "삽입 위치를 판단할 본문", "is-span-2")}
+          </div>
+        `;
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return `
+          <div class="library-text-editor-structured-grid">
+            ${renderField("questionText", "문제", `${problemType || "본문형"} 문제 문구를 정리합니다.`, "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 추가 지시문", "is-span-2")}
+            ${renderField("bodyText", "본문", "본문만 분리해서 정리합니다.", "is-span-2")}
+          </div>
+        `;
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return `
+          <div class="library-text-editor-structured-grid">
+            ${renderField("questionText", "문제", "요약 문제 문구를 정리합니다.", "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 보기 지시문 등", "is-span-2")}
+            ${renderField("bodyText", "본문", "원문 본문을 정리합니다.", "is-span-2")}
+            ${renderField("summaryText", "요약", "요약문 또는 빈칸 요약문을 적습니다.", "is-span-2")}
+            <div class="library-text-editor-input-group is-span-2">
+              <span class="field-label">${getLibraryTextEditorChoiceSectionLabel(template.key)}</span>
+              ${buildLibraryTextEditorChoiceFieldsMarkup(structured.choices)}
+            </div>
+          </div>
+        `;
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_ABC) {
+        return `
+          <div class="library-text-editor-structured-grid">
+            ${renderField("questionText", "문제", `${problemType || "ABC 선택형"} 문제 문구를 정리합니다.`, "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 보기 지시문 등", "is-span-2")}
+            ${renderField("bodyText", "본문 ((A)(B)(C) 포함)", "(A)(B)(C) 위치가 드러나도록 본문을 정리합니다.", "is-span-2")}
+            <div class="library-text-editor-input-group is-span-2">
+              <span class="field-label">${getLibraryTextEditorChoiceSectionLabel(template.key)}</span>
+              ${buildLibraryTextEditorChoiceFieldsMarkup(structured.choices)}
+            </div>
+          </div>
+        `;
+      }
+      if (template.key === EDITOR_TEMPLATE_SUBJECTIVE_FREE) {
+        return `
+          <div class="library-text-editor-structured-grid">
+            ${renderField("questionText", "문제", "주관식 문제 문구를 정리합니다.", "is-span-2")}
+            ${renderField("referenceText", "참조", "예: [1-2], 추가 지시문", "is-span-2")}
+            ${renderField("bodyText", "본문", "주관식 본문 또는 제시문", "is-span-2")}
+          </div>
+        `;
+      }
+      return `
+        <div class="library-text-editor-structured-grid">
+          ${renderField("questionText", "문제", `${problemType || "객관식"} 문제 문구를 정리합니다.`, "is-span-2")}
+          ${renderField("referenceText", "참조", "예: [1-2], 보기 지시문 등", "is-span-2")}
+          ${renderField("bodyText", template.key === EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR ? "본문 ((A)/(B) 포함)" : "본문", "지문 본문을 정리합니다.", "is-span-2")}
+          <div class="library-text-editor-input-group is-span-2">
+            <span class="field-label">${getLibraryTextEditorChoiceSectionLabel(template.key)}</span>
+            ${buildLibraryTextEditorChoiceFieldsMarkup(structured.choices)}
+          </div>
+        </div>
+      `;
+    }
+
+    function syncLibraryTextEditorRawTextFromStructuredDraft() {
+      const structured = state.libraryReview.editorStructuredDraft;
+      if (!structured) {
+        return;
+      }
+      state.libraryReview.editorDraftText = composeStructuredProblemRawText(structured);
+      state.libraryReview.editorRawChanged = false;
+      if (elements.libraryTextEditorTextarea) {
+        elements.libraryTextEditorTextarea.value = state.libraryReview.editorDraftText || "";
+      }
+    }
+
+    function reparseLibraryTextEditorStructuredFields(problemType, isSubjective, rawText) {
+      const structured = buildStructuredProblemDataFromText(problemType, isSubjective, rawText);
+      state.libraryReview.editorTemplateKey = structured.templateKey;
+      state.libraryReview.editorStructuredDraft = structured;
+      state.libraryReview.editorRawChanged = false;
+      return structured;
+    }
+
+    function renderLibraryTextEditor() {
+      if (!elements.libraryTextEditorRoot) {
+        return;
+      }
+      const isOpen = Boolean(state.libraryReview.editorScope && state.libraryReview.editorTargetId);
+      elements.libraryTextEditorRoot.hidden = !isOpen;
+      if (!isOpen) {
+        return;
+      }
+      const target = getActiveLibraryEditorTarget();
+      const title = state.libraryReview.editorTitle || `${target?.number || "-"}번 문항 텍스트 수정`;
+      setOptionalText(elements.libraryTextEditorTitle, title);
+      setOptionalText(
+        elements.libraryTextEditorSummary,
+        state.libraryReview.editorScope === "stored"
+          ? "저장된 라이브러리 텍스트를 수정하면 반별 출제와 이후 라이브러리 불러오기에도 같은 내용이 반영됩니다."
+          : "저장 전에 현재 추출 텍스트를 먼저 검수하고, 불필요한 문제는 여기서 제외할 수 있습니다."
+      );
+      setOptionalText(elements.libraryTextEditorMeta, state.libraryReview.editorMetaText || "");
+      const templateInfo = getProblemEditorTemplateInfo(target?.problemType, Boolean(target?.isSubjective));
+      const activeTemplateKey = state.libraryReview.editorTemplateKey || templateInfo.key;
+      if (elements.libraryTextEditorTemplateBadge) {
+        elements.libraryTextEditorTemplateBadge.textContent = getProblemEditorTemplateLabel(activeTemplateKey);
+      }
+      setOptionalText(
+        elements.libraryTextEditorTemplateSummary,
+        getLibraryTextEditorTemplateSummary(target?.problemType || PROBLEM_TYPE_OTHER, activeTemplateKey)
+      );
+      if (elements.libraryTextEditorStructuredFields) {
+        elements.libraryTextEditorStructuredFields.innerHTML = buildLibraryTextEditorStructuredFieldsMarkup(
+          target?.problemType || PROBLEM_TYPE_OTHER,
+          Boolean(target?.isSubjective),
+          state.libraryReview.editorStructuredDraft
+        );
+      }
+      if (elements.libraryTextEditorTextarea) {
+        elements.libraryTextEditorTextarea.value = state.libraryReview.editorDraftText || "";
+      }
+      if (elements.libraryTextEditorAnswerTextarea) {
+        elements.libraryTextEditorAnswerTextarea.value = state.libraryReview.editorDraftAnswerText || "";
+      }
+      if (elements.libraryTextEditorExplanationTextarea) {
+        elements.libraryTextEditorExplanationTextarea.value = state.libraryReview.editorDraftExplanationText || "";
+      }
+      if (elements.libraryTextEditorDeleteButton) {
+        elements.libraryTextEditorDeleteButton.textContent = state.libraryReview.editorDeleteLabel || "현재 항목 삭제";
+        elements.libraryTextEditorDeleteButton.dataset.deleteTone = state.libraryReview.editorDeleteTone || "current";
+      }
+      const editorImages = Array.isArray(state.libraryReview.editorImages) ? state.libraryReview.editorImages : [];
+      const problemImageCount = editorImages.filter((image) => image?.bucket === "problem").length;
+      const answerImageCount = editorImages.filter((image) => image?.bucket === "answer").length;
+      const imageStatusText = state.libraryReview.editorImageStatus === "loading"
+        ? "이미지 불러오는 중"
+        : state.libraryReview.editorImageStatus === "ready"
+          ? `문제 ${problemImageCount}장 · 답안 ${answerImageCount}장`
+          : state.libraryReview.editorImageStatus === "error"
+            ? "이미지 불러오기 실패"
+            : "이미지 준비 전";
+      setOptionalText(elements.libraryTextEditorImageStatus, imageStatusText);
+      if (elements.libraryTextEditorImageList) {
+        if (editorImages.length) {
+          const groupedImages = editorImages.reduce((map, image) => {
+            const bucket = image?.bucket || "problem";
+            if (!map.has(bucket)) {
+              map.set(bucket, {
+                bucket,
+                label: image?.bucketLabel || (bucket === "answer" ? "답안 이미지" : "문제 원문"),
+                entries: []
+              });
+            }
+            map.get(bucket).entries.push(image);
+            return map;
+          }, new Map());
+          elements.libraryTextEditorImageList.innerHTML = `
+            <div class="library-text-editor-image-list">
+              ${Array.from(groupedImages.values()).map((group) => `
+                <article class="library-text-editor-image-card">
+                  <header class="library-text-editor-image-card-head">
+                    <strong>${escapeHtml(group.label)}</strong>
+                    <span>${group.entries.length}장</span>
+                  </header>
+                  <div class="library-text-editor-image-grid">
+                    ${group.entries.map((image) => `
+                      <figure class="library-text-editor-image-frame">
+                        <img class="library-text-editor-image" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.alt || group.label)}">
+                      </figure>
+                    `).join("")}
+                  </div>
+                </article>
+              `).join("")}
+            </div>
+          `;
+        } else {
+          const emptyCopy = state.libraryReview.editorImageStatus === "error"
+            ? (state.libraryReview.editorImageError || "문제/답안 이미지를 불러오지 못했습니다.")
+            : state.libraryReview.editorImageStatus === "loading"
+              ? "문제/답안 이미지를 불러오는 중입니다."
+              : "문제 또는 답안 이미지가 아직 준비되지 않았습니다.";
+          elements.libraryTextEditorImageList.innerHTML = `<p class="library-text-editor-image-empty">${escapeHtml(emptyCopy)}</p>`;
+        }
+      }
+    }
+
+    async function loadLibraryTextEditorImages(scope, targetId) {
+      const normalizedScope = String(scope || "");
+      const normalizedTargetId = String(targetId || "");
+      if (!normalizedScope || !normalizedTargetId) {
+        return;
+      }
+      state.libraryReview.editorImageStatus = "loading";
+      state.libraryReview.editorImageError = "";
+      state.libraryReview.editorImages = [];
+      renderLibraryTextEditor();
+      try {
+        let images = [];
+        if (normalizedScope === "current") {
+          const problem = getCurrentImportProblemById(normalizedTargetId);
+          if (problem && state.pdfDoc && (!Array.isArray(problem.segmentImages) || problem.segmentImages.some((image) => !image?.url))) {
+            await generateSegmentImages(state.pdfDoc, [problem], state.renderScale || DEFAULT_RENDER_SCALE);
+          }
+          if (
+            problem &&
+            state.pdfDoc &&
+            Array.isArray(problem.answerSegments) &&
+            problem.answerSegments.length &&
+            (!Array.isArray(problem.answerSegmentImages) || problem.answerSegmentImages.some((image) => !image?.url))
+          ) {
+            await generateSegmentImages(state.pdfDoc, [problem], state.renderScale || DEFAULT_RENDER_SCALE, {
+              segmentKey: "answerSegments",
+              imageKey: "answerSegmentImages",
+              statusLabel: "답안 이미지",
+              progressPhaseLabel: "답안 이미지 준비"
+            });
+          }
+          images = problem ? buildLibraryTextEditorImagesFromProblem(problem) : [];
+        } else if (normalizedScope === "stored") {
+          const storedRecord = getStoredLibraryProblemById(normalizedTargetId);
+          const hydrated = storedRecord ? await hydrateProblemRecordsWithAssets([storedRecord]) : [];
+          images = hydrated.length ? buildLibraryTextEditorImagesFromProblem(hydrated[0]) : [];
+        }
+        if (state.libraryReview.editorScope !== normalizedScope || state.libraryReview.editorTargetId !== normalizedTargetId) {
+          cleanupLibraryTextEditorUrls();
+          return;
+        }
+        state.libraryReview.editorImages = images;
+        state.libraryReview.editorImageStatus = images.length ? "ready" : "idle";
+        renderLibraryTextEditor();
+      } catch (error) {
+        console.warn("Failed to load library text editor images", error);
+        if (state.libraryReview.editorScope === normalizedScope && state.libraryReview.editorTargetId === normalizedTargetId) {
+          cleanupLibraryTextEditorUrls();
+          state.libraryReview.editorImages = [];
+          state.libraryReview.editorImageStatus = "error";
+          state.libraryReview.editorImageError = error?.message || "원문 이미지를 불러오지 못했습니다.";
+          renderLibraryTextEditor();
+        }
+      }
+    }
+
+    function closeLibraryTextEditor(options = {}) {
+      if (isLibraryTextEditorDirty() && !options.forceDiscard) {
+        const confirmed = window.confirm("저장하지 않은 문항 텍스트 수정 내용이 있습니다. 창을 닫으면 현재 입력 내용은 사라집니다. 계속할까요?");
+        if (!confirmed) {
+          return false;
+        }
+      }
+      resetLibraryTextEditorState();
+      renderLibraryTextEditor();
+      return true;
+    }
+
+    function openLibraryTextEditor(scope, targetId, options = {}) {
+      const normalizedScope = String(scope || "");
+      const normalizedTargetId = String(targetId || "");
+      if (!normalizedScope || !normalizedTargetId) {
+        return false;
+      }
+      if (
+        state.libraryReview.editorScope &&
+        (state.libraryReview.editorScope !== normalizedScope || state.libraryReview.editorTargetId !== normalizedTargetId) &&
+        isLibraryTextEditorDirty() &&
+        !options.forceDiscard
+      ) {
+        const confirmed = window.confirm("저장하지 않은 문항 텍스트 수정 내용이 있습니다. 다른 문제로 이동하면 현재 입력 내용은 사라집니다. 계속할까요?");
+        if (!confirmed) {
+          return false;
+        }
+      }
+      cleanupLibraryTextEditorUrls();
+      const target = normalizedScope === "current"
+        ? getCurrentImportProblemById(normalizedTargetId)
+        : getStoredLibraryProblemById(normalizedTargetId);
+      if (!target) {
+        return false;
+      }
+      const metaLine = normalizedScope === "stored"
+        ? `${target.textbookName || "교재"} · ${target.sourceName || "저장본"} · ${target.number || "-"}번 · ${target.selectableType || target.problemType || PROBLEM_TYPE_OTHER}`
+        : `${state.selectedTextbookName || getSelectedTextbookName() || "현재 교재"} · ${state.fileName || "현재 PDF"} · ${target.number || "-"}번 · ${target.selectableType || target.problemType || PROBLEM_TYPE_OTHER}`;
+      state.libraryReview.editorScope = normalizedScope;
+      state.libraryReview.editorTargetId = normalizedTargetId;
+      state.libraryReview.editorBaseText = getEditableProblemText(target);
+      state.libraryReview.editorDraftText = state.libraryReview.editorBaseText;
+      state.libraryReview.editorTemplateKey = getProblemEditorTemplateInfo(target?.problemType, Boolean(target?.isSubjective)).key;
+      state.libraryReview.editorStructuredDraft = getLibraryProblemStructuredText(target);
+      state.libraryReview.editorRawChanged = false;
+      state.libraryReview.editorBaseAnswerText = getEditableAnswerText(target);
+      state.libraryReview.editorDraftAnswerText = state.libraryReview.editorBaseAnswerText;
+      state.libraryReview.editorBaseExplanationText = getEditableExplanationText(target);
+      state.libraryReview.editorDraftExplanationText = state.libraryReview.editorBaseExplanationText;
+      state.libraryReview.editorTitle = `${target.number || "-"}번 문항 텍스트 수정`;
+      state.libraryReview.editorMetaText = metaLine;
+      state.libraryReview.editorDeleteLabel = normalizedScope === "stored" ? "라이브러리에서 삭제" : "저장 전 제외";
+      state.libraryReview.editorDeleteTone = normalizedScope;
+      state.libraryReview.editorImages = [];
+      state.libraryReview.editorImageStatus = "loading";
+      state.libraryReview.editorImageError = "";
+      renderLibraryTextEditor();
+      setTimeout(() => {
+        loadLibraryTextEditorImages(normalizedScope, normalizedTargetId);
+      }, 0);
+      return true;
+    }
+
+    function createUpdatedImportRecordForProblemList(sourceRecord, problemRecords = []) {
+      const records = (Array.isArray(problemRecords) ? problemRecords : []).filter((record) => record?.kind === "problem");
+      if (!records.length) {
+        return null;
+      }
+      return {
+        ...(sourceRecord && typeof sourceRecord === "object" ? sourceRecord : {}),
+        sourceId: normalizeProblemText(sourceRecord?.sourceId || records[0]?.sourceId || ""),
+        librarySourceKey: normalizeLibrarySourceKey(sourceRecord?.librarySourceKey || records[0]?.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY),
+        librarySourceName: getLibrarySourceLabel(sourceRecord?.librarySourceKey || records[0]?.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY),
+        textbookName: normalizeTextbookName(sourceRecord?.textbookName || records[0]?.textbookName || ""),
+        fileName: sourceRecord?.fileName || records[0]?.sourceName || "",
+        importedAt: Number(sourceRecord?.importedAt || records[0]?.sourceImportedAt || Date.now()),
+        updatedAt: Date.now(),
+        pageCount: Number(sourceRecord?.pageCount || records[0]?.pageCount || 0),
+        contentMode: normalizeLibraryExtractionMode(sourceRecord?.contentMode || records[0]?.contentMode || state.libraryExtractionMode),
+        problemCount: records.length,
+        answerCount: records.filter((record) => Boolean(normalizeProblemText(record.answerText || ""))).length,
+        explanationCount: records.filter((record) => Boolean(normalizeProblemText(record.explanationText || ""))).length
+      };
+    }
+
+    async function deleteSharedLibraryProblemRecordInFirebase(record) {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled || !record?.recordId) {
+        return { deleted: false, reason: access.reason || "Firebase 공용 라이브러리를 사용할 수 없습니다." };
+      }
+      try {
+        await state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId).delete();
+        await deleteSharedLibraryAssetPaths([
+          ...(Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []),
+          ...(Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
+        ]);
+        state.firebaseSchoolBridge.sharedLibraryEnabled = true;
+        state.firebaseSchoolBridge.sharedLibraryError = "";
+        state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
+        return { deleted: true, reason: "" };
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 공용 라이브러리 문제 삭제에 실패했습니다.";
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        return { deleted: false, reason: message };
+      }
+    }
+
+    function removeCurrentImportedProblem(problemId, options = {}) {
+      const normalizedProblemId = String(problemId || "");
+      const target = getCurrentImportProblemById(normalizedProblemId);
+      if (!target) {
+        throw new Error("삭제할 현재 추출 문항을 찾지 못했습니다.");
+      }
+      state.problems = (state.problems || []).filter((problem) => String(problem?.id || "") !== normalizedProblemId);
+      refreshProblemStats(state.problems);
+      if (state.libraryReview.editorScope === "current" && state.libraryReview.editorTargetId === normalizedProblemId) {
+        resetLibraryTextEditorState();
+      }
+      renderLibraryTextEditor();
+      renderPreview();
+      if (!options.silent) {
+        setStatus(`${target.number || "-"}번 문항을 현재 저장 목록에서 제외했습니다.`, "idle", "저장 전 제외");
+      }
+      return target;
+    }
+
+    async function saveStoredLibraryProblemText(recordId, nextText, nextAnswerText, nextExplanationText, structuredData = null) {
+      const targetRecord = getStoredLibraryProblemById(recordId);
+      if (!targetRecord) {
+        throw new Error("수정할 저장 문제를 찾지 못했습니다.");
+      }
+      const now = Date.now();
+      const nextRecord = {
+        ...targetRecord,
+        updatedAt: now
+      };
+      applyEditedProblemTextToProblem(nextRecord, nextText, { structuredData });
+      applyEditedAnswerFieldsToProblem(nextRecord, nextAnswerText, nextExplanationText);
+      nextRecord.contentMode = getLibraryProblemMode(nextRecord);
+      const sourceRecord = (state.libraryCache.imports || []).find((record) => record.sourceId === targetRecord.sourceId) || null;
+      const nextSourceProblems = (state.libraryCache.problemRecords || [])
+        .filter((record) => record.kind === "problem")
+        .map((record) => record.recordId === nextRecord.recordId ? nextRecord : record)
+        .filter((record) => record.sourceId === nextRecord.sourceId);
+      const nextImportRecord = createUpdatedImportRecordForProblemList(sourceRecord, nextSourceProblems);
+
+      setBusy(true);
+      setStatus(`${targetRecord.number || "-"}번 문항/답안 텍스트를 라이브러리에 저장하는 중입니다...`, "working", "문항 수정");
+      try {
+        const db = await openLibraryDb();
+        const transaction = db.transaction([LIBRARY_PROBLEM_STORE, LIBRARY_IMPORT_STORE], "readwrite");
+        transaction.objectStore(LIBRARY_PROBLEM_STORE).put(nextRecord);
+        if (nextImportRecord) {
+          transaction.objectStore(LIBRARY_IMPORT_STORE).put(nextImportRecord);
+        }
+        await idbTransactionDone(transaction);
+
+        state.libraryCache.problemRecords = (state.libraryCache.problemRecords || []).map((record) =>
+          record.recordId === nextRecord.recordId ? nextRecord : record
+        );
+        if (nextImportRecord) {
+          const hasExistingImport = (state.libraryCache.imports || []).some((record) => record.sourceId === nextImportRecord.sourceId);
+          state.libraryCache.imports = hasExistingImport
+            ? (state.libraryCache.imports || []).map((record) =>
+                record.sourceId === nextImportRecord.sourceId ? nextImportRecord : record
+              )
+            : [...(state.libraryCache.imports || []), nextImportRecord];
+        }
+
+        const sharedSyncResult = await saveProblemMetadataRecordsToSharedFirebaseLibrary(
+          [nextRecord],
+          nextImportRecord ? [nextImportRecord] : []
+        );
+        await syncLibraryFolderFromStateIfConnected();
+        await refreshLibrarySummary();
+        state.libraryReview.editorBaseText = getEditableProblemText(nextRecord);
+        state.libraryReview.editorDraftText = state.libraryReview.editorBaseText;
+        state.libraryReview.editorTemplateKey = getProblemEditorTemplateInfo(nextRecord?.problemType, Boolean(nextRecord?.isSubjective)).key;
+        state.libraryReview.editorStructuredDraft = getLibraryProblemStructuredText(nextRecord);
+        state.libraryReview.editorRawChanged = false;
+        state.libraryReview.editorBaseAnswerText = getEditableAnswerText(nextRecord);
+        state.libraryReview.editorDraftAnswerText = state.libraryReview.editorBaseAnswerText;
+        state.libraryReview.editorBaseExplanationText = getEditableExplanationText(nextRecord);
+        state.libraryReview.editorDraftExplanationText = state.libraryReview.editorBaseExplanationText;
+        renderLibraryTextEditor();
+        setStatus(
+          `${targetRecord.number || "-"}번 문항/답안 텍스트를 저장했습니다.${sharedSyncResult.synced ? " Firebase 공용 라이브러리에도 반영했습니다." : (sharedSyncResult.reason ? ` Firebase 반영은 보류되었습니다: ${sharedSyncResult.reason}` : "")}`,
+          "idle",
+          "문항 수정"
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteStoredLibraryProblem(recordId) {
+      const normalizedRecordId = String(recordId || "");
+      const targetRecord = getStoredLibraryProblemById(normalizedRecordId);
+      if (!targetRecord) {
+        throw new Error("삭제할 저장 문제를 찾지 못했습니다.");
+      }
+      const usageCount = getExamItems().filter((item) => item.problemRecordId === normalizedRecordId).length;
+      const confirmed = window.confirm([
+        `${targetRecord.textbookName || "교재"} / ${targetRecord.number || "-"}번 문제를 삭제할까요?`,
+        "",
+        `${targetRecord.selectableType || targetRecord.problemType || PROBLEM_TYPE_OTHER} · ${targetRecord.sourceName || "저장본"}`,
+        usageCount ? `이 문제를 참조하는 출제 이력 ${usageCount}개가 남아 있습니다.` : "현재 참조 중인 출제 이력은 없습니다.",
+        "",
+        "문제 이미지, 텍스트, 정답/해설이 함께 삭제됩니다."
+      ].join(String.fromCharCode(10)));
+      if (!confirmed) {
+        return;
+      }
+
+      setBusy(true);
+      setStatus(`${targetRecord.number || "-"}번 저장 문제를 삭제하는 중입니다...`, "working", "문제 삭제");
+      try {
+        const sourceRecord = (state.libraryCache.imports || []).find((record) => record.sourceId === targetRecord.sourceId) || null;
+        const remainingSourceProblems = (state.libraryCache.problemRecords || [])
+          .filter((record) => record.recordId !== normalizedRecordId)
+          .filter((record) => record.sourceId === targetRecord.sourceId)
+          .filter((record) => record.kind === "problem");
+        const nextImportRecord = createUpdatedImportRecordForProblemList(sourceRecord, remainingSourceProblems);
+
+        const db = await openLibraryDb();
+        const transaction = db.transaction([LIBRARY_PROBLEM_STORE, LIBRARY_PROBLEM_ASSET_STORE, LIBRARY_IMPORT_STORE], "readwrite");
+        transaction.objectStore(LIBRARY_PROBLEM_STORE).delete(normalizedRecordId);
+        transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE).delete(normalizedRecordId);
+        if (nextImportRecord) {
+          transaction.objectStore(LIBRARY_IMPORT_STORE).put(nextImportRecord);
+        } else if (sourceRecord?.sourceId) {
+          transaction.objectStore(LIBRARY_IMPORT_STORE).delete(sourceRecord.sourceId);
+        }
+        await idbTransactionDone(transaction);
+
+        if (state.libraryCache.problemAssetCache) {
+          delete state.libraryCache.problemAssetCache[normalizedRecordId];
+        }
+        state.libraryCache.problemRecords = (state.libraryCache.problemRecords || []).filter((record) => record.recordId !== normalizedRecordId);
+        state.libraryCache.imports = nextImportRecord
+          ? (state.libraryCache.imports || []).map((record) => record.sourceId === nextImportRecord.sourceId ? nextImportRecord : record)
+          : (state.libraryCache.imports || []).filter((record) => record.sourceId !== targetRecord.sourceId);
+
+        let sharedReason = "";
+        const sharedAccess = getSharedFirebaseLibraryAccessState();
+        if (sharedAccess.enabled) {
+          if (remainingSourceProblems.length) {
+            const deleteResult = await deleteSharedLibraryProblemRecordInFirebase(targetRecord);
+            if (!deleteResult.deleted) {
+              sharedReason = deleteResult.reason;
+            } else if (nextImportRecord) {
+              const importSyncResult = await saveProblemMetadataRecordsToSharedFirebaseLibrary([], [nextImportRecord]);
+              if (!importSyncResult.synced) {
+                sharedReason = importSyncResult.reason;
+              }
+            }
+          } else {
+            const deleteSourceResult = await deleteSharedLibrarySourceInFirebase(targetRecord.sourceId);
+            if (!deleteSourceResult.deleted) {
+              sharedReason = deleteSourceResult.reason;
+            }
+          }
+        } else if (sharedAccess.reason) {
+          sharedReason = sharedAccess.reason;
+        }
+
+        await syncLibraryFolderFromStateIfConnected();
+        await refreshLibrarySummary();
+        if (state.libraryReview.editorScope === "stored" && state.libraryReview.editorTargetId === normalizedRecordId) {
+          resetLibraryTextEditorState();
+          renderLibraryTextEditor();
+        }
+        setStatus(
+          `${targetRecord.number || "-"}번 문제를 라이브러리에서 삭제했습니다.${sharedReason ? ` Firebase 반영은 보류되었습니다: ${sharedReason}` : ""}`,
+          "idle",
+          "문제 삭제"
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function saveLibraryTextEditorChanges() {
+      const scope = state.libraryReview.editorScope;
+      const targetId = state.libraryReview.editorTargetId;
+      const nextText = normalizeProblemText(state.libraryReview.editorDraftText || "");
+      const nextAnswerText = normalizeProblemText(state.libraryReview.editorDraftAnswerText || "");
+      const nextExplanationText = normalizeProblemText(state.libraryReview.editorDraftExplanationText || "");
+      if (!scope || !targetId) {
+        throw new Error("먼저 수정할 문항을 선택해주세요.");
+      }
+      if (!nextText) {
+        throw new Error("문항 텍스트가 비어 있습니다.");
+      }
+      if (scope === "current") {
+        const problem = getCurrentImportProblemById(targetId);
+        if (!problem) {
+          throw new Error("현재 추출 문제를 찾지 못했습니다.");
+        }
+        const draftProblemType = classifyProblemType(nextText);
+        const draftIsSubjective = isSubjectiveProblem(nextText);
+        const nextStructuredData = state.libraryReview.editorRawChanged
+          ? buildStructuredProblemDataFromText(draftProblemType, draftIsSubjective, state.libraryReview.editorDraftText || "")
+          : normalizeStructuredProblemData(state.libraryReview.editorStructuredDraft, draftProblemType, draftIsSubjective);
+        applyEditedProblemTextToProblem(problem, nextText, { structuredData: nextStructuredData });
+        applyEditedAnswerFieldsToProblem(problem, nextAnswerText, nextExplanationText);
+        problem.contentMode = state.libraryExtractionMode;
+        refreshProblemStats(state.problems);
+        state.libraryReview.editorBaseText = getEditableProblemText(problem);
+        state.libraryReview.editorDraftText = state.libraryReview.editorBaseText;
+        state.libraryReview.editorTemplateKey = getProblemEditorTemplateInfo(problem?.problemType, Boolean(problem?.isSubjective)).key;
+        state.libraryReview.editorStructuredDraft = getLibraryProblemStructuredText(problem);
+        state.libraryReview.editorRawChanged = false;
+        state.libraryReview.editorBaseAnswerText = getEditableAnswerText(problem);
+        state.libraryReview.editorDraftAnswerText = state.libraryReview.editorBaseAnswerText;
+        state.libraryReview.editorBaseExplanationText = getEditableExplanationText(problem);
+        state.libraryReview.editorDraftExplanationText = state.libraryReview.editorBaseExplanationText;
+        renderPreview();
+        renderLibraryTextEditor();
+        setStatus(`${problem.number || "-"}번 문항/답안 텍스트를 현재 추출 결과에 반영했습니다. 저장하면 그대로 라이브러리에 들어갑니다.`, "idle", "문항 수정");
+        return;
+      }
+      const draftProblemType = classifyProblemType(nextText);
+      const draftIsSubjective = isSubjectiveProblem(nextText);
+      const nextStructuredData = state.libraryReview.editorRawChanged
+        ? buildStructuredProblemDataFromText(draftProblemType, draftIsSubjective, state.libraryReview.editorDraftText || "")
+        : normalizeStructuredProblemData(state.libraryReview.editorStructuredDraft, draftProblemType, draftIsSubjective);
+      await saveStoredLibraryProblemText(targetId, nextText, nextAnswerText, nextExplanationText, nextStructuredData);
     }
 
     function normalizeHex(value) {
@@ -1492,6 +2801,412 @@
       return String(value || "").replace(/\s+/g, " ").trim();
     }
 
+    function getEditableProblemText(problem) {
+      const structured = getLibraryProblemStructuredText(problem);
+      if (structured) {
+        return composeStructuredProblemRawText(structured);
+      }
+      return normalizeProblemText(problem?.analysisText || problem?.promptText || "");
+    }
+
+    function getEditableAnswerText(problem) {
+      return normalizeProblemText(problem?.answerText || "");
+    }
+
+    function getEditableExplanationText(problem) {
+      return normalizeAnswerExplanationText(problem?.explanationText || "");
+    }
+
+    function normalizeEffectiveProblemType(problemType) {
+      const normalized = String(problemType || "").trim();
+      return normalized === "심경" ? PROBLEM_TYPE_OTHER : (normalized || PROBLEM_TYPE_OTHER);
+    }
+
+    function getProblemEditorTemplateInfo(problemType, isSubjective = false) {
+      if (isSubjective) {
+        return {
+          key: EDITOR_TEMPLATE_SUBJECTIVE_FREE,
+          label: "주관식 기본형"
+        };
+      }
+      const normalizedType = normalizeEffectiveProblemType(problemType);
+      const key = OBJECTIVE_EDITOR_SPECIAL_TYPE_MAP.get(normalizedType) || EDITOR_TEMPLATE_OBJECTIVE_COMMON;
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return { key, label: "순서형 객관식" };
+      }
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_ABC) {
+        return { key, label: "ABC 선택형 객관식" };
+      }
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return { key, label: "요약형 객관식" };
+      }
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return { key, label: "삽입형 객관식" };
+      }
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR) {
+        return { key, label: "AB 선택형 객관식" };
+      }
+      if (key === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return { key, label: "본문형 객관식" };
+      }
+      return { key, label: "공통 객관식" };
+    }
+
+    function getProblemEditorTemplateLabel(templateKey) {
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return "순서형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_ABC) {
+        return "ABC 선택형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return "요약형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return "삽입형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_CONNECTOR) {
+        return "AB 선택형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return "본문형 객관식";
+      }
+      if (templateKey === EDITOR_TEMPLATE_SUBJECTIVE_FREE) {
+        return "주관식 기본형";
+      }
+      return "공통 객관식";
+    }
+
+    function normalizeStructuredChoiceEntries(entries = [], minimumCount = DEFAULT_STRUCTURED_CHOICE_MARKERS.length) {
+      const normalizedEntries = (Array.isArray(entries) ? entries : [])
+        .map((entry, index) => ({
+          marker: normalizeProblemChoiceMarker(entry?.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1)),
+          text: normalizeProblemText(entry?.text || "")
+        }));
+      const count = Math.max(minimumCount, normalizedEntries.length);
+      return Array.from({ length: count }, (_, index) => ({
+        marker: normalizedEntries[index]?.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1),
+        text: normalizedEntries[index]?.text || ""
+      }));
+    }
+
+    function normalizeStructuredSequenceParts(parts = []) {
+      const labels = ["A", "B", "C"];
+      const normalizedParts = Array.isArray(parts) ? parts : [];
+      return labels.map((label, index) => ({
+        label,
+        text: normalizeProblemText(
+          normalizedParts.find((entry) => normalizeProblemChoiceMarker(entry?.label || "").toUpperCase() === label)?.text
+          || normalizedParts[index]?.text
+          || ""
+        )
+      }));
+    }
+
+    function normalizeStructuredProblemData(data, problemType = PROBLEM_TYPE_OTHER, isSubjective = false) {
+      const template = getProblemEditorTemplateInfo(problemType, isSubjective);
+      const source = data && typeof data === "object" ? data : {};
+      const legacyBodyText = normalizeProblemText(source.bodyText || "");
+      const legacySequenceText = Array.isArray(source.sequenceParts)
+        ? source.sequenceParts.map((entry) => normalizeProblemText(entry?.text || "")).filter(Boolean).join("\n\n")
+        : "";
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return {
+          templateKey: template.key,
+          questionText: normalizeProblemText(source.questionText || ""),
+          referenceText: normalizeProblemText(source.referenceText || ""),
+          givenText: normalizeProblemText(source.givenText || source.leadText || ""),
+          bodyText: legacyBodyText || legacySequenceText,
+          choices: normalizeStructuredChoiceEntries(source.choices)
+        };
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return {
+          templateKey: template.key,
+          questionText: normalizeProblemText(source.questionText || ""),
+          referenceText: normalizeProblemText(source.referenceText || ""),
+          givenText: normalizeProblemText(source.givenText || source.insertionText || ""),
+          bodyText: legacyBodyText || legacySequenceText
+        };
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return {
+          templateKey: template.key,
+          questionText: normalizeProblemText(source.questionText || ""),
+          referenceText: normalizeProblemText(source.referenceText || ""),
+          bodyText: legacyBodyText || legacySequenceText
+        };
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return {
+          templateKey: template.key,
+          questionText: normalizeProblemText(source.questionText || ""),
+          referenceText: normalizeProblemText(source.referenceText || ""),
+          bodyText: normalizeProblemText(source.bodyText || ""),
+          summaryText: normalizeProblemText(source.summaryText || ""),
+          choices: normalizeStructuredChoiceEntries(source.choices)
+        };
+      }
+      if (template.key === EDITOR_TEMPLATE_SUBJECTIVE_FREE) {
+        return {
+          templateKey: template.key,
+          questionText: normalizeProblemText(source.questionText || ""),
+          referenceText: normalizeProblemText(source.referenceText || ""),
+          bodyText: normalizeProblemText(source.bodyText || "")
+        };
+      }
+      return {
+        templateKey: template.key,
+        questionText: normalizeProblemText(source.questionText || ""),
+        referenceText: normalizeProblemText(source.referenceText || ""),
+        bodyText: legacyBodyText || legacySequenceText,
+        choices: normalizeStructuredChoiceEntries(source.choices)
+      };
+    }
+
+    function structuredProblemDataHasContent(data) {
+      if (!data || typeof data !== "object") {
+        return false;
+      }
+      const values = [];
+      if (typeof data.questionText === "string") {
+        values.push(data.questionText);
+      }
+      if (typeof data.referenceText === "string") {
+        values.push(data.referenceText);
+      }
+      if (typeof data.bodyText === "string") {
+        values.push(data.bodyText);
+      }
+      if (typeof data.insertionText === "string") {
+        values.push(data.insertionText);
+      }
+      if (typeof data.givenText === "string") {
+        values.push(data.givenText);
+      }
+      if (typeof data.summaryText === "string") {
+        values.push(data.summaryText);
+      }
+      if (Array.isArray(data.sequenceParts)) {
+        data.sequenceParts.forEach((entry) => values.push(entry?.text || ""));
+      }
+      if (Array.isArray(data.choices)) {
+        data.choices.forEach((entry) => values.push(entry?.text || ""));
+      }
+      return values.some((value) => normalizeProblemText(value));
+    }
+
+    function buildStructuredProblemDataFromText(problemType, isSubjective, rawText) {
+      const template = getProblemEditorTemplateInfo(problemType, isSubjective);
+      const blocks = buildProblemTextBlocks({
+        promptText: rawText,
+        analysisText: rawText,
+        textStructure: null
+      });
+      const questionText = blocks
+        .filter((block) => block.type === "stem")
+        .map((block) => normalizeProblemText(block.text || ""))
+        .filter(Boolean)
+        .join(" ");
+      const referenceText = blocks
+        .filter((block) => block.type === "reference")
+        .map((block) => normalizeProblemText(block.text || ""))
+        .filter(Boolean)
+        .join("\n");
+      const bodyBlocks = blocks
+        .filter((block) => block.type === "body")
+        .map((block) => normalizeProblemText(block.text || ""))
+        .filter(Boolean);
+      const choices = blocks
+        .filter((block) => block.type === "choice")
+        .map((block, index) => ({
+          marker: normalizeProblemChoiceMarker(block.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1)),
+          text: normalizeProblemText(block.text || "")
+        }));
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        return normalizeStructuredProblemData({
+          questionText,
+          referenceText,
+          givenText: bodyBlocks[0] || "",
+          bodyText: bodyBlocks.slice(1).join("\n\n"),
+          choices
+        }, problemType, isSubjective);
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        return normalizeStructuredProblemData({
+          questionText,
+          referenceText,
+          givenText: bodyBlocks[0] || "",
+          bodyText: bodyBlocks.slice(1).join("\n\n")
+        }, problemType, isSubjective);
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        return normalizeStructuredProblemData({
+          questionText,
+          referenceText,
+          bodyText: bodyBlocks.join("\n\n")
+        }, problemType, isSubjective);
+      }
+      if (template.key === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        return normalizeStructuredProblemData({
+          questionText,
+          referenceText,
+          bodyText: bodyBlocks.length > 1 ? bodyBlocks.slice(0, -1).join("\n\n") : (bodyBlocks[0] || ""),
+          summaryText: bodyBlocks.length > 1 ? bodyBlocks[bodyBlocks.length - 1] : "",
+          choices
+        }, problemType, isSubjective);
+      }
+      if (template.key === EDITOR_TEMPLATE_SUBJECTIVE_FREE) {
+        return normalizeStructuredProblemData({
+          questionText,
+          referenceText,
+          bodyText: bodyBlocks.join("\n\n")
+        }, problemType, isSubjective);
+      }
+      return normalizeStructuredProblemData({
+        questionText,
+        referenceText,
+        bodyText: bodyBlocks.join("\n\n"),
+        choices
+      }, problemType, isSubjective);
+    }
+
+    function structuredReferenceNeedsRepair(data) {
+      if (!data || typeof data !== "object") {
+        return false;
+      }
+      const referenceText = normalizeProblemText(data.referenceText || "");
+      if (!referenceText) {
+        return false;
+      }
+      return referenceText
+        .split(/\n+/)
+        .map((line) => normalizeProblemText(line))
+        .filter(Boolean)
+        .some((line) => /^\[[^\]\n]{1,32}\]/.test(line) && Boolean(line.replace(/^(?:\[[^\]\n]{1,32}\]\s*)+/, "").trim()));
+    }
+
+    function getLibraryProblemStructuredText(problem) {
+      if (!problem || problem.kind === "shared") {
+        return null;
+      }
+      const normalized = normalizeStructuredProblemData(problem?.textStructure, problem?.problemType, Boolean(problem?.isSubjective));
+      if (structuredProblemDataHasContent(normalized) && !structuredReferenceNeedsRepair(normalized)) {
+        return normalized;
+      }
+      return buildStructuredProblemDataFromText(
+        problem?.problemType || PROBLEM_TYPE_OTHER,
+        Boolean(problem?.isSubjective),
+        problem?.analysisText || problem?.promptText || ""
+      );
+    }
+
+    function composeStructuredProblemRawText(data) {
+      if (!data || typeof data !== "object") {
+        return "";
+      }
+      const parts = [];
+      const pushLine = (value) => {
+        const normalized = normalizeProblemText(value);
+        if (normalized) {
+          parts.push(normalized);
+        }
+      };
+      pushLine(data.questionText);
+      pushLine(data.referenceText);
+      if (data.templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION || data.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        pushLine(data.givenText);
+        pushLine(data.bodyText);
+      } else if (data.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        pushLine(data.bodyText);
+        pushLine(data.summaryText);
+      } else {
+        pushLine(data.bodyText);
+      }
+      const shouldIncludeChoices = ![
+        EDITOR_TEMPLATE_OBJECTIVE_INSERTION,
+        EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY,
+        EDITOR_TEMPLATE_SUBJECTIVE_FREE
+      ].includes(data.templateKey);
+      if (shouldIncludeChoices && Array.isArray(data.choices)) {
+        data.choices.forEach((choice, index) => {
+          const text = normalizeProblemText(choice?.text || "");
+          if (!text) {
+            return;
+          }
+          const marker = normalizeProblemChoiceMarker(choice?.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1));
+          parts.push(`${marker} ${text}`.trim());
+        });
+      }
+      return parts.join("\n\n");
+    }
+
+    function serializeStructuredProblemData(data) {
+      return JSON.stringify(data || null);
+    }
+
+    function getLibraryProblemMode(problem) {
+      return normalizeLibraryExtractionMode(problem?.contentMode || LIBRARY_EXTRACTION_MODE_IMAGE);
+    }
+
+    function getLibraryProblemExcerpt(problem, maxLength = 180) {
+      const text = getEditableProblemText(problem);
+      return text ? truncateText(text, maxLength) : "추출된 텍스트가 없습니다.";
+    }
+
+    function getLibraryProblemAnswerPreview(problem) {
+      const answerText = getEditableAnswerText(problem);
+      if (!answerText) {
+        return "";
+      }
+      return problem?.isSubjective ? truncateText(answerText, 80) : formatAnswerLabelForExport(answerText);
+    }
+
+    function getLibraryProblemExplanationPreview(problem, maxLength = 120) {
+      const explanationText = getEditableExplanationText(problem);
+      return explanationText ? truncateText(explanationText, maxLength) : "";
+    }
+
+    function applyEditedProblemTextToProblem(problem, nextText, options = {}) {
+      if (!problem || problem.kind === "shared") {
+        return problem;
+      }
+      const normalizedText = normalizeProblemText(nextText);
+      const nextProblemType = classifyProblemType(normalizedText);
+      const nextIsSubjective = isSubjectiveProblem(normalizedText);
+      const nextSubjectiveType = nextIsSubjective
+        ? classifySubjectiveType(normalizedText, nextProblemType)
+        : "";
+      problem.promptText = normalizedText;
+      problem.analysisText = normalizedText;
+      problem.textStructure = normalizeStructuredProblemData(
+        options.structuredData || buildStructuredProblemDataFromText(nextProblemType, nextIsSubjective, nextText),
+        nextProblemType,
+        nextIsSubjective
+      );
+      problem.problemType = nextProblemType;
+      problem.subjectiveType = nextSubjectiveType;
+      problem.isSubjective = nextIsSubjective;
+      problem.typeTags = buildProblemTypeTags(nextProblemType, nextIsSubjective, nextSubjectiveType);
+      problem.contentMode = getLibraryProblemMode(problem);
+      if (problem.selectableType !== undefined) {
+        problem.selectableType = getSelectableTypeLabel(problem);
+      }
+      return problem;
+    }
+
+    function applyEditedAnswerFieldsToProblem(problem, nextAnswerText, nextExplanationText) {
+      if (!problem || problem.kind === "shared") {
+        return problem;
+      }
+      const normalizedAnswerText = normalizeProblemText(nextAnswerText);
+      problem.answerText = problem.isSubjective
+        ? normalizedAnswerText
+        : normalizeAnswerLabel(normalizedAnswerText);
+      problem.explanationText = normalizeAnswerExplanationText(nextExplanationText);
+      return problem;
+    }
+
     function normalizeAnswerLabel(value) {
       const compact = normalizeProblemText(value).replace(/\s+/g, "");
       if (!compact) {
@@ -1499,6 +3214,51 @@
       }
       const unwrapped = compact.replace(/^\((.+)\)$/, "$1");
       return ANSWER_LABEL_MAP.get(unwrapped) || compact;
+    }
+
+    function getChoiceOnlyAnswerTokens(value) {
+      const compact = normalizeProblemText(value)
+        .replace(/^\[?\s*(?:정답|답)\s*\]?\s*[:：-]?\s*/, "")
+        .trim();
+      if (!compact) {
+        return [];
+      }
+      const choiceText = compact.replace(/[()\s,，、/|]+/g, "");
+      if (!choiceText) {
+        return [];
+      }
+      if (!/^(?:10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿0-9A-Ea-eOXox])+$/.test(choiceText)) {
+        return [];
+      }
+      const tokens = [];
+      const tokenPattern = /10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿0-9A-Ea-eOXox]/g;
+      for (const match of String(choiceText).matchAll(tokenPattern)) {
+        const normalizedToken = normalizeAnswerLabel(match[0]);
+        if (normalizedToken) {
+          tokens.push(normalizedToken);
+        }
+      }
+      return [...new Set(tokens)];
+    }
+
+    function normalizeParsedAnswerText(value) {
+      const normalized = normalizeProblemText(value);
+      if (!normalized) {
+        return "";
+      }
+      const choiceTokens = getChoiceOnlyAnswerTokens(normalized);
+      return choiceTokens.length ? choiceTokens.join(" ") : normalized;
+    }
+
+    function stripAnswerEntryLeadText(value, fallbackNumber = null) {
+      let workingText = String(value || "").trim();
+      const numericFallback = fallbackNumber == null || fallbackNumber === ""
+        ? Number.NaN
+        : Number(fallbackNumber);
+      if (Number.isFinite(numericFallback)) {
+        workingText = workingText.replace(new RegExp(`^${numericFallback}\\s*(?:번)?\\s*[.)-]?\\s*`), "");
+      }
+      return workingText.replace(new RegExp(`^(?:${ANSWER_ENTRY_LABEL_PATTERN})\\s*[:：-]?\\s*`), "").trim();
     }
 
     function formatAnswerLabelForExport(value) {
@@ -1586,7 +3346,7 @@
     }
 
     function repairOcrParsedAnswer(parsed) {
-      const answerText = normalizeAnswerLabel(parsed?.answerText || "");
+      const answerText = normalizeParsedAnswerText(parsed?.answerText || "");
       const explanationText = normalizeAnswerExplanationText(parsed?.explanationText || "");
       const restoredExplanationText = restoreOcrStolenExplanationInitial(answerText, explanationText);
       if (restoredExplanationText) {
@@ -1678,13 +3438,15 @@
       const directMatch = Array.from(mergedText.matchAll(ANSWER_ENTRY_PATTERN))[0] || null;
       if (directMatch) {
         return repairOcrParsedAnswer({
-          answerText: normalizeAnswerLabel(directMatch[2] || ""),
+          answerText: normalizeParsedAnswerText(directMatch[2] || ""),
           explanationText: normalizeAnswerExplanationText(directMatch[3] || ""),
           rawText: mergedText
         });
       }
 
-      const numericFallback = Number(fallbackNumber);
+      const numericFallback = fallbackNumber == null || fallbackNumber === ""
+        ? Number.NaN
+        : Number(fallbackNumber);
       const leadingNumberPattern = Number.isFinite(numericFallback)
         ? new RegExp(`^${numericFallback}\\s*(?:번)?\\s*[.)]?$`)
         : null;
@@ -1699,30 +3461,54 @@
         };
       }
 
+      const workingText = workingLines.join("\n").trim();
       const headText = normalizeProblemText(workingLines.slice(0, 2).join(" "));
       let answerText = "";
       const labeledMatch = headText.match(new RegExp(`(?:정답|답)\\s*[:：-]?\\s*\\(?\\s*${ANSWER_CHOICE_CAPTURE}\\s*\\)?`));
       if (labeledMatch) {
-        answerText = normalizeAnswerLabel(labeledMatch[1]);
-      }
-
-      if (!answerText) {
-        const headWithoutNumber = Number.isFinite(numericFallback)
-          ? headText.replace(new RegExp(`^${numericFallback}\\s*(?:번)?\\s*[.)]?\\s*`), "")
-          : headText;
-        const leadingMatch = headWithoutNumber.match(new RegExp(`^\\(?\\s*${ANSWER_CHOICE_CAPTURE}\\s*\\)?(?:\\s|$)`));
-        if (leadingMatch) {
-          answerText = normalizeAnswerLabel(leadingMatch[1]);
-        }
+        answerText = normalizeParsedAnswerText(labeledMatch[1]);
       }
 
       let explanationText = "";
-      const explanationMatch = mergedText.match(/(?:해설|풀이)\s*[:：-]?\s*([\s\S]*)$/);
+      const explanationMatch = workingText.match(/(?:해설|풀이|설명)\s*[:：-]?\s*([\s\S]*)$/);
       if (explanationMatch) {
         explanationText = normalizeAnswerExplanationText(explanationMatch[1]);
       }
 
-      if (!explanationText && answerText) {
+      const answerRegionText = explanationMatch
+        ? workingText.slice(0, explanationMatch.index).trim()
+        : workingText;
+      const strippedAnswerRegion = stripAnswerEntryLeadText(answerRegionText, numericFallback);
+      if (!answerText) {
+        const choiceOnlyAnswer = getChoiceOnlyAnswerTokens(strippedAnswerRegion);
+        if (choiceOnlyAnswer.length) {
+          answerText = choiceOnlyAnswer.join(" ");
+        }
+      }
+      if (!answerText && strippedAnswerRegion) {
+        const labeledFreeAnswerPattern = Number.isFinite(numericFallback)
+          ? new RegExp(`^${numericFallback}\\s*(?:번)?\\s*[.)-]?\\s*(?:${ANSWER_ENTRY_LABEL_PATTERN})\\s*[:：-]?\\s*([\\s\\S]+)$`)
+          : new RegExp(`^(?:${ANSWER_ENTRY_LABEL_PATTERN})\\s*[:：-]?\\s*([\\s\\S]+)$`);
+        const labeledFreeAnswerMatch = answerRegionText.match(labeledFreeAnswerPattern);
+        if (labeledFreeAnswerMatch) {
+          answerText = normalizeParsedAnswerText(labeledFreeAnswerMatch[1]);
+        }
+      }
+      if (!answerText && strippedAnswerRegion && explanationMatch) {
+        answerText = normalizeParsedAnswerText(strippedAnswerRegion);
+      }
+      if (!answerText) {
+        const firstLineAnswer = stripAnswerEntryLeadText(workingLines[0] || "", numericFallback);
+        const remainingText = normalizeAnswerExplanationText(workingLines.slice(1).join(" "));
+        if (firstLineAnswer && remainingText) {
+          answerText = normalizeParsedAnswerText(firstLineAnswer);
+          if (!explanationText) {
+            explanationText = remainingText;
+          }
+        }
+      }
+
+      if (!explanationText && answerText && getChoiceOnlyAnswerTokens(answerText).length) {
         const answerLeadPattern = new RegExp(
           `^(?:${Number.isFinite(numericFallback) ? `${numericFallback}\\s*(?:번)?\\s*[.)]?\\s*` : ""})?(?:(?:정답|답)\\s*[:：-]?\\s*)?\\(?\\s*${escapeRegExp(answerText)}\\s*\\)?\\s*`
         );
@@ -1870,12 +3656,12 @@
             .map(({ line }) => line.text)
         ].filter(Boolean);
         const entryTextBlock = entryTextLines.join("\n");
-        const parsedMatch = Array.from(entryTextBlock.matchAll(ANSWER_ENTRY_PATTERN))[0] || null;
+        const parsedEntry = parseOcrAnswerBlockText(entryTextBlock, entry.number);
         const lastLine = lineSlice[lineSlice.length - 1] || startLine;
         return {
           number: entry.number,
-          answerText: normalizeAnswerLabel(parsedMatch?.[2] || entry.floatingText || ""),
-          explanationText: normalizeAnswerExplanationText(parsedMatch?.[3] || ""),
+          answerText: parsedEntry.answerText || normalizeParsedAnswerText(entry.floatingText || ""),
+          explanationText: normalizeAnswerExplanationText(parsedEntry.explanationText || ""),
           answerSegments: [{
             pageIndex: column.pageIndex,
             columnIndex: column.columnIndex,
@@ -3985,16 +5771,17 @@
       if (problem.isSubjective) {
         return problem.subjectiveType || SUBJECTIVE_TYPE_OTHER;
       }
-      if (problem.problemType === "밑줄어법" || problem.problemType === "선택어법") {
+      const resolvedType = normalizeEffectiveProblemType(problem.problemType);
+      if (resolvedType === "밑줄어법" || resolvedType === "선택어법") {
         return PROBLEM_TYPE_GRAMMAR;
       }
-      if (problem.problemType === "밑줄어휘" || problem.problemType === "선택어휘") {
+      if (resolvedType === "밑줄어휘" || resolvedType === "선택어휘") {
         return PROBLEM_TYPE_VOCAB;
       }
-      if (problem.problemType === "무관") {
+      if (resolvedType === "무관") {
         return PROBLEM_TYPE_ODD_SENTENCE;
       }
-      return problem.problemType || PROBLEM_TYPE_OTHER;
+      return resolvedType || PROBLEM_TYPE_OTHER;
     }
 
     function truncateText(value, maxLength = 110) {
@@ -4286,9 +6073,27 @@
       setOptionalText(elements.librarySyncSummary, syncSummaryParts.join(" · ") || "브라우저 내부 캐시만 사용 중");
     }
 
+    function updateLibraryExtractionModeUi() {
+      const mode = normalizeLibraryExtractionMode(state.libraryExtractionMode);
+      if (elements.libraryExtractionModeSelect) {
+        elements.libraryExtractionModeSelect.value = mode;
+      }
+      setOptionalText(
+        elements.libraryExtractionModeSummary,
+        mode === LIBRARY_EXTRACTION_MODE_TEXT
+          ? "텍스트 중심은 문제 텍스트를 바로 검수하고 수정하기 좋게 다룹니다. 문제 이미지도 백업용으로 함께 유지합니다."
+          : "이미지 중심은 기존처럼 원문 블록 이미지를 기준으로 저장합니다. 텍스트 검수도 함께 열어 수정할 수 있습니다."
+      );
+    }
+
     async function initializeLibrarySaveModeSetting() {
       state.librarySaveMode = normalizeLibrarySaveMode(await readLibrarySetting(LIBRARY_SAVE_MODE_KEY));
       updateLibraryStorageUi();
+    }
+
+    async function initializeLibraryExtractionModeSetting() {
+      state.libraryExtractionMode = normalizeLibraryExtractionMode(await readLibrarySetting(LIBRARY_EXTRACTION_MODE_KEY));
+      updateLibraryExtractionModeUi();
     }
 
     async function setLibrarySaveMode(mode) {
@@ -4296,6 +6101,23 @@
       state.librarySaveMode = normalized;
       await writeLibrarySetting(LIBRARY_SAVE_MODE_KEY, normalized);
       updateLibraryStorageUi();
+    }
+
+    async function setLibraryExtractionMode(mode) {
+      const normalized = normalizeLibraryExtractionMode(mode);
+      state.libraryExtractionMode = normalized;
+      await writeLibrarySetting(LIBRARY_EXTRACTION_MODE_KEY, normalized);
+      updateLibraryExtractionModeUi();
+      if (Array.isArray(state.problems) && state.problems.length) {
+        state.problems.forEach((problem) => {
+          if (problem?.kind === "problem") {
+            problem.contentMode = normalized;
+          }
+        });
+      }
+      if (isLibraryWorkspaceMode()) {
+        renderLibraryWorkspaceDashboard();
+      }
     }
 
     async function queryLibraryDirectoryPermission(handle, readWrite = true) {
@@ -4766,15 +6588,17 @@
     }
 
     async function createLibrarySnapshotFromState() {
-      const sharedLibraryActive = isSharedFirebaseLibraryActive();
-      const includeLibraryRecordsInFolder = !sharedLibraryActive
-        || [LIBRARY_SAVE_MODE_FOLDER, LIBRARY_SAVE_MODE_BOTH].includes(normalizeLibrarySaveMode(state.librarySaveMode));
+      const [localImports, localProblemRecords, localProblemAssets] = await Promise.all([
+        loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
+        loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE)
+      ]);
       return {
         textbooks: [...state.storedTextbooks],
         schools: [...getSchoolProfiles()],
-        imports: includeLibraryRecordsInFolder ? [...(state.libraryCache.imports || [])] : [],
-        problemRecords: includeLibraryRecordsInFolder ? [...(state.libraryCache.problemRecords || [])] : [],
-        problemAssets: includeLibraryRecordsInFolder ? await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE) : [],
+        imports: [...(Array.isArray(localImports) ? localImports : [])],
+        problemRecords: [...(Array.isArray(localProblemRecords) ? localProblemRecords : [])],
+        problemAssets: [...(Array.isArray(localProblemAssets) ? localProblemAssets : [])],
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
         checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
@@ -5379,8 +7203,10 @@
         passageLabel: getPassageReferenceLabel(problem),
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
+        contentMode: getLibraryProblemMode(problem),
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
+        textStructure: getLibraryProblemStructuredText(problem),
         problemType: problem.problemType || PROBLEM_TYPE_OTHER,
         subjectiveType: problem.subjectiveType || "",
         selectableType: getSelectableTypeLabel(problem),
@@ -5428,8 +7254,10 @@
         answerSegmentBlobs,
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
+        contentMode: getLibraryProblemMode(problem),
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
+        textStructure: getLibraryProblemStructuredText(problem),
         problemType: problem.problemType || "",
         subjectiveType: problem.subjectiveType || "",
         isSubjective: Boolean(problem.isSubjective),
@@ -5482,8 +7310,10 @@
         answerSegmentImages: answerSegments.map((segment, index) => buildSegmentImageFromSnapshot(answerSegmentBlobs[index] || null, segment)),
         pageSignature: snapshot.pageSignature || "",
         pageCount: snapshot.pageCount || 0,
+        contentMode: getLibraryProblemMode(snapshot),
         promptText: snapshot.promptText || "",
         analysisText: snapshot.analysisText || "",
+        textStructure: normalizeStructuredProblemData(snapshot.textStructure, problemType, isSubjective),
         problemType,
         subjectiveType,
         isSubjective,
@@ -5534,8 +7364,8 @@
       await ensureExplicitLibrarySaveTargetsReady(state.librarySaveMode);
 
       setBusy(true);
-      setStatus("문제 라이브러리에 저장할 이미지를 준비하는 중입니다...", "working", "라이브러리");
-      setOptionalText(elements.librarySaveSummary, "문제 이미지를 정리해서 라이브러리에 저장하는 중입니다...");
+      setStatus("문제 라이브러리에 저장할 데이터를 준비하는 중입니다...", "working", "라이브러리");
+      setOptionalText(elements.librarySaveSummary, `${getLibraryExtractionModeLabel(state.libraryExtractionMode)} 기준으로 문제 데이터를 정리해서 라이브러리에 저장하는 중입니다...`);
       if (isLibraryWorkspaceMode()) {
         setLibraryProgressState({
           phaseKey: "segments",
@@ -5557,6 +7387,7 @@
         librarySourceName: getLibrarySourceLabel(librarySourceKey),
         textbookName: state.selectedTextbookName,
         fileName: state.fileName || `${state.lastExportName}.pdf`,
+        contentMode: normalizeLibraryExtractionMode(state.libraryExtractionMode),
         importedAt: Date.now(),
         pageCount: state.stats?.pageCount || 0,
         problemCount: getQuestionCount(state.problems),
@@ -5670,7 +7501,8 @@
     }
 
     function recordMatchesSchoolSource(record) {
-      return getRecordSourceKey(record) === getSchoolSourceFilterKey();
+      const filterKey = getSchoolSourceFilterKey();
+      return filterKey === LIBRARY_SOURCE_FILTER_ALL || getRecordSourceKey(record) === filterKey;
     }
 
     function getSchoolProblemRecordsOnly() {
@@ -6870,7 +8702,7 @@
     }
 
     function setSchoolSourceFilter(sourceKey) {
-      const normalized = normalizeLibrarySourceKey(sourceKey);
+      const normalized = normalizeSchoolSourceFilterKey(sourceKey);
       state.schoolWorkflow.sourceFilterKey = normalized;
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.value = normalized;
@@ -7018,6 +8850,7 @@
         const typeSummary = Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko"));
         const sourceLabel = getLibrarySourceLabel(examSet.librarySourceKey || examSet.librarySourceName || items[0]?.librarySourceKey || items[0]?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY);
         const answerModeLabel = getExamAnswerModeLabel(examSet.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+        const contentModeLabel = getExamContentModeLabel(examSet.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
         const studentLabel = examSet.studentRetryStudentName || selectedStudent?.name || "학생";
         const sessionLabel = examSet.studentRetrySessionName || selectedSession?.name || "오답 세트";
         const roundLabel = examSet.studentRetryRoundIndex ? `${examSet.studentRetryRoundIndex}차` : "오답";
@@ -7034,7 +8867,7 @@
               </div>
             </header>
             <p class="exam-history-school">${escapeHtml(studentLabel)} · ${escapeHtml(sessionLabel)} · ${escapeHtml(sourceLabel)}</p>
-            <p class="exam-history-meta">${escapeHtml(roundLabel)} · 총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0}</p>
+            <p class="exam-history-meta">${escapeHtml(roundLabel)} · 총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · ${escapeHtml(contentModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0}</p>
             <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
           </article>
         `;
@@ -7664,7 +9497,9 @@
     function parseExamAnswerEditBlock(blockText, fallbackNumber = null) {
       const normalizedBlock = String(blockText || "").replace(/\r\n?/g, "\n").trim();
       const lines = normalizedBlock.split("\n").map((line) => line.trim()).filter(Boolean);
-      const fallbackNumeric = Number(fallbackNumber);
+      const fallbackNumeric = fallbackNumber == null || fallbackNumber === ""
+        ? Number.NaN
+        : Number(fallbackNumber);
       let number = Number.isFinite(fallbackNumeric) ? fallbackNumeric : null;
       if (!lines.length) {
         return {
@@ -7688,7 +9523,7 @@
       workingLines.forEach((line) => {
         const answerMatch = line.match(/^(?:정답|답)\s*[:：-]?\s*(.*)$/);
         if (answerMatch) {
-          answerText = normalizeAnswerLabel(answerMatch[1] || "");
+          answerText = normalizeParsedAnswerText(answerMatch[1] || "");
           collectingExplanation = false;
           return;
         }
@@ -7716,7 +9551,7 @@
 
       return {
         number,
-        answerText: normalizeAnswerLabel(answerText),
+        answerText: normalizeParsedAnswerText(answerText),
         explanationText: normalizeAnswerExplanationText(explanationText)
       };
     }
@@ -7753,7 +9588,7 @@
           }
           parsedByNumber.set(String(number), {
             number,
-            answerText: normalizeAnswerLabel(match[2] || ""),
+            answerText: normalizeParsedAnswerText(match[2] || ""),
             explanationText: normalizeAnswerExplanationText(match[3] || "")
           });
         });
@@ -8564,6 +10399,7 @@
       if (isLibraryWorkspaceMode()) {
         renderLibraryWorkspaceDashboard();
       }
+      renderLibraryTextEditor();
     }
 
     async function deleteSelectedTextbookFromLibrary() {
@@ -8626,12 +10462,14 @@
     function readExamExportSettings() {
       const base = readSettings();
       const answerOutputMode = getSelectedExamAnswerMode();
+      const contentRenderMode = getSelectedExamContentMode();
       return {
         ...base,
         kicker: elements.examKickerInput.value.trim() || "FINAL TEST WORKSHEET",
         title: elements.examTitleInput.value.trim() || "파이널 테스트",
         subtitle: elements.examSubtitleInput.value.trim(),
         answerOutputMode,
+        contentRenderMode,
         includeAnswerKey: answerOutputMode === EXAM_ANSWER_MODE_WITH_ANSWER_KEY
       };
     }
@@ -9374,7 +11212,7 @@
               </div>
             </header>
             ${examSet.schoolName ? `<p class="exam-history-school">${escapeHtml(examSet.schoolName)} · ${escapeHtml(sourceLabel)}</p>` : `<p class="exam-history-school">${escapeHtml(sourceLabel)}</p>`}
-            <p class="exam-history-meta">총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0} · 꼬리문제 ${examSet.tailCount || 0}</p>
+            <p class="exam-history-meta">총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · ${escapeHtml(contentModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0} · 꼬리문제 ${examSet.tailCount || 0}</p>
             <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
           </article>
         `;
@@ -9455,7 +11293,7 @@
       state.schoolWorkflow.selectedSchoolKey = normalizeSchoolKey(snapshot.selectedSchoolKey || state.schoolWorkflow.selectedSchoolKey || "");
       state.schoolWorkflow.selectedPassageKeys = Array.isArray(snapshot.selectedPassageKeys) ? [...snapshot.selectedPassageKeys] : [];
       state.schoolWorkflow.selectedTypeLabels = Array.isArray(snapshot.selectedTypeLabels) ? [...snapshot.selectedTypeLabels] : [];
-      state.schoolWorkflow.sourceFilterKey = normalizeLibrarySourceKey(snapshot.sourceFilterKey || state.schoolWorkflow.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      state.schoolWorkflow.sourceFilterKey = normalizeSchoolSourceFilterKey(snapshot.sourceFilterKey || state.schoolWorkflow.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
       state.schoolWorkflow.typeSelectionCustomized = Boolean(snapshot.typeSelectionCustomized);
       state.schoolWorkflow.draftMode = snapshot.draftMode === "full" ? "full" : "distinct";
       state.schoolWorkflow.passageTextbookName = normalizeTextbookName(snapshot.passageTextbookName || "");
@@ -9586,6 +11424,7 @@
         title: elements.examTitleInput.value.trim(),
         subtitle: elements.examSubtitleInput.value.trim(),
         answerOutputMode: getSelectedExamAnswerMode(),
+        contentRenderMode: getSelectedExamContentMode(),
         checkSetMeta: {
           title: elements.examCheckSetTitleInput?.value?.trim() || "",
           checkSetId: elements.examCheckSetIdInput?.value?.trim() || "",
@@ -9615,8 +11454,8 @@
         createdAt: existingRecord?.createdAt || now,
         updatedAt: now,
         summaryLine: retryContext
-          ? `${selectedSchoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} · ${retryContext.roundIndex}차 오답유형 · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length}`
-          : `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
+          ? `${selectedSchoolName} · ${sourceLabel} · ${retryContext.student?.name || "학생"} · ${retryContext.roundIndex}차 오답유형 · ${getExamAnswerModeLabel(payload.answerOutputMode)} · ${getExamContentModeLabel(payload.contentRenderMode)} · draft ${assignedCount}/${slots.length}`
+          : `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · ${getExamContentModeLabel(payload.contentRenderMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
         payload
       };
 
@@ -9725,6 +11564,7 @@
       elements.examTitleInput.value = payload.title || "파이널 테스트";
       elements.examSubtitleInput.value = payload.subtitle || "";
       applyExamAnswerModeToUi(payload.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      applyExamContentModeToUi(payload.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       if (elements.examCheckSetTitleInput) {
         elements.examCheckSetTitleInput.value = payload.checkSetMeta?.title || "";
       }
@@ -9856,6 +11696,7 @@
       elements.examTitleInput.value = examSet.title || "파이널 테스트";
       elements.examSubtitleInput.value = examSet.subtitle || "";
       applyExamAnswerModeToUi(examSet.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      applyExamContentModeToUi(examSet.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
 
       const slotSeedItems = Array.from(
         examItems.reduce((map, item) => {
@@ -9960,24 +11801,29 @@
       return limited;
     }
 
-    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
-      if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
-      throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
-      }
-      const segmentImages = record.segmentBlobs.map((blob, index) => {
-        if (!blob) {
-          throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
-        }
-        const url = URL.createObjectURL(blob);
-        state.examBuilder[urlBucket].push(url);
-        const segment = record.segmentMeta?.[index] || {};
-        return {
-          id: `${record.recordId}-segment-${index + 1}`,
-          width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
-          height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
-          url
-        };
-      });
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
+      const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
+      const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
+        ? []
+        : (() => {
+            if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
+              throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
+            }
+            return record.segmentBlobs.map((blob, index) => {
+              if (!blob) {
+                throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
+              }
+              const url = URL.createObjectURL(blob);
+              state.examBuilder[urlBucket].push(url);
+              const segment = record.segmentMeta?.[index] || {};
+              return {
+                id: `${record.recordId}-segment-${index + 1}`,
+                width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
+                height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
+                url
+              };
+            });
+          })();
       return {
         id: `exam-${record.recordId}`,
         kind: record.kind || "problem",
@@ -9994,8 +11840,11 @@
         segmentImages,
         pageSignature: record.pageSignature || "",
         pageCount: record.pageCount || 0,
+        contentMode: getLibraryProblemMode(record),
+        renderContentMode: normalizedRenderMode,
         promptText: record.promptText || "",
         analysisText: record.analysisText || "",
+        textStructure: normalizeStructuredProblemData(record.textStructure, record.problemType || PROBLEM_TYPE_OTHER, Boolean(record.isSubjective)),
         problemType: record.problemType || PROBLEM_TYPE_OTHER,
         subjectiveType: record.subjectiveType || "",
         isSubjective: Boolean(record.isSubjective),
@@ -10040,6 +11889,7 @@
 
     async function buildExamProblemPayloadFromSlots(urlBucket = "previewUrls", options = {}) {
       cleanupExamUrls(urlBucket);
+      const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
       const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
@@ -10050,7 +11900,12 @@
       const problems = selectedEntries.map((entry) => {
         const runtimeRecord = hydratedRecordMap.get(entry.record.recordId) || entry.record;
         repairOcrStolenInitialAnswerFields(runtimeRecord);
-        const runtimeProblem = createExamRuntimeProblemFromRecord(runtimeRecord, runtimeRecord.kind === "shared" ? null : problemNumber, urlBucket);
+        const runtimeProblem = createExamRuntimeProblemFromRecord(
+          runtimeRecord,
+          runtimeRecord.kind === "shared" ? null : problemNumber,
+          urlBucket,
+          renderContentMode
+        );
         if (entry.record.kind !== "shared") {
           problemNumber += 1;
         }
@@ -10060,7 +11915,8 @@
         problems,
         totalQuestionCount,
         renderedQuestionCount,
-        isLimited: renderedQuestionCount < totalQuestionCount
+        isLimited: renderedQuestionCount < totalQuestionCount,
+        renderContentMode
       };
     }
 
@@ -10126,7 +11982,10 @@
         totalQuestionCount,
         renderedQuestionCount,
         isLimited
-      } = await buildExamProblemPayloadFromSlots(urlBucket, options);
+      } = await buildExamProblemPayloadFromSlots(urlBucket, {
+        ...options,
+        renderContentMode: settings.contentRenderMode
+      });
       const layoutMeta = buildLayoutPages(settings, problems);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");
@@ -10438,7 +12297,7 @@
       validateExamBuilderForExport();
       const entries = getExamSlotAssignedRecords();
       const settings = readExamExportSettings();
-      const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}`;
+      const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}|${settings.contentRenderMode}`;
       const retryContext = getCurrentStudentRetryDraftContext();
       const historyScope = retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL;
       if (getExamSets().some((examSet) =>
@@ -10473,6 +12332,7 @@
         kicker: settings.kicker,
         subtitle: settings.subtitle,
         answerOutputMode: settings.answerOutputMode,
+        contentRenderMode: settings.contentRenderMode,
         schoolKey: state.schoolWorkflow.selectedSchoolKey || "",
         schoolName: getSelectedSchoolProfile()?.name || "",
         librarySourceKey,
@@ -10819,17 +12679,18 @@
     }
 
     function buildProblemTypeTags(problemType, isSubjective, subjectiveType = "") {
+      const resolvedProblemType = normalizeEffectiveProblemType(problemType);
       const tags = [];
-      if (problemType) {
-        tags.push(problemType);
+      if (resolvedProblemType) {
+        tags.push(resolvedProblemType);
       }
-      if (problemType === "무관") {
+      if (resolvedProblemType === "무관") {
         tags.push(PROBLEM_TYPE_ODD_SENTENCE);
       }
-      if (problemType === "밑줄어법" || problemType === "선택어법") {
+      if (resolvedProblemType === "밑줄어법" || resolvedProblemType === "선택어법") {
         tags.push(PROBLEM_TYPE_GRAMMAR);
       }
-      if (problemType === "밑줄어휘" || problemType === "선택어휘") {
+      if (resolvedProblemType === "밑줄어휘" || resolvedProblemType === "선택어휘") {
         tags.push(PROBLEM_TYPE_VOCAB);
       }
       if (isSubjective) {
@@ -11275,6 +13136,9 @@
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.disabled = isBusy;
       }
+      if (elements.libraryExtractionModeSelect) {
+        elements.libraryExtractionModeSelect.disabled = isBusy;
+      }
       elements.saveRepackWorkButton.disabled = isBusy || !state.problems.length;
       if (elements.loadMoreButton) {
         elements.loadMoreButton.disabled = isBusy;
@@ -11287,6 +13151,9 @@
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.disabled = isBusy;
       }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.disabled = isBusy;
+      }
       elements.previewExamButton.disabled = isBusy;
       elements.printExamButton.disabled = isBusy;
       elements.commitExamButton.disabled = isBusy;
@@ -11295,6 +13162,18 @@
       }
       if (elements.refreshSchoolCatalogButton) {
         elements.refreshSchoolCatalogButton.disabled = isBusy;
+      }
+      if (elements.libraryTextEditorReloadButton) {
+        elements.libraryTextEditorReloadButton.disabled = isBusy || !state.libraryReview.editorTargetId;
+      }
+      if (elements.libraryTextEditorDeleteButton) {
+        elements.libraryTextEditorDeleteButton.disabled = isBusy || !state.libraryReview.editorTargetId;
+      }
+      if (elements.libraryTextEditorSaveButton) {
+        elements.libraryTextEditorSaveButton.disabled = isBusy || !state.libraryReview.editorTargetId;
+      }
+      if (elements.libraryTextEditorCloseButton) {
+        elements.libraryTextEditorCloseButton.disabled = isBusy && !state.libraryReview.editorTargetId;
       }
       renderPdfLabFirebaseAuthUi();
       if (elements.generateSchoolDraftButton) {
@@ -11693,6 +13572,7 @@
             pageCount: new Set(segments.map((segment) => segment.pageIndex)).size,
             promptText,
             analysisText,
+            textStructure: buildStructuredProblemDataFromText(problemType, isSubjective, analysisText || promptText),
             problemType,
             subjectiveType,
             isSubjective,
@@ -11824,7 +13704,223 @@
       return { width, height };
     }
 
+    function isTextRenderProblem(problem) {
+      return normalizeExamContentMode(problem?.renderContentMode || EXAM_CONTENT_MODE_IMAGE) === EXAM_CONTENT_MODE_TEXT;
+    }
+
+    function normalizeProblemTextForCardDisplay(value) {
+      const text = String(value || "").replace(/\r\n?/g, "\n").trim();
+      return text || "문항 텍스트가 없습니다.";
+    }
+
+    function normalizeProblemChoiceMarker(marker) {
+      const compact = String(marker || "").replace(/\s+/g, "");
+      if (!compact) {
+        return "";
+      }
+      return /^\(.+\)$/.test(compact) ? compact.slice(1, -1) : compact;
+    }
+
+    function buildProblemTextBaseBlocks(text) {
+      const normalized = normalizeProblemText(text);
+      if (!normalized) {
+        return [];
+      }
+      const blocks = [];
+      let workingText = normalized;
+      const stemMatch = workingText.match(/^(.+?\?)(?:\s+|$)([\s\S]*)$/);
+      if (stemMatch) {
+        blocks.push({ type: "stem", text: stemMatch[1].trim() });
+        workingText = String(stemMatch[2] || "").trim();
+      }
+      if (!workingText) {
+        return blocks;
+      }
+      const leadingReferences = [];
+      while (true) {
+        const referenceMatch = workingText.match(/^(\[[^\]\n]{1,32}\])(?:\s+|$)([\s\S]*)$/);
+        if (!referenceMatch) {
+          break;
+        }
+        const referenceToken = normalizeProblemText(referenceMatch[1] || "");
+        if (!referenceToken) {
+          break;
+        }
+        leadingReferences.push(referenceToken);
+        workingText = String(referenceMatch[2] || "").trim();
+        if (!workingText) {
+          break;
+        }
+      }
+      if (leadingReferences.length) {
+        blocks.push({
+          type: "reference",
+          text: leadingReferences.join("\n")
+        });
+      }
+      if (!workingText) {
+        return blocks;
+      }
+      workingText = workingText
+        .replace(/\s+(?=\[[^\]]+\])/g, "\n")
+        .replace(/\s+(?=\([A-E]\))/g, "\n")
+        .replace(/\s+(?=\(\d+\))/g, "\n");
+      workingText
+        .split(/\n+/)
+        .map((segment) => String(segment || "").trim())
+        .filter(Boolean)
+        .forEach((segment) => {
+          blocks.push({
+            type: /^\[[^\]\n]{1,32}\]$/.test(segment) ? "reference" : "body",
+            text: segment
+          });
+      });
+      return blocks;
+    }
+
+    function buildProblemTextBlocksFromStructuredData(data) {
+      const structured = data && typeof data === "object" ? data : null;
+      if (!structured) {
+        return [];
+      }
+      const blocks = [];
+      const pushBlock = (type, text, extra = {}) => {
+        const normalized = normalizeProblemText(text);
+        if (!normalized) {
+          return;
+        }
+        blocks.push({ type, text: normalized, ...extra });
+      };
+      pushBlock("stem", structured.questionText);
+      pushBlock("reference", structured.referenceText);
+      if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION || structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        pushBlock("body", structured.givenText);
+        pushBlock("body", structured.bodyText);
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        pushBlock("body", structured.bodyText);
+        pushBlock("body", structured.summaryText);
+      } else {
+        pushBlock("body", structured.bodyText);
+      }
+      const shouldIncludeChoices = ![
+        EDITOR_TEMPLATE_OBJECTIVE_INSERTION,
+        EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY,
+        EDITOR_TEMPLATE_SUBJECTIVE_FREE
+      ].includes(structured.templateKey);
+      if (shouldIncludeChoices && Array.isArray(structured.choices)) {
+        structured.choices.forEach((choice, index) => {
+          const normalized = normalizeProblemText(choice?.text || "");
+          if (!normalized) {
+            return;
+          }
+          blocks.push({
+            type: "choice",
+            marker: normalizeProblemChoiceMarker(choice?.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1)),
+            text: normalized
+          });
+        });
+      }
+      return blocks;
+    }
+
+    function buildProblemTextBlocks(problem) {
+      const structured = problem?.textStructure
+        ? getLibraryProblemStructuredText(problem)
+        : null;
+      if (structured && structuredProblemDataHasContent(structured)) {
+        const structuredBlocks = buildProblemTextBlocksFromStructuredData(structured);
+        if (structuredBlocks.length) {
+          return structuredBlocks;
+        }
+      }
+      const rawText = normalizeProblemTextForCardDisplay(problem?.analysisText || problem?.promptText || "");
+      if (!rawText || rawText === "문항 텍스트가 없습니다.") {
+        return [{ type: "body", text: "문항 텍스트가 없습니다." }];
+      }
+      const normalized = normalizeProblemText(rawText);
+      const choiceRegex = /(^|\s)(\(\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]\s*\)|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿][.)]?|\(\s*\d+\s*\))/g;
+      const matches = [];
+      for (const match of normalized.matchAll(choiceRegex)) {
+        const marker = match[2] || "";
+        if (!marker) {
+          continue;
+        }
+        const leadingWhitespace = match[1] || "";
+        const markerIndex = match.index + leadingWhitespace.length;
+        matches.push({
+          marker,
+          markerIndex,
+          markerEndIndex: markerIndex + marker.length
+        });
+      }
+      if (!matches.length) {
+        return buildProblemTextBaseBlocks(normalized);
+      }
+      const prefixText = normalized.slice(0, matches[0].markerIndex).trim();
+      const blocks = buildProblemTextBaseBlocks(prefixText);
+      matches.forEach((match, index) => {
+        const nextMatch = matches[index + 1] || null;
+        const choiceText = normalized
+          .slice(match.markerEndIndex, nextMatch ? nextMatch.markerIndex : normalized.length)
+          .trim();
+        if (!choiceText) {
+          return;
+        }
+        blocks.push({
+          type: "choice",
+          marker: normalizeProblemChoiceMarker(match.marker),
+          text: choiceText
+        });
+      });
+      return blocks.length ? blocks : [{ type: "body", text: normalized }];
+    }
+
+    function buildProblemTextMarkup(problem) {
+      return buildProblemTextBlocks(problem)
+        .map((block) => {
+          if (block.type === "choice") {
+            return `
+              <div class="problem-text-choice">
+                <span class="problem-text-choice-marker">${escapeHtml(block.marker || "")}</span>
+                <p class="problem-text-choice-body">${escapeHtml(block.text || "")}</p>
+              </div>
+            `;
+          }
+          const classNames = ["problem-text-block"];
+          if (block.type === "stem") {
+            classNames.push("is-stem");
+          } else if (block.type === "reference") {
+            classNames.push("is-reference");
+          }
+          return `<p class="${classNames.join(" ")}">${escapeHtml(block.text || "")}</p>`;
+        })
+        .join("");
+    }
+
+    function getProblemTextParagraphs(problem) {
+      return buildProblemTextBlocks(problem)
+        .map((block) => block.type === "choice"
+          ? `${block.marker || ""} ${block.text || ""}`.trim()
+          : String(block.text || "").trim()
+        )
+        .filter(Boolean);
+    }
+
+    function estimateProblemTextLineCount(problem, columnWidthMm) {
+      const paragraphs = getProblemTextParagraphs(problem);
+      const charsPerLine = Math.max(18, Math.round(columnWidthMm * TEXT_CHAR_PER_LINE_FACTOR));
+      return Math.max(1, paragraphs.reduce((sum, paragraph) =>
+        sum + Math.max(1, Math.ceil(paragraph.length / charsPerLine)), 0));
+    }
+
     function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
+      if (isTextRenderProblem(problem)) {
+        return {
+          scalableHeightMm: estimateProblemTextLineCount(problem, columnWidthMm) * TEXT_LINE_HEIGHT_MM,
+          fixedHeightMm: TEXT_CARD_FIXED_HEIGHT_MM,
+          supportsFitScale: false
+        };
+      }
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const segments = Array.isArray(problem?.segments) && problem.segments.length
         ? problem.segments
@@ -11836,7 +13932,8 @@
       const fixedHeightMm = CARD_FIXED_HEIGHT_MM + Math.max(0, segments.length - 1) * SEGMENT_GAP_MM;
       return {
         scalableHeightMm: Number.isFinite(scalableHeightMm) ? Math.max(1, scalableHeightMm) : columnWidthMm,
-        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM
+        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM,
+        supportsFitScale: true
       };
     }
 
@@ -11849,6 +13946,9 @@
     }
 
     function buildBalancedSquashCandidates(firstProblem, secondProblem) {
+      if (isTextRenderProblem(firstProblem) || isTextRenderProblem(secondProblem)) {
+        return [[0, 0]];
+      }
       const firstManual = getManualSquashPercent(firstProblem);
       const secondManual = getManualSquashPercent(secondProblem);
       const candidates = [];
@@ -11943,6 +14043,7 @@
       for (const problem of problems) {
         const baseSquashPercent = getProblemSquashPercent(problem);
         const metrics = calculateProblemMetrics(problem, columnWidthMm, baseSquashPercent);
+        const supportsFitScale = metrics.supportsFitScale !== false;
         let placed = false;
         while (!placed) {
           const currentSheet = sheets[sheetIndex];
@@ -11974,7 +14075,7 @@
               continue;
             }
           }
-          if (!currentColumn.items.length && remainingMm > metrics.fixedHeightMm + 18) {
+          if (supportsFitScale && !currentColumn.items.length && remainingMm > metrics.fixedHeightMm + 18) {
             const fitScale = Math.min(1, Math.max(MIN_FIT_SCALE, (remainingMm - metrics.fixedHeightMm) / Math.max(1, metrics.scalableHeightMm)));
             if (estimateHeightMm(metrics, fitScale) <= remainingMm + 0.4) {
               currentColumn.items.push({ problem, fitScale, appliedSquashPercent: baseSquashPercent });
@@ -11984,7 +14085,7 @@
             }
           }
           if (!currentColumn.items.length) {
-            const fallbackFitScale = MIN_FIT_SCALE;
+            const fallbackFitScale = supportsFitScale ? MIN_FIT_SCALE : 1;
             currentColumn.items.push({
               problem,
               fitScale: fallbackFitScale,
@@ -12093,6 +14194,7 @@
 
     function createProblemCardMarkup(entry) {
       const { problem, fitScale } = entry;
+      const isTextRender = isTextRenderProblem(problem);
       const squashPercent = getEntryAppliedSquashPercent(entry);
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const squashLabel = `압축 ${squashPercent}%`;
@@ -12100,31 +14202,37 @@
       const typeBadges = getEntryTypeBadges(problem)
         .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
         .join("");
-      const availableImages = problem.segmentImages.filter(Boolean);
-      const images = availableImages.length
-        ? availableImages
-            .map((image, index) => {
-              const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
-              return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
-            })
-            .join("")
-        : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+      const bodyMarkup = isTextRender
+        ? `<div class="problem-text-body">${buildProblemTextMarkup(problem)}</div>`
+        : (() => {
+            const availableImages = problem.segmentImages.filter(Boolean);
+            return availableImages.length
+              ? availableImages
+                  .map((image, index) => {
+                    const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
+                    return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
+                  })
+                  .join("")
+              : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+          })();
       return `
-        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""}">
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}">
           <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
                 ${typeBadges}
               </div>
-              <label class="problem-squash-control">
-                <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
-                <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
-                  ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
-                </select>
-              </label>
+              ${isTextRender ? "" : `
+                <label class="problem-squash-control">
+                  <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
+                  <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
+                    ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
+                  </select>
+                </label>
+              `}
             </header>
-            <div class="problem-segments">${images}</div>
+            <div class="problem-segments${isTextRender ? " is-text" : ""}">${bodyMarkup}</div>
           </div>
         </article>
       `;
@@ -12200,6 +14308,7 @@
 
     function renderPreview() {
       applySettingsToUi();
+      elements.previewRoot?.classList.remove("is-library-dashboard");
       if (isLibraryWorkspaceMode()) {
         state.visibleProblems = [...state.problems];
         state.layoutPages = [];
@@ -12304,6 +14413,13 @@
       state.visibleProblems = null;
       state.loadedRepackWorkId = "";
       state.selectionInfo = null;
+      state.libraryReview.currentRange = "";
+      state.libraryReview.currentSearch = "";
+      state.libraryReview.currentPage = 1;
+      if (state.libraryReview.editorScope === "current") {
+        resetLibraryTextEditorState();
+        renderLibraryTextEditor();
+      }
       state.pages = [];
       state.layoutPages = [];
       state.stats = null;
@@ -12346,7 +14462,8 @@
         .map((problem) => ({
           ...problem,
           librarySourceKey: state.selectedLibrarySourceKey,
-          librarySourceName: getLibrarySourceLabel(state.selectedLibrarySourceKey)
+          librarySourceName: getLibrarySourceLabel(state.selectedLibrarySourceKey),
+          contentMode: state.libraryExtractionMode
         }));
       const renderScale = chooseRenderScale(pdf.numPages, problems.length);
       state.fileName = file.name;
@@ -12379,7 +14496,7 @@
       refreshProblemStats(problems);
       state.lastExportName = slugifyFileName(file.name);
       updateLoadedFileLabel();
-      setOptionalText(elements.librarySaveSummary, `${getLibrarySourceLabel(state.selectedLibrarySourceKey)} · ${state.selectedTextbookName} / ${file.name} · ${getAnswerImportSummary(problems)} · 아직 라이브러리에 저장되지 않았습니다.`);
+      setOptionalText(elements.librarySaveSummary, `${getLibrarySourceLabel(state.selectedLibrarySourceKey)} · ${state.selectedTextbookName} / ${file.name} · ${getLibraryExtractionModeLabel(state.libraryExtractionMode)} · ${getAnswerImportSummary(problems)} · 아직 라이브러리에 저장되지 않았습니다.`);
       if (!elements.titleInput.value.trim() || elements.titleInput.value.trim() === "변형문제 정리본") {
         elements.titleInput.value = file.name.replace(/\.[^.]+$/, "");
       }
@@ -12417,6 +14534,13 @@
       state.visibleProblems = null;
       state.loadedRepackWorkId = "";
       state.selectionInfo = null;
+      state.libraryReview.currentRange = "";
+      state.libraryReview.currentSearch = "";
+      state.libraryReview.currentPage = 1;
+      if (state.libraryReview.editorScope === "current") {
+        resetLibraryTextEditorState();
+        renderLibraryTextEditor();
+      }
       state.pages = [];
       state.layoutPages = [];
       state.stats = null;
@@ -12629,15 +14753,21 @@
       applySettingsToUi();
       updateLogoUi();
       await initializeLibrarySaveModeSetting();
+      await initializeLibraryExtractionModeSetting();
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
+      updateLibraryExtractionModeUi();
       renderPdfLabFirebaseAuthUi();
       applyExamAnswerModeToUi(state.examBuilder.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      applyExamContentModeToUi(state.examBuilder.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       if (elements.librarySourceSelect) {
         elements.librarySourceSelect.value = state.selectedLibrarySourceKey;
       }
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.value = state.examBuilder.answerOutputMode;
+      }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.value = state.examBuilder.contentRenderMode;
       }
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.value = state.schoolWorkflow.sourceFilterKey;
@@ -12654,6 +14784,7 @@
       renderExamSlots();
       setActiveTab(state.workspaceMode === WORKSPACE_MODE_LIBRARY ? "repack" : "exam");
       await refreshLibrarySummary();
+      renderLibraryTextEditor();
       elements.repackTabButton.addEventListener("click", () => {
         setActiveTab("repack");
       });
@@ -12673,6 +14804,11 @@
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.addEventListener("change", () => {
           setLibrarySaveMode(elements.librarySaveModeSelect.value).catch(handleError);
+        });
+      }
+      if (elements.libraryExtractionModeSelect) {
+        elements.libraryExtractionModeSelect.addEventListener("change", () => {
+          setLibraryExtractionMode(elements.libraryExtractionModeSelect.value).catch(handleError);
         });
       }
       elements.choosePdfButton.addEventListener("click", () => elements.pdfInput.click());
@@ -12743,6 +14879,13 @@
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.addEventListener("change", () => {
           applyExamAnswerModeToUi(elements.examAnswerModeSelect.value);
+          renderExamMiniPreview();
+        });
+      }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.addEventListener("change", () => {
+          applyExamContentModeToUi(elements.examContentModeSelect.value);
+          renderExamMiniPreview();
         });
       }
       [
@@ -12808,11 +14951,201 @@
       });
       elements.previewRoot.addEventListener("change", (event) => {
         const target = event.target;
-        if (!(target instanceof HTMLSelectElement) || !target.classList.contains("problem-squash-select")) {
+        if (!(target instanceof HTMLElement)) {
           return;
         }
-        updateProblemSquash(target.dataset.problemId, target.value);
+        if (target instanceof HTMLSelectElement && target.classList.contains("problem-squash-select")) {
+          updateProblemSquash(target.dataset.problemId, target.value);
+          return;
+        }
+        if (target instanceof HTMLSelectElement && target.dataset.libraryStoredSource !== undefined) {
+          state.libraryReview.storedSourceKey = normalizeLibrarySourceKey(target.value);
+          state.libraryReview.storedTextbookName = "";
+          state.libraryReview.storedImportSourceId = "";
+          state.libraryReview.storedPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLSelectElement && target.dataset.libraryStoredTextbook !== undefined) {
+          state.libraryReview.storedTextbookName = normalizeTextbookName(target.value);
+          state.libraryReview.storedImportSourceId = "";
+          state.libraryReview.storedPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLSelectElement && target.dataset.libraryStoredImport !== undefined) {
+          state.libraryReview.storedImportSourceId = normalizeProblemText(target.value);
+          state.libraryReview.storedPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.libraryCurrentRange !== undefined) {
+          state.libraryReview.currentRange = target.value;
+          state.libraryReview.currentPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.libraryCurrentSearch !== undefined) {
+          state.libraryReview.currentSearch = target.value;
+          state.libraryReview.currentPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.libraryStoredRange !== undefined) {
+          state.libraryReview.storedRange = target.value;
+          state.libraryReview.storedPage = 1;
+          renderLibraryWorkspaceDashboard();
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.libraryStoredSearch !== undefined) {
+          state.libraryReview.storedSearch = target.value;
+          state.libraryReview.storedPage = 1;
+          renderLibraryWorkspaceDashboard();
+        }
       });
+      elements.previewRoot.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        const button = target.closest("button");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+        if (button.dataset.libraryEditScope && button.dataset.libraryEditId) {
+          openLibraryTextEditor(button.dataset.libraryEditScope, button.dataset.libraryEditId);
+          return;
+        }
+        if (button.dataset.libraryDeleteScope && button.dataset.libraryDeleteId) {
+          if (button.dataset.libraryDeleteScope === "stored") {
+            deleteStoredLibraryProblem(button.dataset.libraryDeleteId).catch(handleError);
+            return;
+          }
+          try {
+            removeCurrentImportedProblem(button.dataset.libraryDeleteId);
+          } catch (error) {
+            handleError(error);
+          }
+          return;
+        }
+        if (button.dataset.libraryPage && button.dataset.libraryPageShift) {
+          const shift = Number.parseInt(button.dataset.libraryPageShift, 10) || 0;
+          if (button.dataset.libraryPage === "stored") {
+            state.libraryReview.storedPage = Math.max(1, (Number(state.libraryReview.storedPage) || 1) + shift);
+          } else {
+            state.libraryReview.currentPage = Math.max(1, (Number(state.libraryReview.currentPage) || 1) + shift);
+          }
+          renderLibraryWorkspaceDashboard();
+        }
+      });
+      if (elements.libraryTextEditorTextarea) {
+        elements.libraryTextEditorTextarea.addEventListener("input", () => {
+          state.libraryReview.editorDraftText = elements.libraryTextEditorTextarea.value;
+          state.libraryReview.editorRawChanged = true;
+        });
+      }
+      if (elements.libraryTextEditorReparseButton) {
+        elements.libraryTextEditorReparseButton.addEventListener("click", () => {
+          const target = getActiveLibraryEditorTarget();
+          if (!target) {
+            return;
+          }
+          const rawText = elements.libraryTextEditorTextarea?.value || state.libraryReview.editorDraftText || "";
+          reparseLibraryTextEditorStructuredFields(
+            classifyProblemType(rawText),
+            isSubjectiveProblem(rawText),
+            rawText
+          );
+          state.libraryReview.editorDraftText = rawText;
+          renderLibraryTextEditor();
+        });
+      }
+      if (elements.libraryTextEditorStructuredFields) {
+        elements.libraryTextEditorStructuredFields.addEventListener("input", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLTextAreaElement) || !state.libraryReview.editorStructuredDraft) {
+            return;
+          }
+          const nextStructured = JSON.parse(serializeStructuredProblemData(state.libraryReview.editorStructuredDraft));
+          if (target.dataset.structuredField) {
+            nextStructured[target.dataset.structuredField] = target.value;
+          } else if (target.dataset.structuredSequenceIndex !== undefined) {
+            const index = Number.parseInt(target.dataset.structuredSequenceIndex, 10);
+            if (Array.isArray(nextStructured.sequenceParts) && Number.isInteger(index) && nextStructured.sequenceParts[index]) {
+              nextStructured.sequenceParts[index].text = target.value;
+            }
+          } else if (target.dataset.structuredChoiceIndex !== undefined) {
+            const index = Number.parseInt(target.dataset.structuredChoiceIndex, 10);
+            if (Array.isArray(nextStructured.choices) && Number.isInteger(index) && nextStructured.choices[index]) {
+              nextStructured.choices[index].text = target.value;
+            }
+          }
+          const provisionalRawText = composeStructuredProblemRawText(nextStructured);
+          const draftProblemType = classifyProblemType(provisionalRawText);
+          const draftIsSubjective = isSubjectiveProblem(provisionalRawText);
+          state.libraryReview.editorStructuredDraft = normalizeStructuredProblemData(nextStructured, draftProblemType, draftIsSubjective);
+          state.libraryReview.editorTemplateKey = state.libraryReview.editorStructuredDraft.templateKey;
+          syncLibraryTextEditorRawTextFromStructuredDraft();
+        });
+      }
+      if (elements.libraryTextEditorAnswerTextarea) {
+        elements.libraryTextEditorAnswerTextarea.addEventListener("input", () => {
+          state.libraryReview.editorDraftAnswerText = elements.libraryTextEditorAnswerTextarea.value;
+        });
+      }
+      if (elements.libraryTextEditorExplanationTextarea) {
+        elements.libraryTextEditorExplanationTextarea.addEventListener("input", () => {
+          state.libraryReview.editorDraftExplanationText = elements.libraryTextEditorExplanationTextarea.value;
+        });
+      }
+      if (elements.libraryTextEditorRoot) {
+        elements.libraryTextEditorRoot.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+          if (target === elements.libraryTextEditorRoot) {
+            closeLibraryTextEditor();
+          }
+        });
+      }
+      if (elements.libraryTextEditorReloadButton) {
+        elements.libraryTextEditorReloadButton.addEventListener("click", () => {
+          if (!state.libraryReview.editorScope || !state.libraryReview.editorTargetId) {
+            return;
+          }
+          openLibraryTextEditor(state.libraryReview.editorScope, state.libraryReview.editorTargetId, { forceDiscard: true });
+        });
+      }
+      if (elements.libraryTextEditorCloseButton) {
+        elements.libraryTextEditorCloseButton.addEventListener("click", () => {
+          closeLibraryTextEditor();
+        });
+      }
+      if (elements.libraryTextEditorSaveButton) {
+        elements.libraryTextEditorSaveButton.addEventListener("click", () => {
+          saveLibraryTextEditorChanges().catch(handleError);
+        });
+      }
+      if (elements.libraryTextEditorDeleteButton) {
+        elements.libraryTextEditorDeleteButton.addEventListener("click", () => {
+          const scope = state.libraryReview.editorScope;
+          const targetId = state.libraryReview.editorTargetId;
+          if (!scope || !targetId) {
+            return;
+          }
+          if (scope === "stored") {
+            deleteStoredLibraryProblem(targetId).catch(handleError);
+            return;
+          }
+          try {
+            removeCurrentImportedProblem(targetId);
+            closeLibraryTextEditor({ forceDiscard: true });
+          } catch (error) {
+            handleError(error);
+          }
+        });
+      }
       elements.createExamSlotsButton.addEventListener("click", () => {
         createExamSlotsFromInputs();
       });
