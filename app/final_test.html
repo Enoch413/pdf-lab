@@ -17,17 +17,19 @@
       </div>
       <div class="app-topbar-badge">WORKSPACE</div>
       <nav class="app-topbar-actions" aria-label="Workspace navigation">
-        <a class="app-topbar-link" id="openExamWorkspaceLink" href="./index.html?workspace=exam">PDF LAB</a>
-        <a class="app-topbar-link is-active" id="openFinalTestWorkspaceLink" href="./final_test.html">파이널테스트</a>
-        <a class="app-topbar-link" id="openLibraryWorkspaceLink" href="./index.html?workspace=library">문제 라이브러리</a>
+        <a class="app-topbar-link app-topbar-tab" id="openExamWorkspaceLink" href="./index.html?workspace=exam">반별 출제</a>
+        <a class="app-topbar-link app-topbar-tab is-active" id="openFinalTestWorkspaceLink" href="./final_test.html">파이널테스트</a>
+        <a class="app-topbar-link app-topbar-tab" id="openLibraryWorkspaceLink" href="./index.html?workspace=library">문제 라이브러리</a>
+        <a class="app-topbar-link app-topbar-tab" href="./general_exam.html?workspace=exam">일반 출제</a>
       </nav>
     </header>
 
     <div class="app-tab-shell">
       <div class="app-tab-row" role="tablist" aria-label="작업 영역">
-        <a class="app-tab-button app-tab-link" href="./index.html?workspace=exam">학교별 출제</a>
+        <a class="app-tab-button app-tab-link" href="./index.html?workspace=exam">반별 출제</a>
         <button class="app-tab-button is-active" type="button" id="examBuilderTabButton" data-tab-target="exam" aria-selected="true">파이널테스트</button>
         <button class="app-tab-button" type="button" id="repackTabButton" data-tab-target="repack" aria-selected="false">문제 라이브러리</button>
+        <a class="app-tab-button app-tab-link" href="./general_exam.html?workspace=exam">일반 출제</a>
       </div>
     </div>
 
@@ -79,13 +81,13 @@
           <input class="visually-hidden" type="file" id="pdfInput" accept="application/pdf">
           <p class="file-name" id="fileName">아직 불러온 PDF가 없습니다.</p>
         </div>
-        <div class="single-action-row">
+        <div class="single-action-row" hidden aria-hidden="true">
           <button class="ghost-button" type="button" id="saveLibraryButton" disabled="">문제 라이브러리에 저장</button>
         </div>
-        <p class="small-note" id="librarySaveSummary">문제를 저장해두면 PDF LAB에서 학교별 출제를 바로 이어서 진행할 수 있습니다.</p>
+        <p class="small-note" id="librarySaveSummary" hidden aria-hidden="true">문제를 저장해두면 PDF LAB에서 학교별 출제를 바로 이어서 진행할 수 있습니다.</p>
       </section>
 
-      <section class="panel-card">
+      <section class="panel-card" hidden aria-hidden="true">
         <h2 class="panel-title">2. 라이브러리 저장 폴더</h2>
         <div class="field-grid">
           <div class="field-row">
@@ -101,7 +103,7 @@
       </section>
 
       <section class="panel-card">
-        <h2 class="panel-title">3. 라이브러리 진행 현황</h2>
+        <h2 class="panel-title">2. 라이브러리 진행 현황</h2>
         <div class="library-stat-grid">
           <article class="library-stat-card">
             <span class="library-stat-label">교재</span>
@@ -177,7 +179,6 @@
                 <option value="배열"></option>
                 <option value="기타주관식"></option>
                 <option value="무관"></option>
-                <option value="무관문"></option>
                 <option value="순서"></option>
                 <option value="삽입"></option>
                 <option value="밑줄어법"></option>
@@ -312,6 +313,13 @@
                   <option value="question-answer" selected="">문제+답안 뽑기</option>
                 </select>
               </label>
+              <label class="field-row">
+                <span class="field-label">문제 렌더링</span>
+                <select class="select-input" id="examContentModeSelect">
+                  <option value="image" selected="">이미지 출제</option>
+                  <option value="text">텍스트 출제</option>
+                </select>
+              </label>
               <div class="field-row">
                 <span class="field-label">우측 로고</span>
                 <div class="action-row compact-action-row">
@@ -401,6 +409,7 @@
               <label class="field-row">
                 <span class="field-label">문제 출처</span>
                 <select class="select-input" id="schoolSourceFilterSelect">
+                  <option value="all">전체</option>
                   <option value="neoreunteo">너른터</option>
                   <option value="thelab4you">더랩포유</option>
                 </select>
@@ -472,6 +481,11 @@
     </section>
   </div>
 
+  <script src="./firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -495,6 +509,9 @@
     const FOOTER_HEIGHT_MM = 0;
     const BINDING_MARGIN_MM = 5;
     const CARD_FIXED_HEIGHT_MM = 10.2;
+    const TEXT_CARD_FIXED_HEIGHT_MM = 17.8;
+    const TEXT_LINE_HEIGHT_MM = 4.4;
+    const TEXT_CHAR_PER_LINE_FACTOR = 0.45;
     const SEGMENT_GAP_MM = 1.8;
     const MIN_FIT_SCALE = 0.66;
     const AUTO_BALANCED_MAX_SQUASH = 10;
@@ -529,7 +546,7 @@
     const PROBLEM_TYPE_SUBJECTIVE = "주관식";
     const PROBLEM_TYPE_GRAMMAR = "어법";
     const PROBLEM_TYPE_VOCAB = "어휘";
-    const PROBLEM_TYPE_ODD_SENTENCE = "무관문";
+    const PROBLEM_TYPE_ODD_SENTENCE = "무관";
     const SUBJECTIVE_TYPE_WRITING = "영작";
     const SUBJECTIVE_TYPE_SUMMARY = "요약(주관식)";
     const SUBJECTIVE_TYPE_GRAMMAR = "어법(주관식)";
@@ -537,11 +554,17 @@
     const SUBJECTIVE_TYPE_CONNECTION = "연결사(주관식)";
     const SUBJECTIVE_TYPE_ARRANGEMENT = "배열";
     const SUBJECTIVE_TYPE_OTHER = "기타주관식";
+    const EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE = "objective-sequence";
+    const EDITOR_TEMPLATE_OBJECTIVE_INSERTION = "objective-insertion";
+    const EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY = "objective-body-only";
+    const EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB = "objective-summary-ab";
+    const EDITOR_TEMPLATE_SUBJECTIVE_FREE = "subjective-free";
+    const DEFAULT_STRUCTURED_CHOICE_MARKERS = ["①", "②", "③", "④", "⑤"];
     const TEXTBOOK_LIBRARY_STORAGE_KEY = "pdfProblemTemplateRepacker.textbooks.v1";
     const SCHOOL_PROFILE_STORAGE_KEY = "pdfProblemTemplateRepacker.schools.v1";
     const SHARED_LOGO_STORAGE_KEY = "pdfProblemTemplateRepacker.logo.v1";
     const LIBRARY_DB_NAME = "pdfProblemTemplateRepacker.library";
-    const LIBRARY_DB_VERSION = 7;
+    const LIBRARY_DB_VERSION = 8;
     const LIBRARY_SETTINGS_STORE = "settings";
     const LIBRARY_DIRECTORY_HANDLE_KEY = "libraryDirectoryHandle";
     const LIBRARY_IMPORT_STORE = "imports";
@@ -549,8 +572,9 @@
     const LIBRARY_PROBLEM_ASSET_STORE = "problemAssets";
     const LIBRARY_EXAM_STORE = "examSets";
     const LIBRARY_EXAM_ITEM_STORE = "examItems";
+    const LIBRARY_CHECK_SET_STORE = "checkSetRecords";
     const LIBRARY_WORK_STORE = "savedWorks";
-    const LIBRARY_SNAPSHOT_VERSION = 2;
+    const LIBRARY_SNAPSHOT_VERSION = 4;
     const LIBRARY_META_FILE = "pdflab_library_meta.json";
     const LIBRARY_TEXTBOOKS_FILE = "pdflab_textbooks.json";
     const LIBRARY_SCHOOLS_FILE = "pdflab_school_profiles.json";
@@ -559,7 +583,11 @@
     const LIBRARY_PROBLEM_ASSETS_FILE = "pdflab_problem_assets.json";
     const LIBRARY_EXAM_SETS_FILE = "pdflab_exam_sets.json";
     const LIBRARY_EXAM_ITEMS_FILE = "pdflab_exam_items.json";
+    const LIBRARY_CHECK_SETS_FILE = "pdflab_check_sets.json";
     const LIBRARY_SAVED_WORKS_FILE = "pdflab_saved_works.json";
+    const FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION = "pdfLabSharedLibraryImports";
+    const FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION = "pdfLabSharedLibraryProblems";
+    const FIREBASE_SHARED_LIBRARY_ASSET_ROOT = "pdf-lab/shared-library";
     const WORKSPACE_MODE_QUERY_KEY = "workspace";
     const WORKSPACE_MODE_EXAM = "exam";
     const WORKSPACE_MODE_LIBRARY = "library";
@@ -603,7 +631,8 @@
           "밑줄 친 부분 중, 어법상 틀린 것은",
           "밑줄 친 부분 중 어법상 틀린 것은",
           "어법상 틀린 것은",
-          "문법적 쓰임이 적절하지 않은 것은"
+          "문법적 쓰임이 적절하지 않은 것은",
+          "문법"
         ]
       },
       {
@@ -642,6 +671,10 @@
           "다음 글에서 전체 흐름과 관계 없는 문장은",
           "전체 흐름과 관계 없는 문장은",
           "전체 흐름과",
+          "다음 문장의 흐름상 가장 어색한 것은",
+          "문장의 흐름상 가장 어색한 것은",
+          "흐름상 가장 어색한 것은",
+          "가장 어색한 것은",
           "글의 흐름으로 보아, 문맥상 적절하지 않은 것은",
           "글의 흐름으로 보아 문맥상 적절하지 않은 것은",
           "문맥상 적절하지 않은 것은",
@@ -719,7 +752,7 @@
         ]
       },
       {
-        type: "심경",
+        type: PROBLEM_TYPE_OTHER,
         phrases: [
           "어조로 가장 적절한 것은",
           "필자의 어조"
@@ -795,8 +828,8 @@
       ["무관문", PROBLEM_TYPE_ODD_SENTENCE],
       ["무관", PROBLEM_TYPE_ODD_SENTENCE],
       ["원인", "함축의미"],
-      ["어조", "심경"],
-      ["필자의어조", "심경"],
+      ["어조", PROBLEM_TYPE_OTHER],
+      ["필자의어조", PROBLEM_TYPE_OTHER],
       ["문법적쓰임", "밑줄어법"],
       ["함축", "함축의미"],
       ["배열", SUBJECTIVE_TYPE_ARRANGEMENT],
@@ -804,8 +837,11 @@
     ]);
     const DEFAULT_LOGO_SRC = "./assets/code-logo.png";
     const DEFAULT_LIBRARY_SOURCE_KEY = "neoreunteo";
+    const LIBRARY_SOURCE_FILTER_ALL = "all";
     const EXAM_ANSWER_MODE_QUESTION_ONLY = "question-only";
     const EXAM_ANSWER_MODE_WITH_ANSWER_KEY = "question-answer";
+    const EXAM_CONTENT_MODE_IMAGE = "image";
+    const EXAM_CONTENT_MODE_TEXT = "text";
     const LIBRARY_SOURCE_OPTIONS = Object.freeze([
       { key: DEFAULT_LIBRARY_SOURCE_KEY, label: "너른터", aliases: [] },
       { key: "thelab4you", label: "더랩포유", aliases: ["exam4you", "이그잼포유"] }
@@ -818,6 +854,7 @@
       ["2", "②"], ["②", "②"], ["❷", "②"],
       ["3", "③"], ["③", "③"], ["❸", "③"],
       ["4", "④"], ["④", "④"], ["❹", "④"],
+      ["Co", "④"], ["CO", "④"], ["C0", "④"], ["cO", "④"], ["co", "④"], ["c0", "④"],
       ["5", "⑤"], ["⑤", "⑤"], ["❺", "⑤"],
       ["6", "⑥"], ["⑥", "⑥"], ["❻", "⑥"],
       ["7", "⑦"], ["⑦", "⑦"], ["❼", "⑦"],
@@ -833,11 +870,11 @@
       ["x", "X"], ["X", "X"]
     ]);
     const ANSWER_EXPORT_NUMBER_MAP = new Map([
-      ["①", "1"], ["❶", "1"], ["1", "1"], ["A", "1"], ["a", "1"],
-      ["②", "2"], ["❷", "2"], ["2", "2"], ["B", "2"], ["b", "2"],
-      ["③", "3"], ["❸", "3"], ["3", "3"], ["C", "3"], ["c", "3"],
-      ["④", "4"], ["❹", "4"], ["4", "4"], ["D", "4"], ["d", "4"],
-      ["⑤", "5"], ["❺", "5"], ["5", "5"], ["E", "5"], ["e", "5"],
+      ["①", "1"], ["❶", "1"], ["1", "1"],
+      ["②", "2"], ["❷", "2"], ["2", "2"],
+      ["③", "3"], ["❸", "3"], ["3", "3"],
+      ["④", "4"], ["❹", "4"], ["4", "4"],
+      ["⑤", "5"], ["❺", "5"], ["5", "5"],
       ["⑥", "6"], ["❻", "6"], ["6", "6"],
       ["⑦", "7"], ["❼", "7"], ["7", "7"],
       ["⑧", "8"], ["❽", "8"], ["8", "8"],
@@ -864,7 +901,17 @@
       return matched?.key || DEFAULT_LIBRARY_SOURCE_KEY;
     }
 
+    function normalizeSchoolSourceFilterKey(value) {
+      const compact = normalizeProblemTypeToken(value || "");
+      return compact === normalizeProblemTypeToken(LIBRARY_SOURCE_FILTER_ALL)
+        ? LIBRARY_SOURCE_FILTER_ALL
+        : normalizeLibrarySourceKey(value);
+    }
+
     function getLibrarySourceLabel(sourceKey) {
+      if (normalizeProblemTypeToken(sourceKey || "") === normalizeProblemTypeToken(LIBRARY_SOURCE_FILTER_ALL)) {
+        return "전체 출처";
+      }
       return LIBRARY_SOURCE_OPTIONS.find((option) => option.key === normalizeLibrarySourceKey(sourceKey))?.label
         || LIBRARY_SOURCE_OPTIONS[0].label;
     }
@@ -874,7 +921,7 @@
     }
 
     function getSchoolSourceFilterKey() {
-      return normalizeLibrarySourceKey(state?.schoolWorkflow?.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      return normalizeSchoolSourceFilterKey(state?.schoolWorkflow?.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
     }
 
     function getRecordSourceKey(record) {
@@ -910,6 +957,35 @@
       state.examBuilder.answerOutputMode = normalized;
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.value = normalized;
+      }
+      return normalized;
+    }
+
+    function normalizeExamContentMode(value) {
+      return String(value || "").trim().toLowerCase() === EXAM_CONTENT_MODE_TEXT
+        ? EXAM_CONTENT_MODE_TEXT
+        : EXAM_CONTENT_MODE_IMAGE;
+    }
+
+    function getExamContentModeLabel(value) {
+      return normalizeExamContentMode(value) === EXAM_CONTENT_MODE_TEXT
+        ? "텍스트 출제"
+        : "이미지 출제";
+    }
+
+    function getSelectedExamContentMode() {
+      return normalizeExamContentMode(
+        elements?.examContentModeSelect?.value ||
+        state?.examBuilder?.contentRenderMode ||
+        EXAM_CONTENT_MODE_IMAGE
+      );
+    }
+
+    function applyExamContentModeToUi(value) {
+      const normalized = normalizeExamContentMode(value);
+      state.examBuilder.contentRenderMode = normalized;
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.value = normalized;
       }
       return normalized;
     }
@@ -976,7 +1052,18 @@
         problemAssetCache: {},
         examSets: [],
         examItems: [],
+        checkSetRecords: [],
         savedWorks: []
+      },
+      firebaseSharedLibrary: {
+        auth: null,
+        db: null,
+        storage: null,
+        currentUser: null,
+        currentProfile: null,
+        enabled: false,
+        error: "",
+        lastSyncedAt: 0
       },
       loadedRepackWorkId: "",
       examBuilder: {
@@ -987,6 +1074,7 @@
         loadedWorkId: "",
         activeRoundIndex: 0,
         answerOutputMode: EXAM_ANSWER_MODE_WITH_ANSWER_KEY,
+        contentRenderMode: EXAM_CONTENT_MODE_IMAGE,
         answerEditSlotId: "",
         answerEditBaseText: "",
         answerEditDraftText: "",
@@ -1004,7 +1092,7 @@
         selectedPassageKeys: [],
         selectedTypeLabels: [],
         typeTargets: {},
-        sourceFilterKey: DEFAULT_LIBRARY_SOURCE_KEY,
+        sourceFilterKey: LIBRARY_SOURCE_FILTER_ALL,
         typeSelectionCustomized: false,
         passageTextbookName: "",
         passageQuery: "",
@@ -1100,6 +1188,7 @@
       finalRoundCountSelect: document.getElementById("finalRoundCountSelect"),
       examRoundSelect: document.getElementById("examRoundSelect"),
       examAnswerModeSelect: document.getElementById("examAnswerModeSelect"),
+      examContentModeSelect: document.getElementById("examContentModeSelect"),
       previewExamButton: document.getElementById("previewExamButton"),
       printExamButton: document.getElementById("printExamButton"),
       commitExamButton: document.getElementById("commitExamButton"),
@@ -1285,6 +1374,29 @@
       return String(value || "").replace(/\s+/g, " ").trim();
     }
 
+    function stripTrailingSourceCitation(value) {
+      let text = String(value || "").trim();
+      const sourcePattern = /\s*\[([^\]]{3,220})\]\s*$/;
+      while (true) {
+        const match = text.match(sourcePattern);
+        if (!match) {
+          return text;
+        }
+        const citation = normalizeProblemText(match[1] || "");
+        const looksLikeSource =
+          /^(?:from|source|adapted from|출처)\b/i.test(citation) ||
+          (/[A-Za-z]{3}/.test(citation) && /\bby\b/i.test(citation));
+        if (!looksLikeSource) {
+          return text;
+        }
+        text = text.slice(0, match.index).trim();
+      }
+    }
+
+    function normalizeProblemContentText(value) {
+      return normalizeProblemText(stripTrailingSourceCitation(value));
+    }
+
     function normalizeAnswerLabel(value) {
       const compact = normalizeProblemText(value).replace(/\s+/g, "");
       if (!compact) {
@@ -1310,12 +1422,18 @@
       }
 
       const choiceText = compact.replace(/\s+/g, "");
-      if (!/^(?:10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿1-9A-Ea-e])+$/.test(choiceText)) {
+      if (/^C[oO0]$/i.test(choiceText)) {
+        return "4";
+      }
+      if (/^[A-Ea-e]+$/.test(choiceText)) {
+        return "";
+      }
+      if (!/^[①②③④⑤❶❷❸❹❺1-5]+$/.test(choiceText)) {
         return normalized || compact;
       }
 
       const tokens = [];
-      const tokenPattern = /10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿1-9A-Ea-e]/g;
+      const tokenPattern = /[①②③④⑤❶❷❸❹❺1-5]/g;
       for (const match of String(choiceText).matchAll(tokenPattern)) {
         const token = match[0];
         const exported = ANSWER_EXPORT_NUMBER_MAP.get(normalizeAnswerLabel(token)) || ANSWER_EXPORT_NUMBER_MAP.get(token);
@@ -1339,7 +1457,11 @@
     function getFirstCircledAnswerLabel(value, maxScanLength = 180) {
       const target = String(value || "").slice(0, maxScanLength);
       const match = target.match(/[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/);
-      return match ? normalizeAnswerLabel(match[0]) : "";
+      if (match) {
+        return normalizeAnswerLabel(match[0]);
+      }
+      const brokenFourMatch = target.match(/(?:^|[\s:：\-])C\s*[oO0](?=\s|[A-Z가-힣]|$)/);
+      return brokenFourMatch ? "④" : "";
     }
 
     function isSingleLatinAnswerLabel(value) {
@@ -1359,9 +1481,31 @@
       return isLikelyRestoredOcrInitialText(restoredExplanationText) ? restoredExplanationText : "";
     }
 
+    function repairBrokenCircledFourAnswerCapture(answerText, explanationText) {
+      const rawAnswerText = normalizeProblemText(answerText || "");
+      const rawExplanationText = normalizeAnswerExplanationText(explanationText || "");
+      const match = rawAnswerText.match(/^C\s*[oO0](?:\s+([A-Za-z]{1,2}))?$/i);
+      if (!match) {
+        return null;
+      }
+      const stolenPrefix = match[1] || "";
+      if (!stolenPrefix) {
+        return {
+          answerText: "④",
+          explanationText: rawExplanationText
+        };
+      }
+      const separator = /^[A-Za-z]{1,2}$/.test(stolenPrefix) && /^[a-z]/.test(rawExplanationText) ? "" : " ";
+      return {
+        answerText: "④",
+        explanationText: normalizeAnswerExplanationText(`${stolenPrefix}${separator}${rawExplanationText}`)
+      };
+    }
+
     function repairOcrParsedAnswer(parsed) {
-      const answerText = normalizeAnswerLabel(parsed?.answerText || "");
-      const explanationText = normalizeAnswerExplanationText(parsed?.explanationText || "");
+      const brokenFourRepair = repairBrokenCircledFourAnswerCapture(parsed?.answerText || "", parsed?.explanationText || "");
+      const answerText = brokenFourRepair?.answerText || normalizeAnswerLabel(parsed?.answerText || "");
+      const explanationText = brokenFourRepair?.explanationText ?? normalizeAnswerExplanationText(parsed?.explanationText || "");
       const restoredExplanationText = restoreOcrStolenExplanationInitial(answerText, explanationText);
       if (restoredExplanationText) {
         const circledAnswerText = getFirstCircledAnswerLabel(restoredExplanationText);
@@ -1414,6 +1558,198 @@
       const cloned = record && typeof record === "object" ? { ...record } : record;
       repairOcrStolenInitialAnswerFields(cloned);
       return cloned;
+    }
+
+    function isPdfLabFirebaseConfigured() {
+      const config = window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+      return Boolean(config.apiKey && config.projectId && config.appId);
+    }
+
+    function getPdfLabFirebaseConfig() {
+      return window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
+    }
+
+    function ensurePdfLabFirebaseServices() {
+      if (!isPdfLabFirebaseConfigured() || !window.firebase) {
+        return false;
+      }
+      if (!firebase.apps.length) {
+        firebase.initializeApp(getPdfLabFirebaseConfig());
+      }
+      state.firebaseSharedLibrary.auth = firebase.auth();
+      state.firebaseSharedLibrary.db = firebase.firestore();
+      state.firebaseSharedLibrary.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
+      return Boolean(state.firebaseSharedLibrary.auth && state.firebaseSharedLibrary.db && state.firebaseSharedLibrary.storage);
+    }
+
+    function waitForPdfLabFirebaseAuth(auth, timeoutMs = 1500) {
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = (user) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (typeof unsubscribe === "function") {
+            unsubscribe();
+          }
+          resolve(user || null);
+        };
+        const timer = window.setTimeout(() => finish(auth?.currentUser || null), timeoutMs);
+        const unsubscribe = auth?.onAuthStateChanged
+          ? auth.onAuthStateChanged((user) => {
+              window.clearTimeout(timer);
+              finish(user || null);
+            }, () => {
+              window.clearTimeout(timer);
+              finish(auth?.currentUser || null);
+            })
+          : null;
+      });
+    }
+
+    function getFriendlyFirebaseMessage(error) {
+      const code = String(error?.code || "");
+      if (code.includes("permission-denied")) {
+        return "Firebase 공용 문제 라이브러리 권한이 없습니다. 관리자 계정으로 로그인해주세요.";
+      }
+      if (code.includes("network-request-failed")) {
+        return "Firebase 네트워크 연결이 불안정합니다.";
+      }
+      return error?.message || "Firebase 공용 문제 라이브러리를 불러오지 못했습니다.";
+    }
+
+    async function fetchPdfLabFirebaseCurrentProfile(db, user) {
+      if (!db || !user?.uid) {
+        return null;
+      }
+      const snapshot = await db.collection("users").doc(user.uid).get();
+      return snapshot.exists ? { uid: user.uid, ...(snapshot.data() || {}) } : { uid: user.uid, email: user.email || "" };
+    }
+
+    function normalizeSharedFirebaseImportRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return {
+        ...normalized,
+        sourceId: normalizeProblemText(normalized.sourceId || fallbackId)
+      };
+    }
+
+    function normalizeSharedFirebaseProblemRecord(record, fallbackId = "") {
+      const normalized = record && typeof record === "object" ? { ...record } : {};
+      return cloneProblemRecordWithRepairedOcrAnswer({
+        ...normalized,
+        recordId: normalizeProblemText(normalized.recordId || fallbackId),
+        sourceId: normalizeProblemText(normalized.sourceId || ""),
+        segmentStoragePaths: Array.isArray(normalized.segmentStoragePaths)
+          ? normalized.segmentStoragePaths.filter((value) => typeof value === "string")
+          : [],
+        answerSegmentStoragePaths: Array.isArray(normalized.answerSegmentStoragePaths)
+          ? normalized.answerSegmentStoragePaths.filter((value) => typeof value === "string")
+          : []
+      });
+    }
+
+    function isSharedFirebaseLibraryActive() {
+      return Boolean(state.firebaseSharedLibrary?.enabled);
+    }
+
+    async function loadSharedLibrarySnapshotFromFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
+        return null;
+      }
+      try {
+        const user = await waitForPdfLabFirebaseAuth(state.firebaseSharedLibrary.auth);
+        state.firebaseSharedLibrary.currentUser = user || null;
+        if (!user) {
+          state.firebaseSharedLibrary.enabled = false;
+          state.firebaseSharedLibrary.error = "Firebase 로그인 상태가 없어 로컬 문제 라이브러리를 사용합니다.";
+          return null;
+        }
+        const profile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSharedLibrary.db, user);
+        state.firebaseSharedLibrary.currentProfile = profile;
+        if (String(profile?.role || "").toLowerCase() !== "admin") {
+          state.firebaseSharedLibrary.enabled = false;
+          state.firebaseSharedLibrary.error = "관리자 계정이 아니어서 로컬 문제 라이브러리를 사용합니다.";
+          return null;
+        }
+        const [importsSnapshot, problemSnapshot] = await Promise.all([
+          state.firebaseSharedLibrary.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).get(),
+          state.firebaseSharedLibrary.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).get()
+        ]);
+        state.firebaseSharedLibrary.enabled = true;
+        state.firebaseSharedLibrary.error = "";
+        state.firebaseSharedLibrary.lastSyncedAt = Date.now();
+        return {
+          imports: importsSnapshot.docs.map((doc) => normalizeSharedFirebaseImportRecord(doc.data(), doc.id)),
+          problemRecords: problemSnapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id))
+        };
+      } catch (error) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = getFriendlyFirebaseMessage(error);
+        console.warn("Failed to load shared Firebase library", error);
+        return null;
+      }
+    }
+
+    function mergeSharedAndLocalLibraryImports(localImports = [], sharedImports = []) {
+      const recordMap = new Map();
+      (Array.isArray(localImports) ? localImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, record);
+        }
+      });
+      (Array.isArray(sharedImports) ? sharedImports : []).forEach((record) => {
+        if (record?.sourceId) {
+          recordMap.set(record.sourceId, {
+            ...(recordMap.get(record.sourceId) || {}),
+            ...record
+          });
+        }
+      });
+      return Array.from(recordMap.values());
+    }
+
+    function mergeSharedAndLocalLibraryProblems(localProblemRecords = [], sharedProblemRecords = []) {
+      const recordMap = new Map();
+      (Array.isArray(localProblemRecords) ? localProblemRecords : []).forEach((record) => {
+        if (record?.recordId) {
+          recordMap.set(record.recordId, record);
+        }
+      });
+      (Array.isArray(sharedProblemRecords) ? sharedProblemRecords : []).forEach((record) => {
+        if (!record?.recordId) {
+          return;
+        }
+        const localRecord = recordMap.get(record.recordId) || {};
+        const merged = {
+          ...localRecord,
+          ...record
+        };
+        if (!Array.isArray(merged.segmentBlobs) && Array.isArray(localRecord.segmentBlobs)) {
+          merged.segmentBlobs = localRecord.segmentBlobs;
+        }
+        if (!Array.isArray(merged.answerSegmentBlobs) && Array.isArray(localRecord.answerSegmentBlobs)) {
+          merged.answerSegmentBlobs = localRecord.answerSegmentBlobs;
+        }
+        recordMap.set(record.recordId, merged);
+      });
+      return Array.from(recordMap.values());
+    }
+
+    async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
+      const normalizedPath = normalizeProblemText(storagePath);
+      if (!normalizedPath || !state.firebaseSharedLibrary?.storage) {
+        return null;
+      }
+      const downloadUrl = await state.firebaseSharedLibrary.storage.ref(normalizedPath).getDownloadURL();
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`공용 라이브러리 이미지를 불러오지 못했습니다. (${response.status})`);
+      }
+      return await response.blob();
     }
 
     function escapeRegExp(value) {
@@ -2150,6 +2486,40 @@
       return `${textbookName}::${normalizeProblemTypeToken(rawReference || "unassigned")}`;
     }
 
+    function normalizeEffectiveProblemType(problemType) {
+      const normalized = String(problemType || "").trim();
+      if (normalized === "심경") {
+        return PROBLEM_TYPE_OTHER;
+      }
+      if (normalized === "무관문") {
+        return PROBLEM_TYPE_ODD_SENTENCE;
+      }
+      return normalized || PROBLEM_TYPE_OTHER;
+    }
+
+    function shouldStructuredTemplateIncludeChoices(templateKey) {
+      return ![
+        EDITOR_TEMPLATE_OBJECTIVE_INSERTION,
+        EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY,
+        EDITOR_TEMPLATE_SUBJECTIVE_FREE
+      ].includes(templateKey);
+    }
+
+    function shouldProblemTypeAllowInlineChoiceParsing(problemType, isSubjective = false) {
+      if (isSubjective) {
+        return false;
+      }
+      const resolvedType = normalizeEffectiveProblemType(problemType);
+      return ![
+        "삽입",
+        "밑줄어법",
+        "밑줄어휘",
+        "무관",
+        PROBLEM_TYPE_ODD_SENTENCE,
+        "지칭"
+      ].includes(resolvedType);
+    }
+
     function getSelectableTypeLabel(problem) {
       if (!problem) {
         return PROBLEM_TYPE_OTHER;
@@ -2157,16 +2527,17 @@
       if (problem.isSubjective) {
         return problem.subjectiveType || SUBJECTIVE_TYPE_OTHER;
       }
-      if (problem.problemType === "밑줄어법" || problem.problemType === "선택어법") {
+      const resolvedType = normalizeEffectiveProblemType(problem.problemType);
+      if (resolvedType === "밑줄어법" || resolvedType === "선택어법") {
         return PROBLEM_TYPE_GRAMMAR;
       }
-      if (problem.problemType === "밑줄어휘" || problem.problemType === "선택어휘") {
+      if (resolvedType === "밑줄어휘" || resolvedType === "선택어휘") {
         return PROBLEM_TYPE_VOCAB;
       }
-      if (problem.problemType === "무관") {
+      if (resolvedType === "무관") {
         return PROBLEM_TYPE_ODD_SENTENCE;
       }
-      return problem.problemType || PROBLEM_TYPE_OTHER;
+      return resolvedType || PROBLEM_TYPE_OTHER;
     }
 
     function truncateText(value, maxLength = 110) {
@@ -2268,6 +2639,19 @@
           }
           if (!examItemStore.indexNames.contains("passageTypeKey")) {
             examItemStore.createIndex("passageTypeKey", "passageTypeKey", { unique: false });
+          }
+
+          const checkSetStore = db.objectStoreNames.contains(LIBRARY_CHECK_SET_STORE)
+            ? request.transaction.objectStore(LIBRARY_CHECK_SET_STORE)
+            : db.createObjectStore(LIBRARY_CHECK_SET_STORE, { keyPath: "checkSetRecordId" });
+          if (!checkSetStore.indexNames.contains("checkSetId")) {
+            checkSetStore.createIndex("checkSetId", "checkSetId", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("createdAt")) {
+            checkSetStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!checkSetStore.indexNames.contains("schoolKey")) {
+            checkSetStore.createIndex("schoolKey", "schoolKey", { unique: false });
           }
 
           const workStore = db.objectStoreNames.contains(LIBRARY_WORK_STORE)
@@ -2767,6 +3151,7 @@
         (snapshot.problemAssets || []).length ||
         (snapshot.examSets || []).length ||
         (snapshot.examItems || []).length ||
+        (snapshot.checkSetRecords || []).length ||
         (snapshot.savedWorks || []).length
       );
     }
@@ -2784,6 +3169,7 @@
         problemAssetsRaw,
         examSetsRaw,
         examItemsRaw,
+        checkSetRecordsRaw,
         savedWorksRaw
       ] = await Promise.all([
         readJsonFileFromDirectory(directoryHandle, LIBRARY_META_FILE, null),
@@ -2794,9 +3180,10 @@
         readJsonFileFromDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
+        readJsonFileFromDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null)
       ]);
-      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, savedWorksRaw].some((value) => value != null)) {
+      if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, checkSetRecordsRaw, savedWorksRaw].some((value) => value != null)) {
         return null;
       }
 
@@ -2835,6 +3222,7 @@
         problemAssets,
         examSets: Array.isArray(examSetsRaw) ? examSetsRaw : [],
         examItems: Array.isArray(examItemsRaw) ? examItemsRaw : [],
+        checkSetRecords: Array.isArray(checkSetRecordsRaw) ? checkSetRecordsRaw : [],
         savedWorks: await decodeSavedWorksFromFolder(Array.isArray(savedWorksRaw) ? savedWorksRaw : [])
       };
     }
@@ -2850,6 +3238,7 @@
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_PROBLEM_ASSETS_FILE, problemAssets);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_SETS_FILE, snapshot.examSets || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
+      await writeJsonFileToDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, snapshot.checkSetRecords || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
         version: LIBRARY_SNAPSHOT_VERSION,
@@ -2859,14 +3248,20 @@
     }
 
     async function createLibrarySnapshotFromState() {
+      const [localImports, localProblemRecords, localProblemAssets] = await Promise.all([
+        loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
+        loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE)
+      ]);
       return {
         textbooks: [...state.storedTextbooks],
         schools: [...getSchoolProfiles()],
-        imports: [...(state.libraryCache.imports || [])],
-        problemRecords: [...(state.libraryCache.problemRecords || [])],
-        problemAssets: await loadAllRecordsFromStore(LIBRARY_PROBLEM_ASSET_STORE),
+        imports: [...(Array.isArray(localImports) ? localImports : [])],
+        problemRecords: [...(Array.isArray(localProblemRecords) ? localProblemRecords : [])],
+        problemAssets: [...(Array.isArray(localProblemAssets) ? localProblemAssets : [])],
         examSets: [...(state.libraryCache.examSets || [])],
         examItems: [...(state.libraryCache.examItems || [])],
+        checkSetRecords: [...(state.libraryCache.checkSetRecords || [])],
         savedWorks: [...(state.libraryCache.savedWorks || [])]
       };
     }
@@ -2879,6 +3274,7 @@
         LIBRARY_PROBLEM_ASSET_STORE,
         LIBRARY_EXAM_STORE,
         LIBRARY_EXAM_ITEM_STORE,
+        LIBRARY_CHECK_SET_STORE,
         LIBRARY_WORK_STORE
       ], "readwrite");
       const storeEntries = [
@@ -2891,6 +3287,7 @@
         [LIBRARY_PROBLEM_ASSET_STORE, snapshot.problemAssets || []],
         [LIBRARY_EXAM_STORE, snapshot.examSets || []],
         [LIBRARY_EXAM_ITEM_STORE, snapshot.examItems || []],
+        [LIBRARY_CHECK_SET_STORE, snapshot.checkSetRecords || []],
         [LIBRARY_WORK_STORE, snapshot.savedWorks || []]
       ];
       storeEntries.forEach(([storeName, records]) => {
@@ -2937,14 +3334,13 @@
       updateLibraryStorageUi();
     }
 
-    async function initializeLibraryFolderStorage() {
-      await restoreLibraryDirectoryHandle();
+    async function restoreLibrarySnapshotFromConnectedFolder() {
       if (!state.libraryDirectoryHandle || state.libraryDirectoryPermission !== "granted") {
-        return;
+        return false;
       }
       const snapshot = await readLibrarySnapshotFromDirectory(state.libraryDirectoryHandle);
       if (!hasLibrarySnapshotData(snapshot)) {
-        return;
+        return false;
       }
       state.libraryLastSyncedAt = Number(snapshot?.meta?.updatedAt) || 0;
       writeStoredTextbooks(snapshot.textbooks || []);
@@ -2953,6 +3349,12 @@
       syncTextbookModeUi();
       await replaceLibraryStoresFromSnapshot(snapshot);
       updateLibraryStorageUi();
+      return true;
+    }
+
+    async function initializeLibraryFolderStorage() {
+      await restoreLibraryDirectoryHandle();
+      await restoreLibrarySnapshotFromConnectedFolder();
     }
 
     async function chooseLibraryFolder() {
@@ -3042,11 +3444,55 @@
         const db = await openLibraryDb();
         const transaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readonly");
         const store = transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+        const unresolvedIds = [];
         await Promise.all(missingIds.map(async (recordId) => {
           const assetRecord = await idbRequestToPromise(store.get(recordId));
-          cache[recordId] = assetRecord || { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          if (assetRecord) {
+            cache[recordId] = assetRecord;
+          } else {
+            unresolvedIds.push(recordId);
+          }
         }));
         await idbTransactionDone(transaction);
+        if (unresolvedIds.length && isSharedFirebaseLibraryActive()) {
+          const recordMap = new Map(
+            (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
+              .map((record) => [record.recordId, record])
+          );
+          const remoteAssetRecords = await Promise.all(unresolvedIds.map(async (recordId) => {
+            const record = recordMap.get(recordId);
+            if (!record) {
+              return { recordId, segmentBlobs: [], answerSegmentBlobs: [], updatedAt: Date.now() };
+            }
+            try {
+              const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
+                Promise.all((Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
+                Promise.all((Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+              ]);
+              return {
+                recordId,
+                segmentBlobs,
+                answerSegmentBlobs,
+                updatedAt: Date.now()
+              };
+            } catch (error) {
+              console.warn("Failed to hydrate shared library assets", recordId, error);
+              return { recordId, segmentBlobs: [], answerSegmentBlobs: [], updatedAt: Date.now() };
+            }
+          }));
+          const writeTransaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readwrite");
+          const writeStore = writeTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+          remoteAssetRecords.forEach((assetRecord) => {
+            cache[assetRecord.recordId] = assetRecord;
+            writeStore.put(assetRecord);
+          });
+          await idbTransactionDone(writeTransaction);
+        }
+        unresolvedIds.forEach((recordId) => {
+          if (!Object.prototype.hasOwnProperty.call(cache, recordId)) {
+            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+          }
+        });
         state.libraryCache.problemAssetCache = cache;
       }
       return uniqueIds.map((recordId) => cache[recordId]).filter(Boolean);
@@ -3061,12 +3507,16 @@
       const assetMap = new Map(assetRecords.map((assetRecord) => [assetRecord.recordId, assetRecord]));
       return normalizedRecords.map((record) => ({
         ...record,
-        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs)
+        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs) && assetMap.get(record.recordId).segmentBlobs.length
           ? assetMap.get(record.recordId).segmentBlobs
-          : [],
-        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs)
+          : Array.isArray(record.segmentBlobs)
+            ? record.segmentBlobs
+            : [],
+        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs) && assetMap.get(record.recordId).answerSegmentBlobs.length
           ? assetMap.get(record.recordId).answerSegmentBlobs
-          : []
+          : Array.isArray(record.answerSegmentBlobs)
+            ? record.answerSegmentBlobs
+            : []
       }));
     }
 
@@ -3319,6 +3769,7 @@
         pageCount: problem.pageCount || 0,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
+        textStructure: problem.textStructure || null,
         problemType: problem.problemType || PROBLEM_TYPE_OTHER,
         subjectiveType: problem.subjectiveType || "",
         selectableType: getSelectableTypeLabel(problem),
@@ -3368,6 +3819,7 @@
         pageCount: problem.pageCount || 0,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
+        textStructure: problem.textStructure || null,
         problemType: problem.problemType || "",
         subjectiveType: problem.subjectiveType || "",
         isSubjective: Boolean(problem.isSubjective),
@@ -3422,6 +3874,7 @@
         pageCount: snapshot.pageCount || 0,
         promptText: snapshot.promptText || "",
         analysisText: snapshot.analysisText || "",
+        textStructure: snapshot.textStructure || null,
         problemType,
         subjectiveType,
         isSubjective,
@@ -3563,7 +4016,8 @@
     }
 
     function recordMatchesSchoolSource(record) {
-      return getRecordSourceKey(record) === getSchoolSourceFilterKey();
+      const filterKey = getSchoolSourceFilterKey();
+      return filterKey === LIBRARY_SOURCE_FILTER_ALL || getRecordSourceKey(record) === filterKey;
     }
 
     function getSchoolProblemRecordsOnly() {
@@ -4032,7 +4486,7 @@
     }
 
     function setSchoolSourceFilter(sourceKey) {
-      const normalized = normalizeLibrarySourceKey(sourceKey);
+      const normalized = normalizeSchoolSourceFilterKey(sourceKey);
       state.schoolWorkflow.sourceFilterKey = normalized;
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.value = normalized;
@@ -6015,13 +6469,21 @@
     }
 
     async function refreshLibrarySummary() {
-      const [imports, problemRecords, examSets, examItems, savedWorks] = await Promise.all([
+      const [localImports, localProblemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
         loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
         loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_ITEM_STORE),
+        loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
+      const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
+      const imports = Array.isArray(sharedSnapshot?.imports)
+        ? mergeSharedAndLocalLibraryImports(localImports, sharedSnapshot.imports)
+        : localImports;
+      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
+        ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
+        : localProblemRecords;
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
@@ -6029,6 +6491,7 @@
         problemAssetCache: state.libraryCache.problemAssetCache || {},
         examSets: examSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         examItems,
+        checkSetRecords: checkSetRecords.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         savedWorks: savedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
       };
       const summary = buildLibrarySummary(state.libraryCache.imports, state.libraryCache.problemRecords);
@@ -6065,6 +6528,41 @@
       if (isLibraryWorkspaceMode()) {
         renderLibraryWorkspaceDashboard();
       }
+    }
+
+    let sharedLibraryResumeSyncPromise = null;
+    let sharedLibraryResumeSyncTimer = 0;
+
+    async function refreshSharedLibraryStateFromStorage() {
+      if (sharedLibraryResumeSyncPromise) {
+        return sharedLibraryResumeSyncPromise;
+      }
+      sharedLibraryResumeSyncPromise = (async () => {
+        if (state.libraryDirectoryHandle && state.libraryDirectoryPermission === "granted") {
+          await restoreLibrarySnapshotFromConnectedFolder();
+        }
+        await refreshLibrarySummary();
+      })();
+      try {
+        await sharedLibraryResumeSyncPromise;
+      } finally {
+        sharedLibraryResumeSyncPromise = null;
+      }
+    }
+
+    function scheduleSharedLibraryResumeSync(reason = "") {
+      if (sharedLibraryResumeSyncTimer) {
+        window.clearTimeout(sharedLibraryResumeSyncTimer);
+      }
+      sharedLibraryResumeSyncTimer = window.setTimeout(() => {
+        sharedLibraryResumeSyncTimer = 0;
+        if (state.isBusy) {
+          return;
+        }
+        refreshSharedLibraryStateFromStorage().catch((error) => {
+          console.warn(`Failed to refresh shared library state on ${reason || "resume"}`, error);
+        });
+      }, 180);
     }
 
     async function deleteSelectedTextbookFromLibrary() {
@@ -6127,6 +6625,7 @@
     function readExamExportSettings() {
       const base = readSettings();
       const answerOutputMode = getSelectedExamAnswerMode();
+      const contentRenderMode = getSelectedExamContentMode();
       const roundIndices = getGeneratedExamRoundIndices();
       const activeRoundIndex = getActiveGeneratedExamRoundIndex();
       const roundSuffix = roundIndices.length > 1 ? ` ${getExamRoundLabel(activeRoundIndex)}` : "";
@@ -6136,6 +6635,7 @@
         title: `${elements.examTitleInput.value.trim() || "파이널 테스트"}${roundSuffix}`.trim(),
         subtitle: elements.examSubtitleInput.value.trim(),
         answerOutputMode,
+        contentRenderMode,
         includeAnswerKey: answerOutputMode === EXAM_ANSWER_MODE_WITH_ANSWER_KEY
       };
     }
@@ -6153,6 +6653,7 @@
         const typeSummary = Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko"));
         const sourceLabel = getLibrarySourceLabel(examSet.librarySourceKey || examSet.librarySourceName || items[0]?.librarySourceKey || items[0]?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY);
         const answerModeLabel = getExamAnswerModeLabel(examSet.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+        const contentModeLabel = getExamContentModeLabel(examSet.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
         return `
           <article class="exam-history-card">
             <header class="exam-history-card-header">
@@ -6166,7 +6667,7 @@
               </div>
             </header>
             ${examSet.schoolName ? `<p class="exam-history-school">${escapeHtml(examSet.schoolName)} · ${escapeHtml(sourceLabel)}</p>` : `<p class="exam-history-school">${escapeHtml(sourceLabel)}</p>`}
-            <p class="exam-history-meta">총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0} · 꼬리문제 ${examSet.tailCount || 0}</p>
+            <p class="exam-history-meta">총 ${examSet.totalCount || items.length}문항 · ${escapeHtml(answerModeLabel)} · ${escapeHtml(contentModeLabel)} · 객관식 ${examSet.objectiveCount || 0} · 주관식 ${examSet.subjectiveCount || 0} · 꼬리문제 ${examSet.tailCount || 0}</p>
             <p class="exam-history-types">${escapeHtml(typeSummary.join(", "))}</p>
           </article>
         `;
@@ -6246,7 +6747,7 @@
       state.schoolWorkflow.typeTargets = snapshot.typeTargets && typeof snapshot.typeTargets === "object"
         ? { ...snapshot.typeTargets }
         : {};
-      state.schoolWorkflow.sourceFilterKey = normalizeLibrarySourceKey(snapshot.sourceFilterKey || state.schoolWorkflow.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      state.schoolWorkflow.sourceFilterKey = normalizeSchoolSourceFilterKey(snapshot.sourceFilterKey || state.schoolWorkflow.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
       state.schoolWorkflow.typeSelectionCustomized = Boolean(snapshot.typeSelectionCustomized);
       state.schoolWorkflow.passageTextbookName = normalizeTextbookName(snapshot.passageTextbookName || "");
       state.schoolWorkflow.passageQuery = snapshot.passageQuery || "";
@@ -6371,6 +6872,7 @@
           title: elements.examTitleInput.value.trim(),
           subtitle: elements.examSubtitleInput.value.trim(),
           answerOutputMode: getSelectedExamAnswerMode(),
+          contentRenderMode: getSelectedExamContentMode(),
           loadedExamId: state.examBuilder.loadedExamId || "",
           layoutSettings: captureSharedLayoutSettings(),
           schoolWorkflow: captureSchoolWorkflowSnapshot(),
@@ -6384,7 +6886,7 @@
           name: workName,
           createdAt: existingRecord?.createdAt || now,
           updatedAt: now,
-          summaryLine: `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
+          summaryLine: `${selectedSchoolName} · ${sourceLabel} · ${getExamAnswerModeLabel(payload.answerOutputMode)} · ${getExamContentModeLabel(payload.contentRenderMode)} · draft ${assignedCount}/${slots.length} · ${payload.schoolWorkflow?.draftMode === "full" ? "선택 유형 전부" : "유형당 1문제"}`,
           payload
         };
 
@@ -6483,6 +6985,7 @@
       elements.examTitleInput.value = payload.title || "파이널 테스트";
       elements.examSubtitleInput.value = payload.subtitle || "";
       applyExamAnswerModeToUi(payload.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      applyExamContentModeToUi(payload.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       state.examBuilder.loadedExamId = payload.loadedExamId || "";
       state.examBuilder.loadedWorkId = workId;
       state.examBuilder.slots = Array.isArray(payload.slots)
@@ -6677,24 +7180,29 @@
       return limited;
     }
 
-    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
-      if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
-      throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
-      }
-      const segmentImages = record.segmentBlobs.map((blob, index) => {
-        if (!blob) {
-          throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
-        }
-        const url = URL.createObjectURL(blob);
-        state.examBuilder[urlBucket].push(url);
-        const segment = record.segmentMeta?.[index] || {};
-        return {
-          id: `${record.recordId}-segment-${index + 1}`,
-          width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
-          height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
-          url
-        };
-      });
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
+      const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
+      const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
+        ? []
+        : (() => {
+            if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
+              throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
+            }
+            return record.segmentBlobs.map((blob, index) => {
+              if (!blob) {
+                throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
+              }
+              const url = URL.createObjectURL(blob);
+              state.examBuilder[urlBucket].push(url);
+              const segment = record.segmentMeta?.[index] || {};
+              return {
+                id: `${record.recordId}-segment-${index + 1}`,
+                width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
+                height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
+                url
+              };
+            });
+          })();
       return {
         id: `exam-${record.recordId}`,
         kind: record.kind || "problem",
@@ -6711,8 +7219,11 @@
         segmentImages,
         pageSignature: record.pageSignature || "",
         pageCount: record.pageCount || 0,
+        contentMode: getLibraryProblemMode(record),
+        renderContentMode: normalizedRenderMode,
         promptText: record.promptText || "",
         analysisText: record.analysisText || "",
+        textStructure: record.textStructure || null,
         problemType: record.problemType || PROBLEM_TYPE_OTHER,
         subjectiveType: record.subjectiveType || "",
         isSubjective: Boolean(record.isSubjective),
@@ -6757,6 +7268,7 @@
 
     async function buildExamProblemPayloadFromSlots(urlBucket = "previewUrls", options = {}) {
       cleanupExamUrls(urlBucket);
+      const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
       const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
@@ -6767,7 +7279,12 @@
       const problems = selectedEntries.map((entry) => {
         const runtimeRecord = hydratedRecordMap.get(entry.record.recordId) || entry.record;
         repairOcrStolenInitialAnswerFields(runtimeRecord);
-        const runtimeProblem = createExamRuntimeProblemFromRecord(runtimeRecord, runtimeRecord.kind === "shared" ? null : problemNumber, urlBucket);
+        const runtimeProblem = createExamRuntimeProblemFromRecord(
+          runtimeRecord,
+          runtimeRecord.kind === "shared" ? null : problemNumber,
+          urlBucket,
+          renderContentMode
+        );
         if (entry.record.kind !== "shared") {
           problemNumber += 1;
         }
@@ -6777,7 +7294,8 @@
         problems,
         totalQuestionCount,
         renderedQuestionCount,
-        isLimited: renderedQuestionCount < totalQuestionCount
+        isLimited: renderedQuestionCount < totalQuestionCount,
+        renderContentMode
       };
     }
 
@@ -6845,7 +7363,10 @@
         totalQuestionCount,
         renderedQuestionCount,
         isLimited
-      } = await buildExamProblemPayloadFromSlots(urlBucket, options);
+      } = await buildExamProblemPayloadFromSlots(urlBucket, {
+        ...options,
+        renderContentMode: settings.contentRenderMode
+      });
       const layoutMeta = buildLayoutPages(settings, problems);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");
@@ -6914,17 +7435,119 @@
       }
     }
 
-    function openStandaloneHtmlPreview(htmlText) {
+    function openPendingStandaloneWindow(message = "출력 문서를 준비하는 중입니다...") {
+      let popup = null;
+      try {
+        popup = window.open("", "_blank");
+      } catch (error) {
+        console.warn("Standalone output popup was blocked", error);
+        return null;
+      }
+      if (!popup) {
+        console.warn("Standalone output popup was blocked");
+        return null;
+      }
+      popup.document.open();
+      popup.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>PDF LAB</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#153f3b;font-family:Georgia,'Times New Roman',serif}.pending{padding:36px 42px;border:1px solid rgba(21,63,59,.14);border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(24,35,30,.12);letter-spacing:.08em;text-transform:uppercase}</style></head><body><div class="pending">${escapeHtml(message)}</div></body></html>`);
+      popup.document.close();
+      popup.focus();
+      return popup;
+    }
+
+    function waitForDocumentImages(targetDocument) {
+      const images = Array.from(targetDocument?.images || []);
+      return Promise.all(images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+        }
+        return new Promise((imageResolve) => {
+          image.addEventListener("load", () => imageResolve(), { once: true });
+          image.addEventListener("error", () => imageResolve(), { once: true });
+        });
+      }));
+    }
+
+    function downloadStandaloneHtml(htmlText, titleText = "pdf-lab-preview") {
       const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       state.examBuilder.exportUrls.push(url);
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!popup) {
-        throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
-      }
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${slugifyFileName(titleText || "pdf-lab-preview") || "pdf-lab-preview"}.html`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     }
 
-    function printStandaloneHtml(htmlText) {
+    function openStandaloneHtmlPreview(htmlText, popup = null, titleText = "pdf-lab-preview") {
+      if (popup && !popup.closed) {
+        popup.document.open();
+        popup.document.write(htmlText);
+        popup.document.close();
+        popup.focus();
+        return "popup";
+      }
+      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      state.examBuilder.exportUrls.push(url);
+      let previewPopup = null;
+      try {
+        previewPopup = window.open(url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        console.warn("Standalone HTML preview popup was blocked", error);
+      }
+      if (!previewPopup) {
+        downloadStandaloneHtml(htmlText, titleText);
+        return "download";
+      }
+      return "popup";
+    }
+
+    function printStandaloneHtml(htmlText, printWindow = null) {
+      if (printWindow && !printWindow.closed) {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (closeWindow = true) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            setTimeout(() => {
+              if (closeWindow) {
+                try {
+                  printWindow.close();
+                } catch (error) {
+                  console.warn("Failed to close print window", error);
+                }
+              }
+              resolve();
+            }, 250);
+          };
+          const runPrint = async () => {
+            try {
+              await waitForDocumentImages(printWindow.document);
+              printWindow.focus();
+              printWindow.addEventListener("afterprint", () => finish(true), { once: true });
+              printWindow.print();
+              setTimeout(() => finish(false), 5000);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          try {
+            printWindow.document.open();
+            printWindow.document.write(htmlText);
+            printWindow.document.close();
+            if (printWindow.document.readyState === "complete") {
+              setTimeout(runPrint, 50);
+            } else {
+              printWindow.addEventListener("load", runPrint, { once: true });
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
       return new Promise((resolve, reject) => {
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
@@ -6948,16 +7571,7 @@
               reject(new Error("인쇄용 프레임을 열지 못했습니다."));
               return;
             }
-            const images = Array.from(iframe.contentDocument?.images || []);
-            await Promise.all(images.map((image) => {
-              if (image.complete && image.naturalWidth > 0) {
-                return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-              }
-              return new Promise((imageResolve) => {
-                image.addEventListener("load", () => imageResolve(), { once: true });
-                image.addEventListener("error", () => imageResolve(), { once: true });
-              });
-            }));
+            await waitForDocumentImages(iframe.contentDocument);
             targetWindow.focus();
             targetWindow.print();
             cleanup();
@@ -6983,7 +7597,7 @@
       validateExamBuilderForExport();
       const entries = getExamSlotAssignedRecords();
       const settings = readExamExportSettings();
-      const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}`;
+      const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}|${settings.contentRenderMode}`;
       if (getExamSets().some((examSet) =>
         examSet.signature === signature &&
         normalizeSchoolKey(examSet.schoolKey || "") === normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "") &&
@@ -7005,6 +7619,7 @@
         kicker: settings.kicker,
         subtitle: settings.subtitle,
         answerOutputMode: settings.answerOutputMode,
+        contentRenderMode: settings.contentRenderMode,
         schoolKey: state.schoolWorkflow.selectedSchoolKey || "",
         schoolName: getSelectedSchoolProfile()?.name || "",
         librarySourceKey,
@@ -7106,6 +7721,7 @@
 
     async function previewExamLayout() {
       validateExamBuilderForExport();
+      const previewWindow = openPendingStandaloneWindow("HTML 미리보기를 준비하는 중입니다...");
       setBusy(true);
       setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
       try {
@@ -7113,9 +7729,16 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html);
-        setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
-        setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+        const openMode = openStandaloneHtmlPreview(html, previewWindow, settings.title);
+        setStatus(openMode === "download" ? "시험지 HTML 파일을 저장했습니다." : "시험지 미리보기를 열었습니다.", "idle", settings.title);
+        setOptionalText(elements.examExportSummary, openMode === "download"
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기 창이 막혀 HTML 파일로 저장했습니다.`
+          : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+      } catch (error) {
+        if (previewWindow && !previewWindow.closed) {
+          previewWindow.close();
+        }
+        throw error;
       } finally {
         setBusy(false);
       }
@@ -7123,6 +7746,7 @@
 
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
+      const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -7133,11 +7757,16 @@
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html);
+        await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+      } catch (error) {
+        if (printWindow && !printWindow.closed) {
+          printWindow.close();
+        }
+        throw error;
       } finally {
         cleanupExamExportUrls();
         setBusy(false);
@@ -7321,17 +7950,18 @@
     }
 
     function buildProblemTypeTags(problemType, isSubjective, subjectiveType = "") {
+      const resolvedProblemType = normalizeEffectiveProblemType(problemType);
       const tags = [];
-      if (problemType) {
-        tags.push(problemType);
+      if (resolvedProblemType) {
+        tags.push(resolvedProblemType);
       }
-      if (problemType === "무관") {
+      if (resolvedProblemType === "무관") {
         tags.push(PROBLEM_TYPE_ODD_SENTENCE);
       }
-      if (problemType === "밑줄어법" || problemType === "선택어법") {
+      if (resolvedProblemType === "밑줄어법" || resolvedProblemType === "선택어법") {
         tags.push(PROBLEM_TYPE_GRAMMAR);
       }
-      if (problemType === "밑줄어휘" || problemType === "선택어휘") {
+      if (resolvedProblemType === "밑줄어휘" || resolvedProblemType === "선택어휘") {
         tags.push(PROBLEM_TYPE_VOCAB);
       }
       if (isSubjective) {
@@ -7765,6 +8395,9 @@
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.disabled = isBusy;
       }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.disabled = isBusy;
+      }
       elements.previewExamButton.disabled = isBusy;
       elements.printExamButton.disabled = isBusy;
       elements.commitExamButton.disabled = isBusy;
@@ -8124,6 +8757,8 @@
             if (!segments.length) {
               return null;
             }
+            const sharedPromptText = collectProblemPromptText(columnMap, segments);
+            const sharedAnalysisText = collectProblemText(columnMap, segments, { maxLength: 6000, maxSegments: 24 });
             return {
               id: `shared-${event.groupLabel}`,
               kind: "shared",
@@ -8136,6 +8771,8 @@
               segmentImages: Array.from({ length: segments.length }, () => null),
               pageSignature: getPageSignature({ segments }),
               pageCount: new Set(segments.map((segment) => segment.pageIndex)).size,
+              promptText: sharedPromptText,
+              analysisText: sharedAnalysisText,
               problemType: null,
               isSubjective: false,
               answerSegments: [],
@@ -8305,7 +8942,406 @@
       return { width, height };
     }
 
+    function isTextRenderProblem(problem) {
+      return normalizeExamContentMode(problem?.renderContentMode || EXAM_CONTENT_MODE_IMAGE) === EXAM_CONTENT_MODE_TEXT;
+    }
+
+    function normalizeProblemTextForCardDisplay(value) {
+      const text = String(value || "").replace(/\r\n?/g, "\n").trim();
+      return text || "문항 텍스트가 없습니다.";
+    }
+
+    function normalizeProblemChoiceMarker(marker) {
+      const compact = String(marker || "").replace(/\s+/g, "");
+      if (!compact) {
+        return "";
+      }
+      if (compact === "CO" || compact === "C0") {
+        return "④";
+      }
+      return /^\(.+\)$/.test(compact) ? compact.slice(1, -1) : compact;
+    }
+
+    function normalizeObjectiveChoiceMarker(marker, index = 0) {
+      const fallback = DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || DEFAULT_STRUCTURED_CHOICE_MARKERS[0];
+      const normalized = normalizeProblemChoiceMarker(marker || fallback);
+      const markerIndex = DEFAULT_STRUCTURED_CHOICE_MARKERS.indexOf(normalized);
+      if (markerIndex >= 0 && markerIndex < DEFAULT_STRUCTURED_CHOICE_MARKERS.length) {
+        return normalized;
+      }
+      const digitMatch = normalized.match(/^[1-5]$/);
+      if (digitMatch) {
+        return DEFAULT_STRUCTURED_CHOICE_MARKERS[Number(digitMatch[0]) - 1] || fallback;
+      }
+      return fallback;
+    }
+
+    function composeStructuredChoiceLinesForBody(entries = []) {
+      return (Array.isArray(entries) ? entries : [])
+        .map((entry, index) => {
+          const text = normalizeProblemText(entry?.text || "");
+          if (!text) {
+            return "";
+          }
+          const marker = normalizeObjectiveChoiceMarker(entry?.marker, index);
+          return marker ? `${marker} ${text}` : text;
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    function appendStructuredChoiceLinesToBody(bodyText, entries = []) {
+      const normalizedBody = normalizeProblemText(bodyText || "");
+      const choiceLines = composeStructuredChoiceLinesForBody(entries);
+      return [normalizedBody, choiceLines].filter(Boolean).join("\n");
+    }
+
+    function mergeProblemStemAndReference(questionText, referenceText) {
+      const normalizedQuestion = normalizeProblemText(questionText || "");
+      const normalizedReference = normalizeProblemText(referenceText || "")
+        .split(/\n+/)
+        .map((line) => normalizeProblemText(line))
+        .filter(Boolean)
+        .join(" ");
+      if (normalizedQuestion && normalizedReference) {
+        return `${normalizedQuestion} ${normalizedReference}`.trim();
+      }
+      return normalizedQuestion || normalizedReference;
+    }
+
+    function buildProblemTextBaseBlocks(text) {
+      const normalized = normalizeProblemText(text);
+      if (!normalized) {
+        return [];
+      }
+      const blocks = [];
+      let workingText = normalized;
+      const stemMatch = workingText.match(/^(.+?\?)(?:\s+|$)([\s\S]*)$/);
+      if (stemMatch) {
+        blocks.push({ type: "stem", text: stemMatch[1].trim() });
+        workingText = String(stemMatch[2] || "").trim();
+      }
+      if (!workingText) {
+        return blocks;
+      }
+      const leadingReferences = [];
+      while (true) {
+        const referenceMatch = workingText.match(/^(\[[^\]\n]{1,32}\])(?:\s+|$)([\s\S]*)$/);
+        if (!referenceMatch) {
+          break;
+        }
+        const referenceToken = normalizeProblemText(referenceMatch[1] || "");
+        if (!referenceToken) {
+          break;
+        }
+        leadingReferences.push(referenceToken);
+        workingText = String(referenceMatch[2] || "").trim();
+        if (!workingText) {
+          break;
+        }
+      }
+      if (leadingReferences.length) {
+        const mergedStem = mergeProblemStemAndReference(
+          blocks.find((block) => block.type === "stem")?.text || "",
+          leadingReferences.join(" ")
+        );
+        const existingStem = blocks.find((block) => block.type === "stem");
+        if (existingStem) {
+          existingStem.text = mergedStem;
+        } else if (mergedStem) {
+          blocks.push({
+            type: "stem",
+            text: mergedStem
+          });
+        }
+      }
+      if (!workingText) {
+        return blocks;
+      }
+      workingText = workingText
+        .replace(/\s+(?=(?:AB|ABC)\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿])/g, "\n")
+        .replace(/\s+(?=\[[^\]]+\])/g, "\n")
+        .replace(/\s+(?=\([A-E]\))/g, "\n")
+        .replace(/\s+(?=\([1-5]\))/g, "\n")
+        .replace(/\s+(?=C\s*[O0](?:\s|[A-Za-z가-힣]))/g, "\n")
+        .replace(/\s*(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿](?:\s|[A-Za-z가-힣]))/g, "\n");
+      workingText
+        .split(/\n+/)
+        .map((segment) => String(segment || "").trim())
+        .filter(Boolean)
+        .forEach((segment) => {
+          if (/^\[[^\]\n]{1,32}\]$/.test(segment) && !blocks.some((block) => block.type === "body" || block.type === "choice")) {
+            const stemBlock = blocks.find((block) => block.type === "stem");
+            const mergedStem = mergeProblemStemAndReference(stemBlock?.text || "", segment);
+            if (stemBlock) {
+              stemBlock.text = mergedStem;
+            } else if (mergedStem) {
+              blocks.push({
+                type: "stem",
+                text: mergedStem
+              });
+            }
+            return;
+          }
+          blocks.push({
+            type: "body",
+            text: segment
+          });
+      });
+      return blocks;
+    }
+
+    function buildProblemTextBlocksFromStructuredData(data) {
+      const structured = data && typeof data === "object" ? data : null;
+      if (!structured) {
+        return [];
+      }
+      const blocks = [];
+      const pushBlock = (type, text, extra = {}) => {
+        const normalized = normalizeProblemContentText(text);
+        if (!normalized) {
+          return;
+        }
+        blocks.push({ type, text: normalized, ...extra });
+      };
+      const pushMultilineBlock = (type, text, extra = {}) => {
+        stripTrailingSourceCitation(text)
+          .split(/\n+/)
+          .map((line) => normalizeProblemContentText(line))
+          .filter(Boolean)
+          .forEach((line) => blocks.push({ type, text: line, ...extra }));
+      };
+      pushBlock("stem", mergeProblemStemAndReference(structured.questionText, structured.referenceText));
+      if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
+        pushBlock("body", structured.givenText || structured.insertionText || structured.leadText);
+        pushBlock("body", appendStructuredChoiceLinesToBody(structured.bodyText, structured.choices));
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        pushBlock("body", structured.givenText || structured.insertionText || structured.leadText);
+        pushMultilineBlock("body", structured.bodyText);
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
+        pushBlock("body", structured.bodyText);
+        pushBlock("body", structured.summaryText);
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        pushBlock("body", appendStructuredChoiceLinesToBody(structured.bodyText, structured.choices));
+      } else {
+        pushBlock("body", structured.bodyText);
+      }
+      const shouldIncludeChoices = shouldStructuredTemplateIncludeChoices(structured.templateKey);
+      if (shouldIncludeChoices && Array.isArray(structured.choices)) {
+        structured.choices.forEach((choice, index) => {
+          const normalized = normalizeProblemContentText(choice?.text || "");
+          if (!normalized) {
+            return;
+          }
+          blocks.push({
+            type: "choice",
+            marker: normalizeObjectiveChoiceMarker(choice?.marker, index),
+            text: normalized
+          });
+        });
+      }
+      return blocks;
+    }
+
+    function buildProblemTextBlocks(problem) {
+      if (problem?.textStructure) {
+        const structuredBlocks = buildProblemTextBlocksFromStructuredData(problem.textStructure);
+        if (structuredBlocks.length) {
+          return structuredBlocks;
+        }
+      }
+      const rawText = normalizeProblemTextForCardDisplay(problem?.analysisText || problem?.promptText || "");
+      if (!rawText || rawText === "문항 텍스트가 없습니다.") {
+        return [{ type: "body", text: "문항 텍스트가 없습니다." }];
+      }
+      const normalized = normalizeProblemText(rawText);
+      if (!shouldProblemTypeAllowInlineChoiceParsing(problem?.problemType, Boolean(problem?.isSubjective))) {
+        return buildProblemTextBaseBlocks(normalized);
+      }
+      const normalizedForChoiceParsing = normalized
+        .replace(/\b(?:AB|ABC)\s+(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿])/g, "")
+        .replace(/\s+(?=C\s*[O0](?:\s|[A-Za-z가-힣]))/g, "\n")
+        .replace(/\s*(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿](?:\s|[A-Za-z가-힣]))/g, "\n");
+      const choiceRegex = /(^|\s)(\(\s*[①②③④⑤❶❷❸❹❺]\s*\)|[①②③④⑤❶❷❸❹❺][.)]?|\(\s*[1-5]\s*\)|C\s*[O0])/g;
+      const matches = [];
+      for (const match of normalizedForChoiceParsing.matchAll(choiceRegex)) {
+        const marker = match[2] || "";
+        if (!marker) {
+          continue;
+        }
+        const leadingWhitespace = match[1] || "";
+        const markerIndex = match.index + leadingWhitespace.length;
+        matches.push({
+          marker,
+          markerIndex,
+          markerEndIndex: markerIndex + marker.length
+        });
+      }
+      if (!matches.length) {
+        return buildProblemTextBaseBlocks(normalized);
+      }
+      const prefixText = normalizedForChoiceParsing.slice(0, matches[0].markerIndex).trim();
+      const blocks = buildProblemTextBaseBlocks(prefixText);
+      matches.forEach((match, index) => {
+        const nextMatch = matches[index + 1] || null;
+        const choiceText = normalizedForChoiceParsing
+          .slice(match.markerEndIndex, nextMatch ? nextMatch.markerIndex : normalizedForChoiceParsing.length)
+          .trim();
+        if (!choiceText) {
+          return;
+        }
+        blocks.push({
+          type: "choice",
+          marker: normalizeObjectiveChoiceMarker(match.marker, index),
+          text: choiceText
+        });
+      });
+      return blocks.length ? blocks : [{ type: "body", text: normalized }];
+    }
+
+    function renderProblemTextInlineContent(text, problem) {
+      const escapedText = escapeHtml(text || "");
+      return escapedText
+        .replace(/\[\[u:([\s\S]*?)\]\]/g, '<span class="problem-text-underline">$1</span>')
+        .replace(/(?:[_＿﹍﹎﹏]{3,}|[-‐‑‒–—―－─━⎯]{3,})/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/\(\s*\)/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/[\[〔]\s*빈칸\s*[\]〕]/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/\n+/g, "<br>");
+    }
+
+    function shouldRenderChoicePartTable(problem) {
+      const normalizedType = normalizeEffectiveProblemType(problem?.problemType);
+      return [
+        "연결사",
+        "요약",
+        "선택어법",
+        "선택어휘",
+        "순서"
+      ].includes(normalizedType);
+    }
+
+    function getChoicePartHintCountFromText(text) {
+      const match = normalizeProblemText(text || "").match(/(?:^|\s)(ABC|AB)\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/);
+      if (!match) {
+        return 0;
+      }
+      return match[1] === "ABC" ? 3 : 2;
+    }
+
+    function splitChoicePartText(text) {
+      return normalizeProblemText(text || "")
+        .split(/\s+[-‐‑‒–—―－]\s+/)
+        .map((part) => normalizeProblemText(part))
+        .filter(Boolean);
+    }
+
+    function inferChoicePartCount(choiceBlocks, problem, hintCount = 0) {
+      if (!shouldRenderChoicePartTable(problem)) {
+        return 0;
+      }
+      if (hintCount === 2 || hintCount === 3) {
+        return hintCount;
+      }
+      const normalizedType = normalizeEffectiveProblemType(problem?.problemType);
+      const counts = new Map();
+      choiceBlocks.forEach((block) => {
+        const count = splitChoicePartText(block.text || "").length;
+        if (count >= 2 && count <= 3) {
+          counts.set(count, (counts.get(count) || 0) + 1);
+        }
+      });
+      const minimumMatches = Math.max(2, Math.ceil(choiceBlocks.length * 0.6));
+      if (normalizedType === "요약" && (counts.get(2) || 0) >= Math.max(1, Math.ceil(choiceBlocks.length * 0.4))) {
+        return 2;
+      }
+      if ((counts.get(3) || 0) >= minimumMatches) {
+        return 3;
+      }
+      if ((counts.get(2) || 0) >= minimumMatches) {
+        return 2;
+      }
+      return 0;
+    }
+
+    function buildProblemChoicePartTableMarkup(choiceBlocks, problem) {
+      const partCount = inferChoicePartCount(choiceBlocks, problem, getChoicePartHintCountFromText(problem?.analysisText || problem?.promptText || ""));
+      if (!partCount) {
+        return "";
+      }
+      const labels = partCount === 3 ? ["A", "B", "C"] : ["A", "B"];
+      return `
+        <div class="problem-choice-part-table is-${partCount === 3 ? "abc" : "ab"}">
+          <span class="problem-choice-part-head"></span>
+          ${labels.map((label) => `<span class="problem-choice-part-head">${label}</span>`).join("")}
+          ${choiceBlocks.map((block, index) => {
+            const parts = splitChoicePartText(block.text || "");
+            const marker = normalizeObjectiveChoiceMarker(block.marker, index);
+            return `
+              <span class="problem-choice-part-marker">${escapeHtml(marker)}</span>
+              ${labels.map((_, partIndex) => `<span class="problem-choice-part-cell">${renderProblemTextInlineContent(parts[partIndex] || "", problem)}</span>`).join("")}
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function buildProblemTextMarkup(problem) {
+      const blocks = buildProblemTextBlocks(problem);
+      const choiceBlocks = blocks.filter((block) => block.type === "choice");
+      const choiceTableMarkup = buildProblemChoicePartTableMarkup(choiceBlocks, problem);
+      let choiceTableRendered = false;
+      return blocks
+        .map((block) => {
+          if (block.type === "choice") {
+            if (choiceTableMarkup) {
+              if (choiceTableRendered) {
+                return "";
+              }
+              choiceTableRendered = true;
+              return choiceTableMarkup;
+            }
+            return `
+              <div class="problem-text-choice">
+                <span class="problem-text-choice-marker">${escapeHtml(block.marker || "")}</span>
+                <p class="problem-text-choice-body">${renderProblemTextInlineContent(block.text || "", problem)}</p>
+              </div>
+            `;
+          }
+          const classNames = ["problem-text-block"];
+          if (block.type === "stem") {
+            classNames.push("is-stem");
+          } else if (block.type === "reference") {
+            classNames.push("is-reference");
+          }
+          return `<p class="${classNames.join(" ")}">${renderProblemTextInlineContent(block.text || "", problem)}</p>`;
+        })
+        .join("");
+    }
+
+    function getProblemTextParagraphs(problem) {
+      return buildProblemTextBlocks(problem)
+        .map((block) => block.type === "choice"
+          ? `${block.marker || ""} ${block.text || ""}`.trim()
+          : String(block.text || "").trim()
+        )
+        .filter(Boolean);
+    }
+
+    function estimateProblemTextLineCount(problem, columnWidthMm) {
+      const paragraphs = getProblemTextParagraphs(problem);
+      const charsPerLine = Math.max(18, Math.round(columnWidthMm * TEXT_CHAR_PER_LINE_FACTOR));
+      return Math.max(1, paragraphs.reduce((sum, paragraph) =>
+        sum + Math.max(1, Math.ceil(paragraph.length / charsPerLine)), 0));
+    }
+
     function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
+      if (isTextRenderProblem(problem)) {
+        return {
+          scalableHeightMm: estimateProblemTextLineCount(problem, columnWidthMm) * TEXT_LINE_HEIGHT_MM,
+          fixedHeightMm: TEXT_CARD_FIXED_HEIGHT_MM,
+          supportsFitScale: false
+        };
+      }
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const segments = Array.isArray(problem?.segments) && problem.segments.length
         ? problem.segments
@@ -8317,7 +9353,8 @@
       const fixedHeightMm = CARD_FIXED_HEIGHT_MM + Math.max(0, segments.length - 1) * SEGMENT_GAP_MM;
       return {
         scalableHeightMm: Number.isFinite(scalableHeightMm) ? Math.max(1, scalableHeightMm) : columnWidthMm,
-        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM
+        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM,
+        supportsFitScale: true
       };
     }
 
@@ -8330,6 +9367,9 @@
     }
 
     function buildBalancedSquashCandidates(firstProblem, secondProblem) {
+      if (isTextRenderProblem(firstProblem) || isTextRenderProblem(secondProblem)) {
+        return [[0, 0]];
+      }
       const firstManual = getManualSquashPercent(firstProblem);
       const secondManual = getManualSquashPercent(secondProblem);
       const candidates = [];
@@ -8432,6 +9472,7 @@
           const gapBefore = currentColumn.items.length ? settings.cardGap : 0;
           const fullHeightMm = estimateHeightMm(metrics, 1);
           const remainingMm = columnHeightMm - currentColumn.usedHeightMm - gapBefore;
+          const supportsFitScale = metrics.supportsFitScale !== false;
           if (currentColumn.items.length < settings.maxPerColumn && fullHeightMm <= remainingMm) {
             currentColumn.items.push({ problem, fitScale: 1, appliedSquashPercent: baseSquashPercent });
             currentColumn.usedHeightMm += gapBefore + fullHeightMm;
@@ -8455,7 +9496,7 @@
               continue;
             }
           }
-          if (!currentColumn.items.length && remainingMm > metrics.fixedHeightMm + 18) {
+          if (!currentColumn.items.length && supportsFitScale && remainingMm > metrics.fixedHeightMm + 18) {
             const fitScale = Math.min(1, Math.max(MIN_FIT_SCALE, (remainingMm - metrics.fixedHeightMm) / Math.max(1, metrics.scalableHeightMm)));
             if (estimateHeightMm(metrics, fitScale) <= remainingMm + 0.4) {
               currentColumn.items.push({ problem, fitScale, appliedSquashPercent: baseSquashPercent });
@@ -8465,7 +9506,7 @@
             }
           }
           if (!currentColumn.items.length) {
-            const fallbackFitScale = MIN_FIT_SCALE;
+            const fallbackFitScale = supportsFitScale ? MIN_FIT_SCALE : 1;
             currentColumn.items.push({
               problem,
               fitScale: fallbackFitScale,
@@ -8574,6 +9615,7 @@
 
     function createProblemCardMarkup(entry) {
       const { problem, fitScale } = entry;
+      const isTextRender = isTextRenderProblem(problem);
       const squashPercent = getEntryAppliedSquashPercent(entry);
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const squashLabel = `압축 ${squashPercent}%`;
@@ -8581,31 +9623,37 @@
       const typeBadges = getEntryTypeBadges(problem)
         .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
         .join("");
-      const availableImages = problem.segmentImages.filter(Boolean);
-      const images = availableImages.length
-        ? availableImages
-            .map((image, index) => {
-              const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
-              return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
-            })
-            .join("")
-        : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+      const bodyMarkup = isTextRender
+        ? `<div class="problem-text-body">${buildProblemTextMarkup(problem)}</div>`
+        : (() => {
+            const availableImages = problem.segmentImages.filter(Boolean);
+            return availableImages.length
+              ? availableImages
+                  .map((image, index) => {
+                    const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
+                    return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
+                  })
+                  .join("")
+              : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+          })();
       return `
-        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""}">
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}">
           <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
                 ${typeBadges}
               </div>
-              <label class="problem-squash-control">
-                <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
-                <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
-                  ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
-                </select>
-              </label>
+              ${isTextRender ? "" : `
+                <label class="problem-squash-control">
+                  <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
+                  <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
+                    ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
+                  </select>
+                </label>
+              `}
             </header>
-            <div class="problem-segments">${images}</div>
+            <div class="problem-segments${isTextRender ? " is-text" : ""}">${bodyMarkup}</div>
           </div>
         </article>
       `;
@@ -9109,11 +10157,15 @@
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
       applyExamAnswerModeToUi(state.examBuilder.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+      applyExamContentModeToUi(state.examBuilder.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       if (elements.librarySourceSelect) {
         elements.librarySourceSelect.value = state.selectedLibrarySourceKey;
       }
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.value = state.examBuilder.answerOutputMode;
+      }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.value = state.examBuilder.contentRenderMode;
       }
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.value = state.schoolWorkflow.sourceFilterKey;
@@ -9213,6 +10265,13 @@
       if (elements.examAnswerModeSelect) {
         elements.examAnswerModeSelect.addEventListener("change", () => {
           applyExamAnswerModeToUi(elements.examAnswerModeSelect.value);
+          renderExamMiniPreview();
+        });
+      }
+      if (elements.examContentModeSelect) {
+        elements.examContentModeSelect.addEventListener("change", () => {
+          applyExamContentModeToUi(elements.examContentModeSelect.value);
+          renderExamMiniPreview();
         });
       }
       elements.printExamButton.addEventListener("click", () => {
@@ -9514,6 +10573,27 @@
           setSchoolSourceFilter(elements.schoolSourceFilterSelect.value);
         });
       }
+      window.addEventListener("focus", () => {
+        scheduleSharedLibraryResumeSync("focus");
+      });
+      window.addEventListener("pageshow", () => {
+        scheduleSharedLibraryResumeSync("pageshow");
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          scheduleSharedLibraryResumeSync("visibility");
+        }
+      });
+      window.addEventListener("storage", (event) => {
+        if (
+          !event ||
+          event.key == null ||
+          event.key === TEXTBOOK_LIBRARY_STORAGE_KEY ||
+          event.key === SCHOOL_PROFILE_STORAGE_KEY
+        ) {
+          scheduleSharedLibraryResumeSync("storage");
+        }
+      });
       if (elements.schoolExcludeUsedProblems) {
         elements.schoolExcludeUsedProblems.addEventListener("change", () => {
           state.schoolWorkflow.excludeUsedProblems = elements.schoolExcludeUsedProblems.checked;
