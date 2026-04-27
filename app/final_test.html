@@ -2427,6 +2427,14 @@
       };
     }
 
+    function hasStoredTextbookListEntry(textbookName) {
+      const normalizedTextbookName = normalizeTextbookName(textbookName);
+      if (!normalizedTextbookName) {
+        return false;
+      }
+      return (state.storedTextbooks || []).some((value) => normalizeTextbookName(value) === normalizedTextbookName);
+    }
+
     function updateDeleteTextbookUi() {
       if (!elements.deleteTextbookButton) {
         return;
@@ -2437,8 +2445,10 @@
       const sourceLabel = getLibrarySourceLabel(sourceKey);
       const stats = getTextbookDeleteStats(sourceKey, textbookName);
       const hasStoredData = Boolean(stats.importCount || stats.problemCount || stats.examSetCount || stats.examItemCount);
+      const hasTextbookListEntry = hasStoredTextbookListEntry(textbookName);
+      const canDelete = hasStoredData || hasTextbookListEntry;
 
-      elements.deleteTextbookButton.disabled = state.isBusy || !useExisting || !textbookName || !hasStoredData;
+      elements.deleteTextbookButton.disabled = state.isBusy || !useExisting || !textbookName || !canDelete;
 
       if (!elements.textbookDeleteSummary) {
         return;
@@ -2447,16 +2457,14 @@
         elements.textbookDeleteSummary.textContent = "";
         return;
       }
-      if (!state.storedTextbooks.length) {
-        elements.textbookDeleteSummary.textContent = "삭제할 등록 교재가 아직 없습니다.";
-        return;
-      }
       if (!textbookName) {
         elements.textbookDeleteSummary.textContent = "삭제할 교재를 먼저 선택해주세요.";
         return;
       }
       if (!hasStoredData) {
-        elements.textbookDeleteSummary.textContent = `${sourceLabel} 출처에는 ${textbookName} 교재의 저장 데이터가 없습니다.`;
+        elements.textbookDeleteSummary.textContent = hasTextbookListEntry
+          ? `${sourceLabel} 출처에는 저장된 문제가 없는 빈 교재입니다. 기존 교재 목록에서 제거할 수 있습니다.`
+          : `${sourceLabel} 출처에는 ${textbookName} 교재의 저장 데이터가 없습니다.`;
         return;
       }
       elements.textbookDeleteSummary.textContent = `${sourceLabel} 출처에서 등록 PDF ${stats.importCount}개 · 문항 ${stats.problemCount}개 · 시험 이력 ${stats.examSetCount}개를 함께 삭제합니다.`;
@@ -3975,6 +3983,7 @@
       refreshProblemStats(state.problems);
 
       const librarySourceKey = normalizeLibrarySourceKey(state.selectedLibrarySourceKey || getSelectedLibrarySourceKey());
+      state.selectedTextbookName = registerTextbookName(state.selectedTextbookName);
       const sourceRecord = {
         sourceId: createLibrarySourceId(librarySourceKey, state.selectedTextbookName, state.fileName || state.lastExportName),
         librarySourceKey,
@@ -6608,20 +6617,29 @@
       }
 
       const stats = getTextbookDeleteStats(sourceKey, textbookName);
-      if (!stats.importCount && !stats.problemCount && !stats.examSetCount && !stats.examItemCount) {
+      const hasStoredData = Boolean(stats.importCount || stats.problemCount || stats.examSetCount || stats.examItemCount);
+      const hasTextbookListEntry = hasStoredTextbookListEntry(textbookName);
+      if (!hasStoredData && !hasTextbookListEntry) {
         throw new Error(`${sourceLabel} 출처에는 ${textbookName} 교재의 저장 데이터가 없습니다.`);
       }
 
-      const confirmMessage = [
-        `${sourceLabel} / ${textbookName} 교재를 삭제할까요?`,
-        "",
-        `등록 PDF ${stats.importCount}개`,
-        `문항 ${stats.problemCount}개`,
-        `지문 ${stats.passageCount}개`,
-        `관련 시험 이력 ${stats.examSetCount}개`,
-        "",
-        "이 작업은 되돌릴 수 없습니다."
-      ].join(String.fromCharCode(10));
+      const confirmLines = hasStoredData
+        ? [
+            `${sourceLabel} / ${textbookName} 교재를 삭제할까요?`,
+            "",
+            `등록 PDF ${stats.importCount}개`,
+            `문항 ${stats.problemCount}개`,
+            `지문 ${stats.passageCount}개`,
+            `관련 시험 이력 ${stats.examSetCount}개`,
+            "",
+            "이 작업은 되돌릴 수 없습니다."
+          ]
+        : [
+            `${sourceLabel} / ${textbookName} 빈 교재를 기존 교재 목록에서 제거할까요?`,
+            "",
+            "저장된 문제나 시험 이력은 없습니다."
+          ];
+      const confirmMessage = confirmLines.join(String.fromCharCode(10));
       const confirmed = window.confirm(confirmMessage);
       if (!confirmed) {
         return;
@@ -6630,8 +6648,12 @@
       setBusy(true);
       setStatus(`${sourceLabel} / ${textbookName} 교재를 삭제하고 있습니다...`, "working", "교재 삭제");
       try {
-        const deleted = await deleteTextbookLibraryRecords(sourceKey, textbookName);
-        await refreshLibrarySummary();
+        const deleted = hasStoredData
+          ? await deleteTextbookLibraryRecords(sourceKey, textbookName)
+          : { importCount: 0, problemCount: 0, examSetCount: 0, examItemCount: 0 };
+        if (hasStoredData) {
+          await refreshLibrarySummary();
+        }
 
         const hasRemainingTextbook = (state.libraryCache.imports || []).some((record) =>
           normalizeTextbookName(record?.textbookName || "") === textbookName
@@ -6645,11 +6667,10 @@
         }
 
         await syncLibraryFolderFromStateIfConnected();
-        setStatus(
-          `${sourceLabel} / ${textbookName} 교재를 삭제했습니다. 등록 PDF ${deleted.importCount}개 · 문항 ${deleted.problemCount}개 · 시험 이력 ${deleted.examSetCount}개를 정리했습니다.`,
-          "idle",
-          "삭제 완료"
-        );
+        const statusMessage = hasStoredData
+          ? `${sourceLabel} / ${textbookName} 교재를 삭제했습니다. 등록 PDF ${deleted.importCount}개 · 문항 ${deleted.problemCount}개 · 시험 이력 ${deleted.examSetCount}개를 정리했습니다.`
+          : `${sourceLabel} / ${textbookName} 빈 교재를 기존 교재 목록에서 제거했습니다.`;
+        setStatus(statusMessage, "idle", "삭제 완료");
       } finally {
         setBusy(false);
         updateDeleteTextbookUi();
@@ -9851,7 +9872,7 @@
       });
       state.fileName = file.name;
       state.selectedLibrarySourceKey = selectedLibrarySourceKey;
-      state.selectedTextbookName = registerTextbookName(selectedTextbookName);
+      state.selectedTextbookName = selectedTextbookName;
       if (state.pdfDoc) {
         try {
           await state.pdfDoc.destroy();
