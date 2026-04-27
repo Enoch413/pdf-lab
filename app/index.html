@@ -74,14 +74,6 @@
             </div>
             <p class="small-note" id="textbookDeleteSummary"></p>
           </label>
-          <label class="field-row">
-            <span class="field-label">문항 추출 방식</span>
-            <select class="select-input" id="libraryExtractionModeSelect">
-              <option value="image">이미지 중심 추출</option>
-              <option value="text">텍스트 중심 추출</option>
-            </select>
-            <p class="small-note" id="libraryExtractionModeSummary">이미지 중심은 기존처럼 원문 블록을 유지하고, 텍스트 중심은 검수용 텍스트 편집을 바로 열기 좋게 관리합니다.</p>
-          </label>
         </div>
         <div class="upload-box" id="dropZone">
           <p class="upload-title">드래그하거나 파일 선택</p>
@@ -93,8 +85,11 @@
           <p class="file-name" id="fileName">아직 불러온 PDF가 없습니다.</p>
         </div>
         <div class="single-action-row">
-          <button class="ghost-button" type="button" id="saveLibraryButton" disabled>문제 라이브러리에 저장</button>
+          <button class="ghost-button" type="button" id="chooseProblemJsonButton" disabled>AI JSON 업로드</button>
+          <button class="ghost-button" type="button" id="saveLibraryButton" disabled hidden>문제 라이브러리에 저장</button>
         </div>
+        <input class="visually-hidden" type="file" id="problemJsonInput" accept="application/json,.json">
+        <p class="small-note" id="problemJsonSummary">PDF로 이미지 문항을 먼저 추출한 뒤, AI가 만든 JSON을 올리면 번호 기준으로 문제 텍스트/유형/답안을 덮어씁니다.</p>
         <p class="small-note" id="librarySaveSummary">문제를 저장해두면 PDF LAB에서 반별 출제를 바로 이어서 진행할 수 있습니다.</p>
       </section>
 
@@ -173,38 +168,25 @@
               <span class="field-label">출력 유형 선택</span>
               <input class="text-input" id="typeFilterInput" type="text" list="problemTypeOptions" placeholder="예: 빈칸, 삽입, 제목">
               <datalist id="problemTypeOptions">
-                <option value="주제"></option>
-                <option value="제목"></option>
-                <option value="주장"></option>
-                <option value="요지"></option>
-                <option value="목적"></option>
-                <option value="요약"></option>
-                <option value="내용일치"></option>
-                <option value="함축의미"></option>
-                <option value="지칭"></option>
-                <option value="분위기"></option>
-                <option value="심경변화"></option>
-                <option value="심경"></option>
-                <option value="빈칸"></option>
-                <option value="빈칸(주관식)"></option>
-                <option value="연결사"></option>
-                <option value="연결사(주관식)"></option>
-                <option value="꼬리문제"></option>
-                <option value="주관식"></option>
-                <option value="영작"></option>
-                <option value="요약(주관식)"></option>
-                <option value="어법"></option>
-                <option value="어법(주관식)"></option>
-                <option value="어휘"></option>
-                <option value="배열"></option>
-                <option value="기타주관식"></option>
-                <option value="무관"></option>
-                <option value="순서"></option>
                 <option value="삽입"></option>
+                <option value="순서"></option>
+                <option value="요약"></option>
+                <option value="선택어법"></option>
+                <option value="선택어휘"></option>
+                <option value="연결사"></option>
                 <option value="밑줄어법"></option>
                 <option value="밑줄어휘"></option>
-                <option value="선택어휘"></option>
-                <option value="선택어법"></option>
+                <option value="무관"></option>
+                <option value="지칭"></option>
+                <option value="빈칸"></option>
+                <option value="함축의미"></option>
+                <option value="내용"></option>
+                <option value="제목"></option>
+                <option value="주제"></option>
+                <option value="요지"></option>
+                <option value="주장"></option>
+                <option value="목적"></option>
+                <option value="심경"></option>
                 <option value="기타"></option>
               </datalist>
             </label>
@@ -698,6 +680,8 @@
     const PROBLEM_TYPE_GRAMMAR = "어법";
     const PROBLEM_TYPE_VOCAB = "어휘";
     const PROBLEM_TYPE_ODD_SENTENCE = "무관";
+    const PROBLEM_TYPE_CONTENT = "내용";
+    const PROBLEM_TYPE_MOOD = "심경";
     const SUBJECTIVE_TYPE_WRITING = "영작";
     const SUBJECTIVE_TYPE_SUMMARY = "요약(주관식)";
     const SUBJECTIVE_TYPE_GRAMMAR = "어법(주관식)";
@@ -776,6 +760,28 @@
     const EXAM_SLOT_RENDER_BATCH_SIZE = 120;
     const EXAM_HTML_PREVIEW_PROBLEM_LIMIT = 80;
     const LIBRARY_REVIEW_PAGE_SIZE = 24;
+    const OBJECTIVE_PROBLEM_TYPE_OPTIONS = Object.freeze([
+      "삽입",
+      "순서",
+      "요약",
+      "선택어법",
+      "선택어휘",
+      "연결사",
+      "밑줄어법",
+      "밑줄어휘",
+      PROBLEM_TYPE_ODD_SENTENCE,
+      "지칭",
+      "빈칸",
+      "함축의미",
+      PROBLEM_TYPE_CONTENT,
+      "제목",
+      "주제",
+      "요지",
+      "주장",
+      "목적",
+      PROBLEM_TYPE_MOOD,
+      PROBLEM_TYPE_OTHER
+    ]);
     const PROBLEM_TYPE_RULES = [
       {
         type: "연결사",
@@ -794,7 +800,14 @@
         type: "선택어법",
         phrases: [
           "각 네모 안에서 어법에 맞는 표현으로 가장 적절한 것은",
-          "어법에 맞는 표현으로 가장 적절한 것은"
+          "각 네모 안에서 어법상 맞는 표현으로 가장 적절한 것은",
+          "각 네모 안에서 어법상 알맞은 표현으로 가장 적절한 것은",
+          "네모 안에서 어법에 맞는 표현으로 가장 적절한 것은",
+          "네모 안에서 어법상 맞는 표현으로 가장 적절한 것은",
+          "괄호 안에서 어법에 맞는 표현으로 가장 적절한 것은",
+          "어법에 맞는 표현으로 가장 적절한 것은",
+          "어법상 맞는 표현으로 가장 적절한 것은",
+          "어법상 알맞은 표현으로 가장 적절한 것은"
         ]
       },
       {
@@ -819,6 +832,9 @@
           "문법적 쓰임이 적절하지 않은 것은",
           "문법상 틀린 것은",
           "문법상 적절하지 않은 것은",
+          "문법상 옳지 않은 것은",
+          "밑줄 친 부분 중 문법상 틀린 것은",
+          "밑줄 친 부분 중 문법상 적절하지 않은 것은",
           "문법"
         ]
       },
@@ -828,6 +844,10 @@
           "밑줄 친 부분 중, 문맥상 낱말의 쓰임이 적절하지 않은 것은",
           "밑줄 친 부분 중 문맥상 낱말의 쓰임이 적절하지 않은 것은",
           "문맥상 낱말의 쓰임이 적절하지 않은 것은",
+          "밑줄 친 부분과 바꿔 쓸 수 없는 표현",
+          "밑줄 친 부분과 바꾸어 쓸 수 없는 표현",
+          "바꿔 쓸 수 없는 표현",
+          "바꾸어 쓸 수 없는 표현",
           "문맥상 낱말"
         ]
       },
@@ -889,7 +909,7 @@
         ]
       },
       {
-        type: "내용일치",
+        type: PROBLEM_TYPE_CONTENT,
         phrases: [
           "다음 글의 내용과 일치하지 않는 것은",
           "다음 글의 내용과 일치하는 것은",
@@ -897,6 +917,7 @@
           "내용과 일치하는 것은",
           "내용으로 일치하지 않는",
           "내용으로 일치하는",
+          "답을 할 수 없는 질문",
           "대답할 수 없는 질문",
           "답할 수 없는 질문"
         ]
@@ -908,6 +929,8 @@
           "밑줄 친 부분이 의미하는 바로 가장 적절한 것은",
           "다음 글에서 밑줄 친 부분의 원인으로 가장 적절한 것은",
           "밑줄 친 부분의 원인으로 가장 적절한 것은",
+          "밑줄 친 표현의 문맥상 의미",
+          "문맥상 의미를 영어로 설명",
           "함축적 의미"
         ]
       },
@@ -921,7 +944,7 @@
         ]
       },
       {
-        type: "분위기",
+        type: PROBLEM_TYPE_MOOD,
         phrases: [
           "다음 글의 분위기로 가장 적절한 것은",
           "다음 글의 상황에 나타난 분위기로 가장 적절한 것은",
@@ -930,7 +953,7 @@
         ]
       },
       {
-        type: "심경변화",
+        type: PROBLEM_TYPE_MOOD,
         phrases: [
           "다음 글에 드러난 글쓴이의 심경 변화로 가장 적절한 것은",
           "다음 글에 드러난 소년의 심경 변화로 가장 적절한 것은",
@@ -987,10 +1010,7 @@
       matchers: rule.phrases.map((phrase) => normalizeProblemTypeToken(phrase))
     }));
     const PROBLEM_TYPE_OPTIONS = [...new Set([
-      ...PROBLEM_TYPE_RULES.map((rule) => rule.type),
-      PROBLEM_TYPE_GRAMMAR,
-      PROBLEM_TYPE_VOCAB,
-      PROBLEM_TYPE_ODD_SENTENCE,
+      ...OBJECTIVE_PROBLEM_TYPE_OPTIONS,
       PROBLEM_TYPE_TAIL,
       PROBLEM_TYPE_SUBJECTIVE,
       SUBJECTIVE_TYPE_WRITING,
@@ -1004,20 +1024,25 @@
     ])];
     const PROBLEM_TYPE_FILTER_MAP = new Map([
       ...PROBLEM_TYPE_OPTIONS.map((type) => [normalizeProblemTypeToken(type), type]),
-      ["내용과일치", "내용일치"],
-      ["답할수없는질문", "내용일치"],
+      ["내용일치", PROBLEM_TYPE_CONTENT],
+      ["내용불일치", PROBLEM_TYPE_CONTENT],
+      ["내용과일치", PROBLEM_TYPE_CONTENT],
+      ["내용과일치불일치", PROBLEM_TYPE_CONTENT],
+      ["답할수없는질문", PROBLEM_TYPE_CONTENT],
       ["한문장요약", "요약"],
       ["서술형", PROBLEM_TYPE_SUBJECTIVE],
       ["영작문", SUBJECTIVE_TYPE_WRITING],
       ["요약주관식", SUBJECTIVE_TYPE_SUMMARY],
-      ["어법", PROBLEM_TYPE_GRAMMAR],
-      ["어휘", PROBLEM_TYPE_VOCAB],
+      ["어법", "밑줄어법"],
+      ["어휘", "밑줄어휘"],
       ["무관문", PROBLEM_TYPE_ODD_SENTENCE],
       ["무관", PROBLEM_TYPE_ODD_SENTENCE],
       ["원인", "함축의미"],
       ["어조", PROBLEM_TYPE_OTHER],
       ["필자의어조", PROBLEM_TYPE_OTHER],
       ["문법적쓰임", "밑줄어법"],
+      ["분위기", PROBLEM_TYPE_MOOD],
+      ["심경변화", PROBLEM_TYPE_MOOD],
       ["함축", "함축의미"],
       ["배열", SUBJECTIVE_TYPE_ARRANGEMENT],
       ["기타주관식", SUBJECTIVE_TYPE_OTHER]
@@ -1039,8 +1064,6 @@
       ...PROBLEM_TYPE_RULES
         .map((rule) => rule.type)
         .filter((type) => !OBJECTIVE_EDITOR_SPECIAL_TYPE_MAP.has(type)),
-      PROBLEM_TYPE_GRAMMAR,
-      PROBLEM_TYPE_VOCAB,
       PROBLEM_TYPE_ODD_SENTENCE,
       PROBLEM_TYPE_OTHER
     ]);
@@ -1480,6 +1503,9 @@
       textbookSummary: document.getElementById("textbookSummary"),
       printButton: document.getElementById("printButton"),
       exportHtmlButton: document.getElementById("exportHtmlButton"),
+      chooseProblemJsonButton: document.getElementById("chooseProblemJsonButton"),
+      problemJsonInput: document.getElementById("problemJsonInput"),
+      problemJsonSummary: document.getElementById("problemJsonSummary"),
       saveLibraryButton: document.getElementById("saveLibraryButton"),
       librarySaveSummary: document.getElementById("librarySaveSummary"),
       librarySaveModeSelect: document.getElementById("librarySaveModeSelect"),
@@ -1722,9 +1748,9 @@
     }
 
     function getCurrentLibraryReviewPayload() {
-      const typeFilter = normalizeEffectiveProblemType(state.libraryReview.currentType || "");
+      const typeFilter = normalizeProblemTypeFilterValue(state.libraryReview.currentType);
       const candidateRecords = (Array.isArray(state.problems) ? state.problems : [])
-        .filter((record) => !state.libraryReview.currentType || normalizeEffectiveProblemType(record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeFilter);
+        .filter((record) => !state.libraryReview.currentType || getRecordTypeLabel(record) === typeFilter);
       const filtered = getLibraryFilteredProblems(
         candidateRecords,
         state.libraryReview.currentRange,
@@ -1745,12 +1771,12 @@
       );
       const textbookFilter = normalizeTextbookName(state.libraryReview.storedTextbookName || "");
       const importSourceIdFilter = normalizeProblemText(state.libraryReview.storedImportSourceId || "");
-      const typeFilter = normalizeEffectiveProblemType(state.libraryReview.storedType || "");
+      const typeFilter = normalizeProblemTypeFilterValue(state.libraryReview.storedType);
       const candidateRecords = getProblemRecordsOnly()
         .filter((record) => getRecordSourceKey(record) === sourceKeyFilter)
         .filter((record) => !textbookFilter || normalizeTextbookName(record.textbookName || "") === textbookFilter)
         .filter((record) => !importSourceIdFilter || normalizeProblemText(record.sourceId || "") === importSourceIdFilter)
-        .filter((record) => !state.libraryReview.storedType || normalizeEffectiveProblemType(record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeFilter);
+        .filter((record) => !state.libraryReview.storedType || getRecordTypeLabel(record) === typeFilter);
       const filtered = getLibraryFilteredProblems(
         candidateRecords,
         state.libraryReview.storedRange,
@@ -1796,7 +1822,7 @@
           .filter((record) => getRecordSourceKey(record) === targetSourceKey)
           .filter((record) => !targetTextbookName || normalizeTextbookName(record.textbookName || "") === targetTextbookName)
           .filter((record) => !targetImportSourceId || normalizeProblemText(record.sourceId || "") === targetImportSourceId)
-          .map((record) => normalizeEffectiveProblemType(record.selectableType || record.problemType || PROBLEM_TYPE_OTHER))
+          .map((record) => getRecordTypeLabel(record))
           .filter(Boolean)
       );
       return PROBLEM_TYPE_OPTIONS
@@ -1812,7 +1838,7 @@
       const typeSet = new Set(
         (Array.isArray(state.problems) ? state.problems : [])
           .filter((record) => record?.kind === "problem")
-          .map((record) => normalizeEffectiveProblemType(record.selectableType || record.problemType || PROBLEM_TYPE_OTHER))
+          .map((record) => getRecordTypeLabel(record))
           .filter(Boolean)
       );
       return PROBLEM_TYPE_OPTIONS
@@ -1825,9 +1851,9 @@
     }
 
     function buildProblemTypeSelectOptions(selectedType = "", options = {}) {
-      const selected = normalizeEffectiveProblemType(selectedType || "");
+      const selected = normalizeProblemTypeFilterValue(selectedType);
       const includeBlank = options.includeBlank !== false;
-      const blankLabel = options.blankLabel || "문항별 보기";
+      const blankLabel = options.blankLabel || "전체 유형";
       const typeOptions = [...(options.typeOptions || PROBLEM_TYPE_OPTIONS)];
       if (selected && !typeOptions.some((type) => normalizeEffectiveProblemType(type) === selected)) {
         typeOptions.push(selected);
@@ -1842,7 +1868,7 @@
     }
 
     function buildBulkQuestionTextPanel(scope, selectedType, totalItems, draftText) {
-      const normalizedType = normalizeEffectiveProblemType(selectedType || "");
+      const normalizedType = normalizeProblemTypeFilterValue(selectedType);
       const safeScope = scope === "stored" ? "stored" : "current";
       const isReady = Boolean(normalizedType && totalItems > 0);
       const targetLabel = safeScope === "stored" ? "저장된 라이브러리" : "저장 전 검수";
@@ -1885,7 +1911,7 @@
         <article class="library-review-card">
           <header class="library-review-card-head">
             <div>
-              <strong>${escapeHtml(`${record.number || "-"}번 · ${record.selectableType || record.problemType || PROBLEM_TYPE_OTHER}`)}</strong>
+              <strong>${escapeHtml(`${record.number || "-"}번 · ${getRecordTypeLabel(record)}`)}</strong>
               <p>${escapeHtml(record.passageLabel || metaLabel)}</p>
             </div>
             <span class="library-review-mode-badge">${escapeHtml(getLibraryExtractionModeLabel(getLibraryProblemMode(record)))}</span>
@@ -1914,8 +1940,9 @@
 
     function buildCurrentLibraryReviewMarkup() {
       const typeOptions = getCurrentLibraryTypeOptions();
-      const safeTypeFilter = state.libraryReview.currentType && typeOptions.some((type) => normalizeEffectiveProblemType(type) === normalizeEffectiveProblemType(state.libraryReview.currentType))
-        ? normalizeEffectiveProblemType(state.libraryReview.currentType)
+      const requestedTypeFilter = normalizeProblemTypeFilterValue(state.libraryReview.currentType);
+      const safeTypeFilter = requestedTypeFilter && typeOptions.some((type) => normalizeEffectiveProblemType(type) === requestedTypeFilter)
+        ? requestedTypeFilter
         : "";
       if (safeTypeFilter !== state.libraryReview.currentType) {
         state.libraryReview.currentType = safeTypeFilter;
@@ -1936,15 +1963,18 @@
             <div>
               <p class="library-progress-eyebrow">CURRENT IMPORT REVIEW</p>
               <h3>저장 전 문항 검수</h3>
-              <p>현재 추출한 ${getQuestionCount(state.problems)}문항을 저장 전에 검수하고, 필요 없는 문제는 제외할 수 있습니다.</p>
+              <p>현재 추출한 ${getQuestionCount(state.problems)}문항을 저장 전에 검수하고, 필요 없는 문제는 제외할 수 있습니다. 검수가 끝나면 여기서 바로 저장합니다.</p>
             </div>
-            <span class="library-review-count">${review.pagination.totalItems}문항</span>
+            <div class="library-review-head-actions">
+              <span class="library-review-count">${review.pagination.totalItems}문항</span>
+              <button class="solid-button" type="button" data-library-save-current${state.isBusy || !state.problems.length ? " disabled" : ""}>검수 후 라이브러리에 저장</button>
+            </div>
           </header>
           <div class="library-review-filter-grid library-review-filter-grid-wide">
             <label class="field-row">
               <span class="field-label">문제 유형</span>
               <select class="select-input" data-library-current-type>
-                ${buildProblemTypeSelectOptions(safeTypeFilter, { typeOptions, blankLabel: "문항별 보기" })}
+                ${buildProblemTypeSelectOptions(safeTypeFilter, { typeOptions, blankLabel: "전체 유형" })}
               </select>
             </label>
             <label class="field-row">
@@ -1981,9 +2011,7 @@
         state.libraryReview.storedImportSourceId = safeImportFilter;
       }
       const typeOptions = getStoredLibraryTypeOptions(sourceKeyFilter, safeTextbookFilter, safeImportFilter);
-      const requestedTypeFilter = state.libraryReview.storedType
-        ? normalizeEffectiveProblemType(state.libraryReview.storedType)
-        : "";
+      const requestedTypeFilter = normalizeProblemTypeFilterValue(state.libraryReview.storedType);
       const safeTypeFilter = requestedTypeFilter && typeOptions.some((type) => normalizeEffectiveProblemType(type) === requestedTypeFilter)
         ? requestedTypeFilter
         : "";
@@ -2034,7 +2062,7 @@
             <label class="field-row">
               <span class="field-label">문제 유형</span>
               <select class="select-input" data-library-stored-type>
-                ${buildProblemTypeSelectOptions(safeTypeFilter, { typeOptions, blankLabel: "문항별 보기" })}
+                ${buildProblemTypeSelectOptions(safeTypeFilter, { typeOptions, blankLabel: "전체 유형" })}
               </select>
             </label>
             <label class="field-row">
@@ -2075,7 +2103,7 @@
         ? progress.percent
         : (hasProblems && !state.isBusy ? 100 : progress.percent || 0);
       const readyMessage = hasProblems
-        ? `${problemCount}문항을 감지했습니다. 저장 버튼을 누르면 이미지 조각만 만든 뒤 공용 라이브러리에 저장합니다.`
+        ? `${problemCount}문항을 감지했습니다. 저장 전 문항 검수에서 확인한 뒤 공용 라이브러리에 저장합니다.`
         : DEFAULT_LIBRARY_PROGRESS_MESSAGE;
       const syncLabel = state.libraryLastSyncedAt
         ? formatTimestamp(state.libraryLastSyncedAt)
@@ -2088,6 +2116,7 @@
 
       elements.previewRoot.innerHTML = `
         <div class="library-dashboard-stack">
+        ${hasProblems && shouldRenderReviewSections ? buildCurrentLibraryReviewMarkup() : ""}
         <section class="library-progress-board">
           <article class="library-progress-hero">
             <div class="library-progress-eyebrow-row">
@@ -2117,7 +2146,7 @@
             <article class="library-progress-card">
               <span class="library-progress-card-label">원본 PDF</span>
               <strong class="library-progress-card-value">${escapeHtml(sourceLabel)}</strong>
-              <p class="library-progress-card-note">페이지 ${pageCount}쪽 · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)} · ${escapeHtml(getLibraryExtractionModeLabel(state.libraryExtractionMode))}</p>
+              <p class="library-progress-card-note">페이지 ${pageCount}쪽 · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)} · PDF 이미지를 기준으로 문항을 자르고, 텍스트는 AI JSON으로 덮어씁니다.</p>
             </article>
             <article class="library-progress-card">
               <span class="library-progress-card-label">저장 위치</span>
@@ -2126,7 +2155,6 @@
             </article>
           </section>
         </section>
-        ${shouldRenderReviewSections ? buildCurrentLibraryReviewMarkup() : ""}
         ${shouldRenderReviewSections ? buildStoredLibraryReviewMarkup() : ""}
         </div>
       `;
@@ -2594,7 +2622,7 @@
         return "요약";
       }
       if (normalizedSelection === SUBJECTIVE_TYPE_GRAMMAR) {
-        return PROBLEM_TYPE_GRAMMAR;
+        return "밑줄어법";
       }
       if (normalizedSelection === SUBJECTIVE_TYPE_BLANK) {
         return "빈칸";
@@ -2891,6 +2919,22 @@
         return;
       }
       const target = getActiveLibraryEditorTarget();
+      const hasEditableTarget = Boolean(target || state.libraryReview.editorTailSetDraft);
+      if (elements.libraryTextEditorReloadButton) {
+        elements.libraryTextEditorReloadButton.disabled = state.isBusy || !hasEditableTarget;
+      }
+      if (elements.libraryTextEditorInsertBlankButton) {
+        elements.libraryTextEditorInsertBlankButton.disabled = state.isBusy || !hasEditableTarget;
+      }
+      if (elements.libraryTextEditorDeleteButton) {
+        elements.libraryTextEditorDeleteButton.disabled = state.isBusy || !hasEditableTarget;
+      }
+      if (elements.libraryTextEditorSaveButton) {
+        elements.libraryTextEditorSaveButton.disabled = state.isBusy || !hasEditableTarget;
+      }
+      if (elements.libraryTextEditorCloseButton) {
+        elements.libraryTextEditorCloseButton.disabled = state.isBusy && !hasEditableTarget;
+      }
       const title = state.libraryReview.editorTitle || `${target?.number || "-"}번 문항 텍스트 수정`;
       setOptionalText(elements.libraryTextEditorTitle, title);
       setOptionalText(
@@ -3173,8 +3217,8 @@
       const tailSetRawText = tailSetDraft ? composeTailSetDraftRawText(tailSetDraft) : "";
       const tailSetBaseText = tailSetDraft ? serializeTailSetDraftForDirtyCheck(tailSetDraft) : "";
       const metaLine = normalizedScope === "stored"
-        ? `${target.textbookName || "교재"} · ${target.sourceName || "저장본"} · ${target.number || "-"}번 · ${target.selectableType || target.problemType || PROBLEM_TYPE_OTHER}`
-        : `${state.selectedTextbookName || getSelectedTextbookName() || "현재 교재"} · ${state.fileName || "현재 PDF"} · ${target.number || "-"}번 · ${target.selectableType || target.problemType || PROBLEM_TYPE_OTHER}`;
+        ? `${target.textbookName || "교재"} · ${target.sourceName || "저장본"} · ${target.number || "-"}번 · ${getRecordTypeLabel(target)}`
+        : `${state.selectedTextbookName || getSelectedTextbookName() || "현재 교재"} · ${state.fileName || "현재 PDF"} · ${target.number || "-"}번 · ${getRecordTypeLabel(target)}`;
       state.libraryReview.editorScope = normalizedScope;
       state.libraryReview.editorTargetId = normalizedTargetId;
       state.libraryReview.editorBaseText = tailSetDraft ? tailSetRawText : getEditableProblemText(target);
@@ -3355,7 +3399,7 @@
     }
 
     async function applyCurrentLibraryBulkQuestionText() {
-      const selectedType = normalizeEffectiveProblemType(state.libraryReview.currentType || "");
+      const selectedType = normalizeProblemTypeFilterValue(state.libraryReview.currentType);
       if (!selectedType) {
         window.alert("먼저 저장 전 문항 검수에서 문제 유형을 선택해주세요.");
         return;
@@ -3385,7 +3429,7 @@
     }
 
     async function applyStoredLibraryBulkQuestionText() {
-      const selectedType = normalizeEffectiveProblemType(state.libraryReview.storedType || "");
+      const selectedType = normalizeProblemTypeFilterValue(state.libraryReview.storedType);
       if (!selectedType) {
         window.alert("먼저 저장된 라이브러리 관리에서 문제 유형을 선택해주세요.");
         return;
@@ -3486,7 +3530,7 @@
       const confirmed = window.confirm([
         `${targetRecord.textbookName || "교재"} / ${targetRecord.number || "-"}번 문제를 삭제할까요?`,
         "",
-        `${targetRecord.selectableType || targetRecord.problemType || PROBLEM_TYPE_OTHER} · ${targetRecord.sourceName || "저장본"}`,
+        `${getRecordTypeLabel(targetRecord)} · ${targetRecord.sourceName || "저장본"}`,
         usageCount ? `이 문제를 참조하는 출제 이력 ${usageCount}개가 남아 있습니다.` : "현재 참조 중인 출제 이력은 없습니다.",
         "",
         "문제 이미지, 텍스트, 정답/해설이 함께 삭제됩니다."
@@ -3825,13 +3869,38 @@
 
     function normalizeEffectiveProblemType(problemType) {
       const normalized = String(problemType || "").trim();
-      if (normalized === "심경") {
+      if (!normalized) {
         return PROBLEM_TYPE_OTHER;
       }
-      if (normalized === "무관문") {
-        return PROBLEM_TYPE_ODD_SENTENCE;
+      let mapped = normalized;
+      if (mapped === "무관문") {
+        mapped = PROBLEM_TYPE_ODD_SENTENCE;
+      } else if (mapped === "내용일치" || mapped === "내용불일치") {
+        mapped = PROBLEM_TYPE_CONTENT;
+      } else if (mapped === "분위기" || mapped === "심경변화") {
+        mapped = PROBLEM_TYPE_MOOD;
+      } else if (mapped === PROBLEM_TYPE_GRAMMAR) {
+        mapped = "밑줄어법";
+      } else if (mapped === PROBLEM_TYPE_VOCAB) {
+        mapped = "밑줄어휘";
       }
-      return normalized || PROBLEM_TYPE_OTHER;
+      const aliasMapped = PROBLEM_TYPE_FILTER_MAP.get(normalizeProblemTypeToken(mapped));
+      if (aliasMapped) {
+        mapped = aliasMapped;
+      }
+      const allowedTypes = new Set([
+        ...OBJECTIVE_PROBLEM_TYPE_OPTIONS,
+        PROBLEM_TYPE_TAIL,
+        PROBLEM_TYPE_SUBJECTIVE,
+        SUBJECTIVE_TYPE_WRITING,
+        SUBJECTIVE_TYPE_SUMMARY,
+        SUBJECTIVE_TYPE_GRAMMAR,
+        SUBJECTIVE_TYPE_BLANK,
+        SUBJECTIVE_TYPE_CONNECTION,
+        SUBJECTIVE_TYPE_ARRANGEMENT,
+        SUBJECTIVE_TYPE_OTHER
+      ]);
+      return allowedTypes.has(mapped) ? mapped : PROBLEM_TYPE_OTHER;
     }
 
     function getProblemEditorTemplateInfo(problemType, isSubjective = false) {
@@ -4357,6 +4426,214 @@
         bodyText: bodyBlocks.join("\n\n"),
         choices
       }, problemType, isSubjective);
+    }
+
+    function getFirstDefinedAiField(source, fieldNames = []) {
+      if (!source || typeof source !== "object") {
+        return "";
+      }
+      for (const fieldName of fieldNames) {
+        if (source[fieldName] == null) {
+          continue;
+        }
+        if (Array.isArray(source[fieldName])) {
+          return source[fieldName];
+        }
+        const normalized = String(source[fieldName]).trim();
+        if (normalized) {
+          return normalized;
+        }
+      }
+      return "";
+    }
+
+    function extractAiProblemJsonItems(payload) {
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+      if (!payload || typeof payload !== "object") {
+        return [];
+      }
+      return [
+        payload.problems,
+        payload.items,
+        payload.questions,
+        payload.data,
+        payload["문항"],
+        payload["문제"]
+      ].find((value) => Array.isArray(value)) || [];
+    }
+
+    function normalizeAiProblemNumber(item) {
+      const raw = getFirstDefinedAiField(item, [
+        "number",
+        "questionNumber",
+        "questionNo",
+        "problemNumber",
+        "no",
+        "id",
+        "번호",
+        "문항번호",
+        "문제번호"
+      ]);
+      const match = String(raw || "").match(/\d{1,3}/);
+      return match ? Number(match[0]) : Number.NaN;
+    }
+
+    function normalizeAiPassageLabel(value) {
+      return normalizeProblemText(value).replace(/^\[([^\]\n]+)\]$/, "$1").trim();
+    }
+
+    function normalizeAiProblemType(item) {
+      const explicitType = getFirstDefinedAiField(item, [
+        "problemType",
+        "type",
+        "questionType",
+        "category",
+        "유형",
+        "문제유형"
+      ]);
+      const fallbackText = [
+        getFirstDefinedAiField(item, ["questionText", "question", "prompt", "stem", "문제", "발문"]),
+        getFirstDefinedAiField(item, ["bodyText", "body", "passage", "본문", "지문"]),
+        getFirstDefinedAiField(item, ["summaryText", "summary", "요약", "요약문"]),
+        getFirstDefinedAiField(item, ["rawText", "text", "fullText", "원문"])
+      ].filter(Boolean).join(" ");
+      const explicitNormalizedType = explicitType ? normalizeEffectiveProblemType(explicitType) : "";
+      const fallbackType = normalizeEffectiveProblemType(classifyProblemType(fallbackText));
+      const normalizedType = explicitNormalizedType && explicitNormalizedType !== PROBLEM_TYPE_OTHER
+        ? explicitNormalizedType
+        : fallbackType;
+      return OBJECTIVE_PROBLEM_TYPE_OPTIONS.includes(normalizedType) ? normalizedType : PROBLEM_TYPE_OTHER;
+    }
+
+    function normalizeAiChoiceEntries(choices, fallbackMinimumCount = DEFAULT_STRUCTURED_CHOICE_MARKERS.length) {
+      const sourceChoices = Array.isArray(choices) ? choices : [];
+      if (!sourceChoices.length) {
+        return normalizeStructuredChoiceEntries([], fallbackMinimumCount);
+      }
+      return normalizeStructuredChoiceEntries(
+        sourceChoices.map((choice, index) => {
+          if (choice && typeof choice === "object") {
+            return {
+              marker: choice.marker || choice.no || choice.number || choice.label || choice["번호"] || choice["기호"] || normalizeObjectiveChoiceMarker("", index),
+              text: choice.text || choice.value || choice.content || choice["텍스트"] || choice["내용"] || ""
+            };
+          }
+          const sourceText = String(choice || "").trim();
+          const markerMatch = sourceText.match(/^([①②③④⑤❶❷❸❹❺1-5])\s*(.*)$/);
+          return {
+            marker: markerMatch ? markerMatch[1] : normalizeObjectiveChoiceMarker("", index),
+            text: markerMatch ? markerMatch[2] : sourceText
+          };
+        }),
+        fallbackMinimumCount
+      );
+    }
+
+    function buildStructuredProblemDataFromAiItem(item, problemType) {
+      const rawStructure = item?.textStructure || item?.structure || item?.structuredText || item?.["구조"];
+      if (rawStructure && typeof rawStructure === "object" && !Array.isArray(rawStructure)) {
+        return normalizeStructuredProblemData(rawStructure, problemType, false);
+      }
+      const rawText = getFirstDefinedAiField(item, ["rawText", "text", "fullText", "원문", "전체텍스트"]);
+      const questionText = getFirstDefinedAiField(item, ["questionText", "question", "prompt", "stem", "문제", "발문"]);
+      const passageLabel = normalizeAiPassageLabel(getFirstDefinedAiField(item, ["passageLabel", "worksheetRef", "referenceText", "참조", "지문번호"]));
+      const questionWithReference = passageLabel && !normalizeProblemText(questionText).includes(`[${passageLabel}]`)
+        ? `${normalizeProblemText(questionText)} [${passageLabel}]`.trim()
+        : questionText;
+      const bodyText = getFirstDefinedAiField(item, ["bodyText", "body", "passage", "본문", "지문"]);
+      const givenText = getFirstDefinedAiField(item, ["givenText", "leadText", "insertionText", "주어진문장", "주어진 문장"]);
+      const summaryText = getFirstDefinedAiField(item, ["summaryText", "summary", "요약", "요약문"]);
+      const choices = normalizeAiChoiceEntries(getFirstDefinedAiField(item, ["choices", "choiceTexts", "options", "선택지", "보기"]));
+      if (!questionWithReference && !bodyText && !givenText && !summaryText && rawText) {
+        return buildStructuredProblemDataFromText(problemType, false, rawText);
+      }
+      return normalizeStructuredProblemData({
+        questionText: questionWithReference,
+        bodyText,
+        givenText,
+        summaryText,
+        choices
+      }, problemType, false);
+    }
+
+    function applyAiProblemJsonPayload(payload, fileName = "AI JSON") {
+      const items = extractAiProblemJsonItems(payload);
+      if (!items.length) {
+        throw new Error("JSON에서 문항 배열을 찾지 못했습니다. 배열 또는 problems/items/questions 키를 사용해주세요.");
+      }
+      if (!state.problems.some((problem) => problem?.kind === "problem")) {
+        throw new Error("먼저 PDF를 불러와 문항 이미지를 추출한 뒤 JSON을 업로드해주세요.");
+      }
+      const problemsByNumber = new Map(
+        state.problems
+          .filter((problem) => problem?.kind === "problem")
+          .map((problem) => [Number(problem.number), problem])
+      );
+      let updatedCount = 0;
+      let skippedCount = 0;
+      items.forEach((item) => {
+        const number = normalizeAiProblemNumber(item);
+        const problem = problemsByNumber.get(number);
+        if (!problem) {
+          skippedCount += 1;
+          return;
+        }
+        const problemType = normalizeAiProblemType(item);
+        const textStructure = buildStructuredProblemDataFromAiItem(item, problemType);
+        const rawText = composeStructuredProblemRawText(textStructure);
+        const explanationText = getFirstDefinedAiField(item, ["explanationText", "explanation", "해설"]);
+        const answerTextRaw = getFirstDefinedAiField(item, ["answerText", "answer", "correctAnswer", "correct", "답", "정답"]);
+        const passageLabel = normalizeAiPassageLabel(getFirstDefinedAiField(item, ["passageLabel", "worksheetRef", "referenceText", "참조", "지문번호"]));
+        problem.problemType = problemType;
+        problem.subjectiveType = "";
+        problem.isSubjective = false;
+        problem.textStructure = textStructure;
+        problem.promptText = rawText || problem.promptText || "";
+        problem.analysisText = rawText || problem.analysisText || "";
+        if (passageLabel) {
+          problem.worksheetRef = passageLabel;
+          problem.passageGroupKey = `${problem.worksheetFamily || ""}::${passageLabel}`;
+        }
+        problem.answerText = normalizeParsedObjectiveAnswerText(answerTextRaw, explanationText || problem.explanationText || "");
+        problem.explanationText = explanationText || problem.explanationText || "";
+        problem.typeTags = buildProblemTypeTags(problemType, false, "");
+        problem.contentMode = LIBRARY_EXTRACTION_MODE_TEXT;
+        updatedCount += 1;
+      });
+      refreshProblemStats(state.problems);
+      renderPreview();
+      if (isLibraryWorkspaceMode()) {
+        renderLibraryWorkspaceDashboard();
+      }
+      setOptionalText(
+        elements.problemJsonSummary,
+        `${fileName} 적용 완료: ${updatedCount}문항을 번호 기준으로 덮어썼습니다.${skippedCount ? ` 매칭 실패 ${skippedCount}개는 건너뛰었습니다.` : ""}`
+      );
+      setOptionalText(elements.librarySaveSummary, `${getLibrarySourceLabel(state.selectedLibrarySourceKey)} · ${state.selectedTextbookName || getSelectedTextbookName()} / ${state.fileName || fileName} · JSON 텍스트 적용됨 · ${getAnswerImportSummary(state.problems)} · 아직 라이브러리에 저장되지 않았습니다.`);
+      setStatus(`${updatedCount}문항에 AI JSON 텍스트를 적용했습니다.`, "idle", "JSON 적용");
+      updatePreviewActionRow();
+    }
+
+    async function importAiProblemJsonFile(file) {
+      if (!file) {
+        return;
+      }
+      setBusy(true);
+      setStatus("AI JSON을 불러와 문항 텍스트를 적용하는 중입니다...", "working", "JSON");
+      try {
+        const text = await readBlobAsText(file);
+        const payload = JSON.parse(text);
+        applyAiProblemJsonPayload(payload, file.name);
+      } finally {
+        setBusy(false);
+        if (isLibraryWorkspaceMode()) {
+          renderLibraryWorkspaceDashboard();
+        } else {
+          renderPreview();
+        }
+      }
     }
 
     function structuredReferenceNeedsRepair(data) {
@@ -5613,19 +5890,53 @@
       return window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
     }
 
+    function getPdfLabFirebaseAuthEnvironmentMessage() {
+      const protocol = String(window.location?.protocol || "");
+      if (!["http:", "https:", "chrome-extension:"].includes(protocol)) {
+        return "Firebase 로그인을 사용할 수 없는 주소입니다. PDF LAB을 http://127.0.0.1:8762/app/index.html 주소로 열어주세요.";
+      }
+      try {
+        const storageKey = "__pdflab_firebase_storage_check__";
+        window.localStorage.setItem(storageKey, "1");
+        window.localStorage.removeItem(storageKey);
+      } catch (error) {
+        return "브라우저 저장소가 차단되어 Firebase 로그인을 사용할 수 없습니다. 이 사이트의 쿠키/사이트 데이터/localStorage를 허용한 뒤 새로고침해주세요.";
+      }
+      if (!window.indexedDB) {
+        return "브라우저 IndexedDB가 비활성화되어 Firebase 로그인을 사용할 수 없습니다. 사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
+      }
+      return "";
+    }
+
     function ensurePdfLabFirebaseServices() {
       if (!isPdfLabFirebaseConfigured()) {
         return false;
       }
-      const config = getPdfLabFirebaseConfig();
-      if (!firebase.apps.length) {
-        firebase.initializeApp(config);
+      const environmentMessage = getPdfLabFirebaseAuthEnvironmentMessage();
+      if (environmentMessage) {
+        state.firebaseSchoolBridge.syncError = environmentMessage;
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = environmentMessage;
+        return false;
       }
-      state.firebaseSchoolBridge.enabled = true;
-      state.firebaseSchoolBridge.auth = firebase.auth();
-      state.firebaseSchoolBridge.db = firebase.firestore();
-      state.firebaseSchoolBridge.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
-      return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db && state.firebaseSchoolBridge.storage);
+      try {
+        const config = getPdfLabFirebaseConfig();
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        state.firebaseSchoolBridge.enabled = true;
+        state.firebaseSchoolBridge.auth = firebase.auth();
+        state.firebaseSchoolBridge.db = firebase.firestore();
+        state.firebaseSchoolBridge.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
+        return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db && state.firebaseSchoolBridge.storage);
+      } catch (error) {
+        const message = getFriendlyFirebaseAuthMessage(error) || "Firebase 서비스를 초기화하지 못했습니다.";
+        state.firebaseSchoolBridge.syncError = message;
+        state.firebaseSchoolBridge.sharedLibraryEnabled = false;
+        state.firebaseSchoolBridge.sharedLibraryError = message;
+        console.warn("Failed to initialize Firebase services", error);
+        return false;
+      }
     }
 
     function getPdfLabFirebaseAccountLabel(user = state.firebaseSchoolBridge.currentUser, profile = state.firebaseSchoolBridge.currentProfile) {
@@ -5643,6 +5954,9 @@
       const code = String(error?.code || "");
       if (code.includes("unauthorized-domain")) {
         return "현재 도메인이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 localhost와 127.0.0.1을 추가한 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("operation-not-supported-in-this-environment")) {
+        return getPdfLabFirebaseAuthEnvironmentMessage() || "현재 브라우저 환경에서 Firebase 로그인을 사용할 수 없습니다. PDF LAB을 http://127.0.0.1:8762 주소로 열고, 이 사이트의 쿠키/사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
       }
       if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
         return "Firebase 이메일 또는 비밀번호를 확인해주세요.";
@@ -5717,10 +6031,23 @@
     }
 
     function getSharedFirebaseLibraryAccessState() {
-      if (!isPdfLabFirebaseConfigured() || !ensurePdfLabFirebaseServices()) {
+      if (!isPdfLabFirebaseConfigured()) {
         return {
           enabled: false,
           reason: "Firebase 설정이 없어 공용 문제 라이브러리를 사용할 수 없습니다."
+        };
+      }
+      const environmentMessage = getPdfLabFirebaseAuthEnvironmentMessage();
+      if (environmentMessage) {
+        return {
+          enabled: false,
+          reason: environmentMessage
+        };
+      }
+      if (!ensurePdfLabFirebaseServices()) {
+        return {
+          enabled: false,
+          reason: state.firebaseSchoolBridge.syncError || "Firebase 서비스를 초기화하지 못해 공용 문제 라이브러리를 사용할 수 없습니다."
         };
       }
       const bridge = state.firebaseSchoolBridge || {};
@@ -6102,7 +6429,7 @@
 
     async function signInPdfLabFirebaseWithGoogle() {
       if (!ensurePdfLabFirebaseServices()) {
-        state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
+        state.firebaseSchoolBridge.syncError = state.firebaseSchoolBridge.syncError || "Firebase 설정이 없어 로그인할 수 없습니다.";
         renderPdfLabFirebaseAuthUi();
         throw new Error(state.firebaseSchoolBridge.syncError);
       }
@@ -6128,7 +6455,7 @@
 
     async function signInPdfLabFirebase() {
       if (!ensurePdfLabFirebaseServices()) {
-        state.firebaseSchoolBridge.syncError = "Firebase 설정이 없어 로그인할 수 없습니다.";
+        state.firebaseSchoolBridge.syncError = state.firebaseSchoolBridge.syncError || "Firebase 설정이 없어 로그인할 수 없습니다.";
         renderPdfLabFirebaseAuthUi();
         throw new Error(state.firebaseSchoolBridge.syncError);
       }
@@ -6804,7 +7131,7 @@
       }
       try {
         if (!ensurePdfLabFirebaseServices()) {
-          throw new Error("Firebase 서비스를 초기화하지 못했습니다.");
+          throw new Error(state.firebaseSchoolBridge.syncError || "Firebase 서비스를 초기화하지 못했습니다.");
         }
         const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
         state.firebaseSchoolBridge.currentUser = user || null;
@@ -7257,15 +7584,6 @@
         return problem.subjectiveType || SUBJECTIVE_TYPE_OTHER;
       }
       const resolvedType = normalizeEffectiveProblemType(problem.problemType);
-      if (resolvedType === "밑줄어법" || resolvedType === "선택어법") {
-        return PROBLEM_TYPE_GRAMMAR;
-      }
-      if (resolvedType === "밑줄어휘" || resolvedType === "선택어휘") {
-        return PROBLEM_TYPE_VOCAB;
-      }
-      if (resolvedType === "무관") {
-        return PROBLEM_TYPE_ODD_SENTENCE;
-      }
       return resolvedType || PROBLEM_TYPE_OTHER;
     }
 
@@ -7577,7 +7895,10 @@
     }
 
     async function initializeLibraryExtractionModeSetting() {
-      state.libraryExtractionMode = normalizeLibraryExtractionMode(await readLibrarySetting(LIBRARY_EXTRACTION_MODE_KEY));
+      state.libraryExtractionMode = LIBRARY_EXTRACTION_MODE_IMAGE;
+      await writeLibrarySetting(LIBRARY_EXTRACTION_MODE_KEY, LIBRARY_EXTRACTION_MODE_IMAGE).catch((error) => {
+        console.warn("Failed to persist fixed library extraction mode", error);
+      });
       updateLibraryExtractionModeUi();
     }
 
@@ -7641,6 +7962,15 @@
         reader.addEventListener("load", () => resolve(String(reader.result || "")));
         reader.addEventListener("error", () => reject(reader.error || new Error("파일 데이터를 읽지 못했습니다.")));
         reader.readAsDataURL(blob);
+      });
+    }
+
+    function readBlobAsText(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(String(reader.result || "")));
+        reader.addEventListener("error", () => reject(reader.error || new Error("파일 텍스트를 읽지 못했습니다.")));
+        reader.readAsText(blob, "utf-8");
       });
     }
 
@@ -9045,6 +9375,15 @@
       return (state.libraryCache.problemRecords || []).filter((record) => record.kind === "shared");
     }
 
+    function getRecordTypeLabel(record) {
+      return normalizeEffectiveProblemType(record?.selectableType || record?.problemType || PROBLEM_TYPE_OTHER);
+    }
+
+    function normalizeProblemTypeFilterValue(value) {
+      const rawValue = String(value || "").trim();
+      return rawValue ? normalizeEffectiveProblemType(rawValue) : "";
+    }
+
     function recordMatchesSchoolSource(record) {
       const filterKey = getSchoolSourceFilterKey();
       return filterKey === LIBRARY_SOURCE_FILTER_ALL || getRecordSourceKey(record) === filterKey;
@@ -9122,7 +9461,7 @@
     }
 
     function createPassageTypeKey(passageKey, typeLabel) {
-      return `${normalizeProblemText(passageKey)}::${normalizeProblemTypeToken(typeLabel)}`;
+      return `${normalizeProblemText(passageKey)}::${normalizeProblemTypeToken(normalizeEffectiveProblemType(typeLabel))}`;
     }
 
     function getUsedProblemIdsFromHistory() {
@@ -9293,7 +9632,7 @@
     }
 
     function createRetryItemFromRecord(record, displayNumber, sourceProblemId = "") {
-      const typeLabel = record.selectableType || record.problemType || PROBLEM_TYPE_OTHER;
+      const typeLabel = getRecordTypeLabel(record);
       return {
         itemId: createRetryId("retry-item"),
         problemRecordId: record.recordId,
@@ -9649,7 +9988,7 @@
         .filter((record) => getRecordSourceKey(record) === sourceKey)
         .filter((record) => record.problemType !== PROBLEM_TYPE_TAIL)
         .filter((record) => record.passageKey === item.passageKey)
-        .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === item.typeLabel)
+        .filter((record) => getRecordTypeLabel(record) === normalizeEffectiveProblemType(item.typeLabel))
         .filter((record) => !usedProblemIds.has(record.recordId));
       return chooseSchoolDraftCandidate(candidates, new Set(), new Map());
     }
@@ -10082,7 +10421,7 @@
           });
         }
         const group = grouped.get(record.passageKey);
-        const typeLabel = record.selectableType || record.problemType || PROBLEM_TYPE_OTHER;
+        const typeLabel = getRecordTypeLabel(record);
         group.availableTypes.add(typeLabel);
         group.problemCount += 1;
         group.updatedAt = Math.max(group.updatedAt, Number(record.sourceImportedAt) || 0);
@@ -10635,7 +10974,7 @@
       slot.librarySourceName = getRecordSourceLabel(record);
       slot.textbookName = record.textbookName || "";
       slot.passageKey = record.passageKey || "";
-      slot.selectedType = record.selectableType || record.problemType || PROBLEM_TYPE_OTHER;
+      slot.selectedType = getRecordTypeLabel(record);
       slot.assignedProblemId = record.recordId;
       slot.assignedProblemIds = [record.recordId];
       slot.schoolDraftMode = state.schoolWorkflow.draftMode;
@@ -10719,7 +11058,7 @@
 
           const candidates = getSchoolProblemRecordsOnly()
             .filter((record) => record.passageKey === passageKey)
-            .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeLabel)
+            .filter((record) => getRecordTypeLabel(record) === normalizeEffectiveProblemType(typeLabel))
             .filter((record) => !usedProblemIds.has(record.recordId))
             .filter((record) => !chosenProblemIds.has(record.recordId))
             .filter((record) => !usedPassageTypeKeys.has(createPassageTypeKey(record.passageKey, typeLabel)));
@@ -10781,7 +11120,7 @@
 
             const candidates = getSchoolProblemRecordsOnly()
               .filter((record) => record.passageKey === passageKey)
-              .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === typeLabel)
+              .filter((record) => getRecordTypeLabel(record) === normalizeEffectiveProblemType(typeLabel))
               .filter((record) => !usedProblemIds.has(record.recordId))
               .filter((record) => !usedPassageTypeKeys.has(createPassageTypeKey(record.passageKey, typeLabel)))
               .sort((left, right) => (Number(left.number) || 0) - (Number(right.number) || 0));
@@ -10926,7 +11265,7 @@
       const targetType = slot.selectedType;
       const candidates = getSchoolProblemRecordsOnly()
         .filter((record) => state.schoolWorkflow.selectedPassageKeys.includes(record.passageKey))
-        .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === targetType)
+        .filter((record) => getRecordTypeLabel(record) === normalizeEffectiveProblemType(targetType))
         .filter((record) => record.recordId !== slot.assignedProblemId)
         .filter((record) => !usedProblemIds.has(record.recordId))
         .filter((record) => !otherAssignedProblemIds.has(record.recordId))
@@ -11522,7 +11861,7 @@
       return [...new Set(
         getExamCategoryRecords(slot.category)
           .filter((record) => record.textbookName === slot.textbookName && record.passageKey === slot.passageKey)
-          .map((record) => record.selectableType || record.problemType || PROBLEM_TYPE_OTHER)
+          .map((record) => getRecordTypeLabel(record))
       )].sort((left, right) => left.localeCompare(right, "ko"));
     }
 
@@ -11609,7 +11948,7 @@
         .filter((record) =>
           record.textbookName === slot.textbookName &&
           record.passageKey === slot.passageKey &&
-          (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === slot.selectedType
+          getRecordTypeLabel(record) === normalizeEffectiveProblemType(slot.selectedType)
         );
 
       if (!allCandidates.length) {
@@ -12074,7 +12413,7 @@
           answer,
           acceptableAnswers: [],
           explanation: String(runtimeRecord.explanationText || "").trim(),
-          problemType: runtimeRecord.selectableType || runtimeRecord.problemType || PROBLEM_TYPE_OTHER
+          problemType: getRecordTypeLabel(runtimeRecord)
         },
         invalidAlphabeticChoiceTokens,
         rawAnswerText
@@ -13896,7 +14235,7 @@
           ? Array.from(new Set(entries.map((entry) =>
               entry.slot.category === "tail"
                 ? PROBLEM_TYPE_TAIL
-                : (entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER)
+                : getRecordTypeLabel(entry.record)
             ).filter(Boolean)))
           : [...state.schoolWorkflow.selectedTypeLabels],
         studentRetrySessionId: retryContext?.sessionId || "",
@@ -13923,10 +14262,10 @@
         passageKey: entry.record.passageKey,
         passageTypeKey: entry.slot.category === "tail"
           ? createPassageTypeKey(entry.slot.tailPackKey, PROBLEM_TYPE_TAIL)
-          : createPassageTypeKey(entry.record.passageKey, entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER),
+          : createPassageTypeKey(entry.record.passageKey, getRecordTypeLabel(entry.record)),
         typeLabel: entry.slot.category === "tail"
           ? PROBLEM_TYPE_TAIL
-          : (entry.record.selectableType || entry.record.problemType || PROBLEM_TYPE_OTHER),
+          : getRecordTypeLabel(entry.record),
         textbookName: entry.record.textbookName,
         category: entry.slot.category,
         tailPackKey: entry.slot.category === "tail" ? entry.slot.tailPackKey : "",
@@ -14274,36 +14613,49 @@
       if (!searchableText) {
         return PROBLEM_TYPE_OTHER;
       }
+      const hasTypeToken = (...tokens) => tokens.some((token) => searchableText.includes(normalizeProblemTypeToken(token)));
       if (
-        searchableText.includes(normalizeProblemTypeToken("영영표현")) ||
-        searchableText.includes(normalizeProblemTypeToken("영영풀이"))
+        hasTypeToken("영영표현", "영영풀이")
       ) {
         return PROBLEM_TYPE_OTHER;
       }
-      if (searchableText.includes(normalizeProblemTypeToken("한 문장으로 요약"))) {
+      if (hasTypeToken("한 문장으로 요약")) {
         return "요약";
       }
       if (
-        searchableText.includes(normalizeProblemTypeToken("한 문장으로 정리")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약할 때")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약할때"))
+        hasTypeToken("한 문장으로 정리", "요약할 때", "요약할때")
       ) {
         return "요약";
       }
       if (
-        searchableText.includes(normalizeProblemTypeToken("요약문")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약한 문장")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약하고자 한다")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약한 것이다")) ||
-        searchableText.includes(normalizeProblemTypeToken("요약문을 읽고"))
+        hasTypeToken("요약문", "요약한 문장", "요약하고자 한다", "요약한 것이다", "요약문을 읽고")
       ) {
         return "요약";
       }
-      if (searchableText.includes(normalizeProblemTypeToken("주제문"))) {
+      if (hasTypeToken("주제문")) {
         return "주제";
       }
+      const hasGrammarToken = hasTypeToken("어법", "문법");
+      const hasSelectGrammarShape =
+        hasGrammarToken &&
+        hasTypeToken("표현") &&
+        hasTypeToken("네모", "괄호", "(A)", "(B)", "(C)", "A)", "B)", "C)") &&
+        hasTypeToken("맞는", "알맞은", "적절한");
+      if (hasSelectGrammarShape) {
+        return "선택어법";
+      }
+      const hasUnderlineGrammarShape =
+        hasGrammarToken &&
+        (
+          hasTypeToken("밑줄", "[[u:", "u:") ||
+          hasTypeToken("어법상틀린", "어법상적절하지않은", "어법상옳지않은", "어법상어색한", "문법상틀린", "문법상적절하지않은", "문법상옳지않은") ||
+          hasTypeToken("문법")
+        );
+      if (hasUnderlineGrammarShape) {
+        return "밑줄어법";
+      }
       if (
-        searchableText.includes(normalizeProblemTypeToken("빈칸")) &&
+        hasTypeToken("빈칸") &&
         searchableText.includes("(A)") &&
         searchableText.includes("(B)")
       ) {
@@ -14371,12 +14723,6 @@
       }
       if (resolvedProblemType === "무관") {
         tags.push(PROBLEM_TYPE_ODD_SENTENCE);
-      }
-      if (resolvedProblemType === "밑줄어법" || resolvedProblemType === "선택어법") {
-        tags.push(PROBLEM_TYPE_GRAMMAR);
-      }
-      if (resolvedProblemType === "밑줄어휘" || resolvedProblemType === "선택어휘") {
-        tags.push(PROBLEM_TYPE_VOCAB);
       }
       if (isSubjective) {
         tags.push(PROBLEM_TYPE_SUBJECTIVE);
@@ -14818,6 +15164,12 @@
       elements.printButton.disabled = isBusy || !activeProblems.length;
       elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
       elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
+      if (elements.chooseProblemJsonButton) {
+        elements.chooseProblemJsonButton.disabled = isBusy || !state.problems.some((problem) => problem?.kind === "problem");
+      }
+      if (elements.problemJsonInput) {
+        elements.problemJsonInput.disabled = isBusy;
+      }
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.disabled = isBusy;
       }
@@ -14906,6 +15258,9 @@
       elements.printButton.disabled = state.isBusy || !hasProblems;
       elements.exportHtmlButton.disabled = state.isBusy || !hasProblems;
       elements.saveLibraryButton.disabled = state.isBusy || !state.problems.length;
+      if (elements.chooseProblemJsonButton) {
+        elements.chooseProblemJsonButton.disabled = state.isBusy || !state.problems.some((problem) => problem?.kind === "problem");
+      }
     }
 
     function cleanupObjectUrls() {
@@ -16470,6 +16825,9 @@
       renderPreview();
       elements.clearButton.disabled = false;
       elements.saveLibraryButton.disabled = false;
+      if (elements.chooseProblemJsonButton) {
+        elements.chooseProblemJsonButton.disabled = false;
+      }
       if (isLibraryWorkspaceMode()) {
         setBusy(false);
         setStatus(`페이지 ${pdf.numPages}쪽에서 문항 ${getQuestionCount(problems)}개를 감지했습니다. ${getAnswerImportSummary(problems)}도 함께 저장 대기 중입니다.`, "idle", "분석 완료");
@@ -16523,6 +16881,13 @@
       setStatus("PDF를 불러오면 문제를 자동으로 추출해서 공용 라이브러리에 저장할 수 있습니다.", "idle", "준비됨");
       elements.clearButton.disabled = true;
       elements.saveLibraryButton.disabled = true;
+      if (elements.chooseProblemJsonButton) {
+        elements.chooseProblemJsonButton.disabled = true;
+      }
+      if (elements.problemJsonInput) {
+        elements.problemJsonInput.value = "";
+      }
+      setOptionalText(elements.problemJsonSummary, "PDF로 이미지 문항을 먼저 추출한 뒤, AI가 만든 JSON을 올리면 번호 기준으로 문제 텍스트/유형/답안을 덮어씁니다.");
     }
 
     async function blobUrlToDataUrl(url) {
@@ -16841,6 +17206,18 @@
       elements.saveLibraryButton.addEventListener("click", () => {
         saveProblemsToLibrary().catch(handleError);
       });
+      if (elements.chooseProblemJsonButton && elements.problemJsonInput) {
+        elements.chooseProblemJsonButton.addEventListener("click", () => {
+          elements.problemJsonInput.click();
+        });
+        elements.problemJsonInput.addEventListener("change", (event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            importAiProblemJsonFile(file).catch(handleError);
+          }
+          event.target.value = "";
+        });
+      }
       elements.previewExamButton.addEventListener("click", () => {
         previewExamLayout().catch(handleError);
       });
@@ -16951,14 +17328,14 @@
           return;
         }
         if (target instanceof HTMLSelectElement && target.dataset.libraryStoredType !== undefined) {
-          state.libraryReview.storedType = target.value ? normalizeEffectiveProblemType(target.value) : "";
+          state.libraryReview.storedType = normalizeProblemTypeFilterValue(target.value);
           state.libraryReview.storedBulkQuestionText = "";
           state.libraryReview.storedPage = 1;
           renderLibraryWorkspaceDashboard();
           return;
         }
         if (target instanceof HTMLSelectElement && target.dataset.libraryCurrentType !== undefined) {
-          state.libraryReview.currentType = target.value ? normalizeEffectiveProblemType(target.value) : "";
+          state.libraryReview.currentType = normalizeProblemTypeFilterValue(target.value);
           state.libraryReview.currentBulkQuestionText = "";
           state.libraryReview.currentPage = 1;
           renderLibraryWorkspaceDashboard();
@@ -17043,6 +17420,10 @@
             return;
           }
           applyCurrentLibraryBulkQuestionText().catch(handleError);
+          return;
+        }
+        if (button.dataset.librarySaveCurrent !== undefined) {
+          saveProblemsToLibrary().catch(handleError);
           return;
         }
       });
