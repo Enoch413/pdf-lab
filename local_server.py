@@ -155,13 +155,14 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, directory: str | None = None, **kwargs: Any) -> None:
         super().__init__(*args, directory=directory or str(PROJECT_ROOT), **kwargs)
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
-        try:
-            super().log_message(format, *args)
-        except Exception:
-            # Some detached Windows launches do not expose a writable stderr.
-            # Ignore logging failures so static file responses still succeed.
-            return
+    def end_headers(self) -> None:
+        parsed = urlparse(self.path)
+        request_path = parsed.path.lower()
+        if request_path.endswith((".html", ".css", ".js")) or request_path in ("", "/"):
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+        super().end_headers()
 
     def send_json(self, status_code: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -174,12 +175,6 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path in {"", "/", "/index.html"}:
-            self.send_response(302)
-            self.send_header("Location", "/app/index.html")
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
         if parsed.path == "/api/ocr-status":
             self.send_json(200, get_ocr_status())
             return

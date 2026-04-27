@@ -22,7 +22,7 @@
 
     main {
       min-height: 100vh;
-      width: min(900px, calc(100% - 32px));
+      width: min(1040px, calc(100% - 32px));
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -48,8 +48,9 @@
 
     .hero-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 12px;
+      align-items: center;
       justify-content: flex-end;
     }
 
@@ -102,6 +103,7 @@
 
       .hero-actions {
         width: 100%;
+        flex-wrap: wrap;
       }
 
       .primary-btn,
@@ -117,10 +119,10 @@
       <div class="hero-top">
         <h1 class="title">PDF LAB</h1>
         <div class="hero-actions">
-          <a class="primary-btn" href="./app/index.html?workspace=exam&v=694b0ab">반별 출제</a>
-          <a class="primary-btn secondary-btn" href="./app/index.html?workspace=library&v=694b0ab">문제 라이브러리</a>
-          <a class="primary-btn secondary-btn" href="./app/general_exam.html?workspace=exam&v=694b0ab">일반 출제</a>
-          <a class="primary-btn secondary-btn" href="./app/final_test.html?v=694b0ab">파이널테스트</a>
+          <a class="primary-btn" href="./app/index.html?workspace=exam">반별 출제</a>
+          <a class="primary-btn secondary-btn" href="./app/final_test.html">파이널테스트</a>
+          <a class="primary-btn secondary-btn" href="./app/index.html?workspace=library">문제 라이브러리</a>
+          <a class="primary-btn secondary-btn" href="./app/general_exam.html?workspace=exam">일반 출제</a>
         </div>
       </div>
     </section>

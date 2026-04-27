@@ -179,7 +179,6 @@
                 <option value="배열"></option>
                 <option value="기타주관식"></option>
                 <option value="무관"></option>
-                <option value="무관문"></option>
                 <option value="순서"></option>
                 <option value="삽입"></option>
                 <option value="밑줄어법"></option>
@@ -547,7 +546,7 @@
     const PROBLEM_TYPE_SUBJECTIVE = "주관식";
     const PROBLEM_TYPE_GRAMMAR = "어법";
     const PROBLEM_TYPE_VOCAB = "어휘";
-    const PROBLEM_TYPE_ODD_SENTENCE = "무관문";
+    const PROBLEM_TYPE_ODD_SENTENCE = "무관";
     const SUBJECTIVE_TYPE_WRITING = "영작";
     const SUBJECTIVE_TYPE_SUMMARY = "요약(주관식)";
     const SUBJECTIVE_TYPE_GRAMMAR = "어법(주관식)";
@@ -632,7 +631,8 @@
           "밑줄 친 부분 중, 어법상 틀린 것은",
           "밑줄 친 부분 중 어법상 틀린 것은",
           "어법상 틀린 것은",
-          "문법적 쓰임이 적절하지 않은 것은"
+          "문법적 쓰임이 적절하지 않은 것은",
+          "문법"
         ]
       },
       {
@@ -671,6 +671,10 @@
           "다음 글에서 전체 흐름과 관계 없는 문장은",
           "전체 흐름과 관계 없는 문장은",
           "전체 흐름과",
+          "다음 문장의 흐름상 가장 어색한 것은",
+          "문장의 흐름상 가장 어색한 것은",
+          "흐름상 가장 어색한 것은",
+          "가장 어색한 것은",
           "글의 흐름으로 보아, 문맥상 적절하지 않은 것은",
           "글의 흐름으로 보아 문맥상 적절하지 않은 것은",
           "문맥상 적절하지 않은 것은",
@@ -850,6 +854,7 @@
       ["2", "②"], ["②", "②"], ["❷", "②"],
       ["3", "③"], ["③", "③"], ["❸", "③"],
       ["4", "④"], ["④", "④"], ["❹", "④"],
+      ["Co", "④"], ["CO", "④"], ["C0", "④"], ["cO", "④"], ["co", "④"], ["c0", "④"],
       ["5", "⑤"], ["⑤", "⑤"], ["❺", "⑤"],
       ["6", "⑥"], ["⑥", "⑥"], ["❻", "⑥"],
       ["7", "⑦"], ["⑦", "⑦"], ["❼", "⑦"],
@@ -865,11 +870,11 @@
       ["x", "X"], ["X", "X"]
     ]);
     const ANSWER_EXPORT_NUMBER_MAP = new Map([
-      ["①", "1"], ["❶", "1"], ["1", "1"], ["A", "1"], ["a", "1"],
-      ["②", "2"], ["❷", "2"], ["2", "2"], ["B", "2"], ["b", "2"],
-      ["③", "3"], ["❸", "3"], ["3", "3"], ["C", "3"], ["c", "3"],
-      ["④", "4"], ["❹", "4"], ["4", "4"], ["D", "4"], ["d", "4"],
-      ["⑤", "5"], ["❺", "5"], ["5", "5"], ["E", "5"], ["e", "5"],
+      ["①", "1"], ["❶", "1"], ["1", "1"],
+      ["②", "2"], ["❷", "2"], ["2", "2"],
+      ["③", "3"], ["❸", "3"], ["3", "3"],
+      ["④", "4"], ["❹", "4"], ["4", "4"],
+      ["⑤", "5"], ["❺", "5"], ["5", "5"],
       ["⑥", "6"], ["❻", "6"], ["6", "6"],
       ["⑦", "7"], ["❼", "7"], ["7", "7"],
       ["⑧", "8"], ["❽", "8"], ["8", "8"],
@@ -1369,6 +1374,29 @@
       return String(value || "").replace(/\s+/g, " ").trim();
     }
 
+    function stripTrailingSourceCitation(value) {
+      let text = String(value || "").trim();
+      const sourcePattern = /\s*\[([^\]]{3,220})\]\s*$/;
+      while (true) {
+        const match = text.match(sourcePattern);
+        if (!match) {
+          return text;
+        }
+        const citation = normalizeProblemText(match[1] || "");
+        const looksLikeSource =
+          /^(?:from|source|adapted from|출처)\b/i.test(citation) ||
+          (/[A-Za-z]{3}/.test(citation) && /\bby\b/i.test(citation));
+        if (!looksLikeSource) {
+          return text;
+        }
+        text = text.slice(0, match.index).trim();
+      }
+    }
+
+    function normalizeProblemContentText(value) {
+      return normalizeProblemText(stripTrailingSourceCitation(value));
+    }
+
     function normalizeAnswerLabel(value) {
       const compact = normalizeProblemText(value).replace(/\s+/g, "");
       if (!compact) {
@@ -1394,12 +1422,18 @@
       }
 
       const choiceText = compact.replace(/\s+/g, "");
-      if (!/^(?:10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿1-9A-Ea-e])+$/.test(choiceText)) {
+      if (/^C[oO0]$/i.test(choiceText)) {
+        return "4";
+      }
+      if (/^[A-Ea-e]+$/.test(choiceText)) {
+        return "";
+      }
+      if (!/^[①②③④⑤❶❷❸❹❺1-5]+$/.test(choiceText)) {
         return normalized || compact;
       }
 
       const tokens = [];
-      const tokenPattern = /10|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿1-9A-Ea-e]/g;
+      const tokenPattern = /[①②③④⑤❶❷❸❹❺1-5]/g;
       for (const match of String(choiceText).matchAll(tokenPattern)) {
         const token = match[0];
         const exported = ANSWER_EXPORT_NUMBER_MAP.get(normalizeAnswerLabel(token)) || ANSWER_EXPORT_NUMBER_MAP.get(token);
@@ -1423,7 +1457,11 @@
     function getFirstCircledAnswerLabel(value, maxScanLength = 180) {
       const target = String(value || "").slice(0, maxScanLength);
       const match = target.match(/[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/);
-      return match ? normalizeAnswerLabel(match[0]) : "";
+      if (match) {
+        return normalizeAnswerLabel(match[0]);
+      }
+      const brokenFourMatch = target.match(/(?:^|[\s:：\-])C\s*[oO0](?=\s|[A-Z가-힣]|$)/);
+      return brokenFourMatch ? "④" : "";
     }
 
     function isSingleLatinAnswerLabel(value) {
@@ -1443,9 +1481,31 @@
       return isLikelyRestoredOcrInitialText(restoredExplanationText) ? restoredExplanationText : "";
     }
 
+    function repairBrokenCircledFourAnswerCapture(answerText, explanationText) {
+      const rawAnswerText = normalizeProblemText(answerText || "");
+      const rawExplanationText = normalizeAnswerExplanationText(explanationText || "");
+      const match = rawAnswerText.match(/^C\s*[oO0](?:\s+([A-Za-z]{1,2}))?$/i);
+      if (!match) {
+        return null;
+      }
+      const stolenPrefix = match[1] || "";
+      if (!stolenPrefix) {
+        return {
+          answerText: "④",
+          explanationText: rawExplanationText
+        };
+      }
+      const separator = /^[A-Za-z]{1,2}$/.test(stolenPrefix) && /^[a-z]/.test(rawExplanationText) ? "" : " ";
+      return {
+        answerText: "④",
+        explanationText: normalizeAnswerExplanationText(`${stolenPrefix}${separator}${rawExplanationText}`)
+      };
+    }
+
     function repairOcrParsedAnswer(parsed) {
-      const answerText = normalizeAnswerLabel(parsed?.answerText || "");
-      const explanationText = normalizeAnswerExplanationText(parsed?.explanationText || "");
+      const brokenFourRepair = repairBrokenCircledFourAnswerCapture(parsed?.answerText || "", parsed?.explanationText || "");
+      const answerText = brokenFourRepair?.answerText || normalizeAnswerLabel(parsed?.answerText || "");
+      const explanationText = brokenFourRepair?.explanationText ?? normalizeAnswerExplanationText(parsed?.explanationText || "");
       const restoredExplanationText = restoreOcrStolenExplanationInitial(answerText, explanationText);
       if (restoredExplanationText) {
         const circledAnswerText = getFirstCircledAnswerLabel(restoredExplanationText);
@@ -1509,17 +1569,48 @@
       return window.PDFLAB_FIREBASE_CONFIG || window.ROTATION_FIREBASE_CONFIG || {};
     }
 
+    function getPdfLabFirebaseAuthEnvironmentMessage() {
+      const protocol = String(window.location?.protocol || "");
+      if (!["http:", "https:", "chrome-extension:"].includes(protocol)) {
+        return "Firebase 로그인을 사용할 수 없는 주소입니다. PDF LAB을 http://127.0.0.1:8762/app/final_test.html 주소로 열어주세요.";
+      }
+      try {
+        const storageKey = "__pdflab_firebase_storage_check__";
+        window.localStorage.setItem(storageKey, "1");
+        window.localStorage.removeItem(storageKey);
+      } catch (error) {
+        return "브라우저 저장소가 차단되어 Firebase 로그인을 사용할 수 없습니다. 이 사이트의 쿠키/사이트 데이터/localStorage를 허용한 뒤 새로고침해주세요.";
+      }
+      if (!window.indexedDB) {
+        return "브라우저 IndexedDB가 비활성화되어 Firebase 로그인을 사용할 수 없습니다. 사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
+      }
+      return "";
+    }
+
     function ensurePdfLabFirebaseServices() {
       if (!isPdfLabFirebaseConfigured() || !window.firebase) {
         return false;
       }
-      if (!firebase.apps.length) {
-        firebase.initializeApp(getPdfLabFirebaseConfig());
+      const environmentMessage = getPdfLabFirebaseAuthEnvironmentMessage();
+      if (environmentMessage) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = environmentMessage;
+        return false;
       }
-      state.firebaseSharedLibrary.auth = firebase.auth();
-      state.firebaseSharedLibrary.db = firebase.firestore();
-      state.firebaseSharedLibrary.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
-      return Boolean(state.firebaseSharedLibrary.auth && state.firebaseSharedLibrary.db && state.firebaseSharedLibrary.storage);
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(getPdfLabFirebaseConfig());
+        }
+        state.firebaseSharedLibrary.auth = firebase.auth();
+        state.firebaseSharedLibrary.db = firebase.firestore();
+        state.firebaseSharedLibrary.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
+        return Boolean(state.firebaseSharedLibrary.auth && state.firebaseSharedLibrary.db && state.firebaseSharedLibrary.storage);
+      } catch (error) {
+        state.firebaseSharedLibrary.enabled = false;
+        state.firebaseSharedLibrary.error = getFriendlyFirebaseMessage(error);
+        console.warn("Failed to initialize Firebase services", error);
+        return false;
+      }
     }
 
     function waitForPdfLabFirebaseAuth(auth, timeoutMs = 1500) {
@@ -1555,6 +1646,9 @@
       }
       if (code.includes("network-request-failed")) {
         return "Firebase 네트워크 연결이 불안정합니다.";
+      }
+      if (code.includes("operation-not-supported-in-this-environment")) {
+        return getPdfLabFirebaseAuthEnvironmentMessage() || "현재 브라우저 환경에서 Firebase 로그인을 사용할 수 없습니다. PDF LAB을 http://127.0.0.1:8762 주소로 열고, 이 사이트의 쿠키/사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
       }
       return error?.message || "Firebase 공용 문제 라이브러리를 불러오지 못했습니다.";
     }
@@ -1597,7 +1691,7 @@
     async function loadSharedLibrarySnapshotFromFirebase() {
       if (!ensurePdfLabFirebaseServices()) {
         state.firebaseSharedLibrary.enabled = false;
-        state.firebaseSharedLibrary.error = "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
+        state.firebaseSharedLibrary.error = state.firebaseSharedLibrary.error || "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
         return null;
       }
       try {
@@ -2428,7 +2522,36 @@
 
     function normalizeEffectiveProblemType(problemType) {
       const normalized = String(problemType || "").trim();
-      return normalized === "심경" ? PROBLEM_TYPE_OTHER : (normalized || PROBLEM_TYPE_OTHER);
+      if (normalized === "심경") {
+        return PROBLEM_TYPE_OTHER;
+      }
+      if (normalized === "무관문") {
+        return PROBLEM_TYPE_ODD_SENTENCE;
+      }
+      return normalized || PROBLEM_TYPE_OTHER;
+    }
+
+    function shouldStructuredTemplateIncludeChoices(templateKey) {
+      return ![
+        EDITOR_TEMPLATE_OBJECTIVE_INSERTION,
+        EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY,
+        EDITOR_TEMPLATE_SUBJECTIVE_FREE
+      ].includes(templateKey);
+    }
+
+    function shouldProblemTypeAllowInlineChoiceParsing(problemType, isSubjective = false) {
+      if (isSubjective) {
+        return false;
+      }
+      const resolvedType = normalizeEffectiveProblemType(problemType);
+      return ![
+        "삽입",
+        "밑줄어법",
+        "밑줄어휘",
+        "무관",
+        PROBLEM_TYPE_ODD_SENTENCE,
+        "지칭"
+      ].includes(resolvedType);
     }
 
     function getSelectableTypeLabel(problem) {
@@ -8668,6 +8791,8 @@
             if (!segments.length) {
               return null;
             }
+            const sharedPromptText = collectProblemPromptText(columnMap, segments);
+            const sharedAnalysisText = collectProblemText(columnMap, segments, { maxLength: 6000, maxSegments: 24 });
             return {
               id: `shared-${event.groupLabel}`,
               kind: "shared",
@@ -8680,6 +8805,8 @@
               segmentImages: Array.from({ length: segments.length }, () => null),
               pageSignature: getPageSignature({ segments }),
               pageCount: new Set(segments.map((segment) => segment.pageIndex)).size,
+              promptText: sharedPromptText,
+              analysisText: sharedAnalysisText,
               problemType: null,
               isSubjective: false,
               answerSegments: [],
@@ -8863,7 +8990,57 @@
       if (!compact) {
         return "";
       }
+      if (compact === "CO" || compact === "C0") {
+        return "④";
+      }
       return /^\(.+\)$/.test(compact) ? compact.slice(1, -1) : compact;
+    }
+
+    function normalizeObjectiveChoiceMarker(marker, index = 0) {
+      const fallback = DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || DEFAULT_STRUCTURED_CHOICE_MARKERS[0];
+      const normalized = normalizeProblemChoiceMarker(marker || fallback);
+      const markerIndex = DEFAULT_STRUCTURED_CHOICE_MARKERS.indexOf(normalized);
+      if (markerIndex >= 0 && markerIndex < DEFAULT_STRUCTURED_CHOICE_MARKERS.length) {
+        return normalized;
+      }
+      const digitMatch = normalized.match(/^[1-5]$/);
+      if (digitMatch) {
+        return DEFAULT_STRUCTURED_CHOICE_MARKERS[Number(digitMatch[0]) - 1] || fallback;
+      }
+      return fallback;
+    }
+
+    function composeStructuredChoiceLinesForBody(entries = []) {
+      return (Array.isArray(entries) ? entries : [])
+        .map((entry, index) => {
+          const text = normalizeProblemText(entry?.text || "");
+          if (!text) {
+            return "";
+          }
+          const marker = normalizeObjectiveChoiceMarker(entry?.marker, index);
+          return marker ? `${marker} ${text}` : text;
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    function appendStructuredChoiceLinesToBody(bodyText, entries = []) {
+      const normalizedBody = normalizeProblemText(bodyText || "");
+      const choiceLines = composeStructuredChoiceLinesForBody(entries);
+      return [normalizedBody, choiceLines].filter(Boolean).join("\n");
+    }
+
+    function mergeProblemStemAndReference(questionText, referenceText) {
+      const normalizedQuestion = normalizeProblemText(questionText || "");
+      const normalizedReference = normalizeProblemText(referenceText || "")
+        .split(/\n+/)
+        .map((line) => normalizeProblemText(line))
+        .filter(Boolean)
+        .join(" ");
+      if (normalizedQuestion && normalizedReference) {
+        return `${normalizedQuestion} ${normalizedReference}`.trim();
+      }
+      return normalizedQuestion || normalizedReference;
     }
 
     function buildProblemTextBaseBlocks(text) {
@@ -8881,17 +9058,67 @@
       if (!workingText) {
         return blocks;
       }
+      const leadingReferences = [];
+      while (true) {
+        const referenceMatch = workingText.match(/^(\[[^\]\n]{1,32}\])(?:\s+|$)([\s\S]*)$/);
+        if (!referenceMatch) {
+          break;
+        }
+        const referenceToken = normalizeProblemText(referenceMatch[1] || "");
+        if (!referenceToken) {
+          break;
+        }
+        leadingReferences.push(referenceToken);
+        workingText = String(referenceMatch[2] || "").trim();
+        if (!workingText) {
+          break;
+        }
+      }
+      if (leadingReferences.length) {
+        const mergedStem = mergeProblemStemAndReference(
+          blocks.find((block) => block.type === "stem")?.text || "",
+          leadingReferences.join(" ")
+        );
+        const existingStem = blocks.find((block) => block.type === "stem");
+        if (existingStem) {
+          existingStem.text = mergedStem;
+        } else if (mergedStem) {
+          blocks.push({
+            type: "stem",
+            text: mergedStem
+          });
+        }
+      }
+      if (!workingText) {
+        return blocks;
+      }
       workingText = workingText
+        .replace(/\s+(?=(?:AB|ABC)\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿])/g, "\n")
         .replace(/\s+(?=\[[^\]]+\])/g, "\n")
         .replace(/\s+(?=\([A-E]\))/g, "\n")
-        .replace(/\s+(?=\(\d+\))/g, "\n");
+        .replace(/\s+(?=\([1-5]\))/g, "\n")
+        .replace(/\s+(?=C\s*[O0](?:\s|[A-Za-z가-힣]))/g, "\n")
+        .replace(/\s*(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿](?:\s|[A-Za-z가-힣]))/g, "\n");
       workingText
         .split(/\n+/)
         .map((segment) => String(segment || "").trim())
         .filter(Boolean)
         .forEach((segment) => {
+          if (/^\[[^\]\n]{1,32}\]$/.test(segment) && !blocks.some((block) => block.type === "body" || block.type === "choice")) {
+            const stemBlock = blocks.find((block) => block.type === "stem");
+            const mergedStem = mergeProblemStemAndReference(stemBlock?.text || "", segment);
+            if (stemBlock) {
+              stemBlock.text = mergedStem;
+            } else if (mergedStem) {
+              blocks.push({
+                type: "stem",
+                text: mergedStem
+              });
+            }
+            return;
+          }
           blocks.push({
-            type: /^\[[^\]]+\]/.test(segment) ? "reference" : "body",
+            type: "body",
             text: segment
           });
       });
@@ -8905,37 +9132,44 @@
       }
       const blocks = [];
       const pushBlock = (type, text, extra = {}) => {
-        const normalized = normalizeProblemText(text);
+        const normalized = normalizeProblemContentText(text);
         if (!normalized) {
           return;
         }
         blocks.push({ type, text: normalized, ...extra });
       };
-      pushBlock("stem", structured.questionText);
-      pushBlock("reference", structured.referenceText);
-      if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION || structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+      const pushMultilineBlock = (type, text, extra = {}) => {
+        stripTrailingSourceCitation(text)
+          .split(/\n+/)
+          .map((line) => normalizeProblemContentText(line))
+          .filter(Boolean)
+          .forEach((line) => blocks.push({ type, text: line, ...extra }));
+      };
+      pushBlock("stem", mergeProblemStemAndReference(structured.questionText, structured.referenceText));
+      if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_INSERTION) {
         pushBlock("body", structured.givenText || structured.insertionText || structured.leadText);
-        pushBlock("body", structured.bodyText);
+        pushBlock("body", appendStructuredChoiceLinesToBody(structured.bodyText, structured.choices));
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SEQUENCE) {
+        pushBlock("body", structured.givenText || structured.insertionText || structured.leadText);
+        pushMultilineBlock("body", structured.bodyText);
       } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_SUMMARY_AB) {
         pushBlock("body", structured.bodyText);
         pushBlock("body", structured.summaryText);
+      } else if (structured.templateKey === EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY) {
+        pushBlock("body", appendStructuredChoiceLinesToBody(structured.bodyText, structured.choices));
       } else {
         pushBlock("body", structured.bodyText);
       }
-      const shouldIncludeChoices = ![
-        EDITOR_TEMPLATE_OBJECTIVE_INSERTION,
-        EDITOR_TEMPLATE_OBJECTIVE_BODY_ONLY,
-        EDITOR_TEMPLATE_SUBJECTIVE_FREE
-      ].includes(structured.templateKey);
+      const shouldIncludeChoices = shouldStructuredTemplateIncludeChoices(structured.templateKey);
       if (shouldIncludeChoices && Array.isArray(structured.choices)) {
         structured.choices.forEach((choice, index) => {
-          const normalized = normalizeProblemText(choice?.text || "");
+          const normalized = normalizeProblemContentText(choice?.text || "");
           if (!normalized) {
             return;
           }
           blocks.push({
             type: "choice",
-            marker: normalizeProblemChoiceMarker(choice?.marker || DEFAULT_STRUCTURED_CHOICE_MARKERS[index] || String(index + 1)),
+            marker: normalizeObjectiveChoiceMarker(choice?.marker, index),
             text: normalized
           });
         });
@@ -8955,9 +9189,16 @@
         return [{ type: "body", text: "문항 텍스트가 없습니다." }];
       }
       const normalized = normalizeProblemText(rawText);
-      const choiceRegex = /(^|\s)(\(\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]\s*\)|[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿][.)]?|\(\s*\d+\s*\))/g;
+      if (!shouldProblemTypeAllowInlineChoiceParsing(problem?.problemType, Boolean(problem?.isSubjective))) {
+        return buildProblemTextBaseBlocks(normalized);
+      }
+      const normalizedForChoiceParsing = normalized
+        .replace(/\b(?:AB|ABC)\s+(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿])/g, "")
+        .replace(/\s+(?=C\s*[O0](?:\s|[A-Za-z가-힣]))/g, "\n")
+        .replace(/\s*(?=[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿](?:\s|[A-Za-z가-힣]))/g, "\n");
+      const choiceRegex = /(^|\s)(\(\s*[①②③④⑤❶❷❸❹❺]\s*\)|[①②③④⑤❶❷❸❹❺][.)]?|\(\s*[1-5]\s*\)|C\s*[O0])/g;
       const matches = [];
-      for (const match of normalized.matchAll(choiceRegex)) {
+      for (const match of normalizedForChoiceParsing.matchAll(choiceRegex)) {
         const marker = match[2] || "";
         if (!marker) {
           continue;
@@ -8973,33 +9214,130 @@
       if (!matches.length) {
         return buildProblemTextBaseBlocks(normalized);
       }
-      const prefixText = normalized.slice(0, matches[0].markerIndex).trim();
+      const prefixText = normalizedForChoiceParsing.slice(0, matches[0].markerIndex).trim();
       const blocks = buildProblemTextBaseBlocks(prefixText);
       matches.forEach((match, index) => {
         const nextMatch = matches[index + 1] || null;
-        const choiceText = normalized
-          .slice(match.markerEndIndex, nextMatch ? nextMatch.markerIndex : normalized.length)
+        const choiceText = normalizedForChoiceParsing
+          .slice(match.markerEndIndex, nextMatch ? nextMatch.markerIndex : normalizedForChoiceParsing.length)
           .trim();
         if (!choiceText) {
           return;
         }
         blocks.push({
           type: "choice",
-          marker: normalizeProblemChoiceMarker(match.marker),
+          marker: normalizeObjectiveChoiceMarker(match.marker, index),
           text: choiceText
         });
       });
       return blocks.length ? blocks : [{ type: "body", text: normalized }];
     }
 
+    function renderProblemTextInlineContent(text, problem) {
+      const escapedText = escapeHtml(text || "");
+      return escapedText
+        .replace(/\[\[u:([\s\S]*?)\]\]/g, '<span class="problem-text-underline">$1</span>')
+        .replace(/(?:[_＿﹍﹎﹏]{3,}|[-‐‑‒–—―－─━⎯]{3,})/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/\(\s*\)/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/[\[〔]\s*빈칸\s*[\]〕]/g, '<span class="problem-text-blank" aria-label="빈칸"></span>')
+        .replace(/\n+/g, "<br>");
+    }
+
+    function shouldRenderChoicePartTable(problem) {
+      const normalizedType = normalizeEffectiveProblemType(problem?.problemType);
+      return [
+        "연결사",
+        "요약",
+        "선택어법",
+        "선택어휘",
+        "순서"
+      ].includes(normalizedType);
+    }
+
+    function getChoicePartHintCountFromText(text) {
+      const match = normalizeProblemText(text || "").match(/(?:^|\s)(ABC|AB)\s*[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/);
+      if (!match) {
+        return 0;
+      }
+      return match[1] === "ABC" ? 3 : 2;
+    }
+
+    function splitChoicePartText(text) {
+      return normalizeProblemText(text || "")
+        .split(/\s+[-‐‑‒–—―－]\s+/)
+        .map((part) => normalizeProblemText(part))
+        .filter(Boolean);
+    }
+
+    function inferChoicePartCount(choiceBlocks, problem, hintCount = 0) {
+      if (!shouldRenderChoicePartTable(problem)) {
+        return 0;
+      }
+      if (hintCount === 2 || hintCount === 3) {
+        return hintCount;
+      }
+      const normalizedType = normalizeEffectiveProblemType(problem?.problemType);
+      const counts = new Map();
+      choiceBlocks.forEach((block) => {
+        const count = splitChoicePartText(block.text || "").length;
+        if (count >= 2 && count <= 3) {
+          counts.set(count, (counts.get(count) || 0) + 1);
+        }
+      });
+      const minimumMatches = Math.max(2, Math.ceil(choiceBlocks.length * 0.6));
+      if (normalizedType === "요약" && (counts.get(2) || 0) >= Math.max(1, Math.ceil(choiceBlocks.length * 0.4))) {
+        return 2;
+      }
+      if ((counts.get(3) || 0) >= minimumMatches) {
+        return 3;
+      }
+      if ((counts.get(2) || 0) >= minimumMatches) {
+        return 2;
+      }
+      return 0;
+    }
+
+    function buildProblemChoicePartTableMarkup(choiceBlocks, problem) {
+      const partCount = inferChoicePartCount(choiceBlocks, problem, getChoicePartHintCountFromText(problem?.analysisText || problem?.promptText || ""));
+      if (!partCount) {
+        return "";
+      }
+      const labels = partCount === 3 ? ["A", "B", "C"] : ["A", "B"];
+      return `
+        <div class="problem-choice-part-table is-${partCount === 3 ? "abc" : "ab"}">
+          <span class="problem-choice-part-head"></span>
+          ${labels.map((label) => `<span class="problem-choice-part-head">${label}</span>`).join("")}
+          ${choiceBlocks.map((block, index) => {
+            const parts = splitChoicePartText(block.text || "");
+            const marker = normalizeObjectiveChoiceMarker(block.marker, index);
+            return `
+              <span class="problem-choice-part-marker">${escapeHtml(marker)}</span>
+              ${labels.map((_, partIndex) => `<span class="problem-choice-part-cell">${renderProblemTextInlineContent(parts[partIndex] || "", problem)}</span>`).join("")}
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
     function buildProblemTextMarkup(problem) {
-      return buildProblemTextBlocks(problem)
+      const blocks = buildProblemTextBlocks(problem);
+      const choiceBlocks = blocks.filter((block) => block.type === "choice");
+      const choiceTableMarkup = buildProblemChoicePartTableMarkup(choiceBlocks, problem);
+      let choiceTableRendered = false;
+      return blocks
         .map((block) => {
           if (block.type === "choice") {
+            if (choiceTableMarkup) {
+              if (choiceTableRendered) {
+                return "";
+              }
+              choiceTableRendered = true;
+              return choiceTableMarkup;
+            }
             return `
               <div class="problem-text-choice">
                 <span class="problem-text-choice-marker">${escapeHtml(block.marker || "")}</span>
-                <p class="problem-text-choice-body">${escapeHtml(block.text || "")}</p>
+                <p class="problem-text-choice-body">${renderProblemTextInlineContent(block.text || "", problem)}</p>
               </div>
             `;
           }
@@ -9009,7 +9347,7 @@
           } else if (block.type === "reference") {
             classNames.push("is-reference");
           }
-          return `<p class="${classNames.join(" ")}">${escapeHtml(block.text || "")}</p>`;
+          return `<p class="${classNames.join(" ")}">${renderProblemTextInlineContent(block.text || "", problem)}</p>`;
         })
         .join("");
     }
