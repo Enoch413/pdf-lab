@@ -14400,6 +14400,7 @@
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
       const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
+      let shouldClosePrintWindowOnError = true;
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -14407,26 +14408,50 @@
         if (commitHistory) {
           setStatus(
             retryContext
-              ? "학생 출력 이력을 저장하고 PDF 출력을 준비하는 중입니다..."
-              : "시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...",
+              ? "학생 출력 PDF를 먼저 준비하는 중입니다..."
+              : "시험지 PDF를 먼저 준비하는 중입니다...",
             "working",
             retryContext ? "학생 출력" : "시험지 확정"
           );
-          await persistExamHistory();
         } else {
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html, printWindow);
+        const printTask = printStandaloneHtml(html, printWindow);
+        shouldClosePrintWindowOnError = false;
+        let saveError = null;
         if (commitHistory) {
-          await persistCurrentExamWorkRecord();
+          setStatus(
+            retryContext
+              ? "학생 출력 이력과 draft를 저장하는 중입니다..."
+              : "시험지 이력과 draft를 저장하는 중입니다...",
+            "working",
+            retryContext ? "학생 출력" : "시험지 확정"
+          );
+          try {
+            await persistExamHistory();
+            await persistCurrentExamWorkRecord();
+          } catch (error) {
+            saveError = error;
+          }
+        }
+        try {
+          await printTask;
+        } catch (error) {
+          if (!saveError) {
+            throw error;
+          }
+          console.warn("PDF print task failed after save error", error);
+        }
+        if (saveError) {
+          throw saveError;
         }
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"}과 draft 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
       } catch (error) {
-        if (printWindow && !printWindow.closed) {
+        if (shouldClosePrintWindowOnError && printWindow && !printWindow.closed) {
           printWindow.close();
         }
         throw error;
