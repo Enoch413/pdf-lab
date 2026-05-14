@@ -1354,6 +1354,10 @@
         retryResponseSyncPromise: null,
         lastRetryResponseAppliedKey: "",
         lastRetryResponseAppliedAt: 0,
+        retrySessionSyncContextKey: "",
+        retrySessionSyncPromise: null,
+        lastRetrySessionSyncContextKey: "",
+        lastRetrySessionSyncedAt: 0,
         sharedLibraryEnabled: false,
         sharedLibraryError: "",
         sharedLibraryLastSyncedAt: 0
@@ -5615,7 +5619,7 @@
         sessions: sessions
           .map((session) => {
             const schoolKey = normalizeSchoolKey(session?.schoolKey || "");
-            const sourceKey = normalizeLibrarySourceKey(session?.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+            const sourceKey = normalizeSchoolSourceFilterKey(session?.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
             const baseItems = Array.isArray(session?.baseItems) ? session.baseItems : [];
             if (!schoolKey || !baseItems.length) {
               return null;
@@ -5638,6 +5642,9 @@
               createdAt: Number(session?.createdAt) || Date.now(),
               updatedAt: Number(session?.updatedAt) || Date.now(),
               baseTitle: normalizeProblemText(session?.baseTitle || ""),
+              sourceBatchId: normalizeProblemText(session?.sourceBatchId || ""),
+              sourceSetId: normalizeProblemText(session?.sourceSetId || ""),
+              sourceRound: normalizeProblemText(session?.sourceRound || ""),
               baseItems: normalizeStudentRetryRound({ roundIndex: 1, items: baseItems }, 1).items,
               studentStates
             };
@@ -7640,6 +7647,22 @@
       });
     }
 
+    function getTimestampMillis(value, fallback = Date.now()) {
+      if (value && typeof value.toMillis === "function") {
+        const millis = value.toMillis();
+        return Number.isFinite(millis) ? millis : fallback;
+      }
+      if (value && typeof value === "object" && Number.isFinite(Number(value.seconds))) {
+        return (Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1000000);
+      }
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric;
+      }
+      const parsed = Date.parse(String(value || ""));
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
     function idbRequestToPromise(request) {
       return new Promise((resolve, reject) => {
         request.addEventListener("success", () => resolve(request.result));
@@ -9637,7 +9660,7 @@
       return (state.studentRetry.sessions || [])
         .filter((session) =>
           normalizeSchoolKey(session.schoolKey || "") === schoolKey &&
-          normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey
+          doesRetrySourceFilterMatch(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY, sourceKey)
         )
         .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
     }
@@ -9737,12 +9760,138 @@
         .join("::");
     }
 
+    function getFirstNormalizedValue(values = [], options = {}) {
+      const { lower = false, schoolName = false } = options;
+      const list = Array.isArray(values) ? values : [values];
+      for (const value of list) {
+        const normalized = schoolName ? normalizeSchoolName(value || "") : normalizeProblemText(value || "");
+        if (normalized) {
+          return lower ? normalized.toLowerCase() : normalized;
+        }
+      }
+      return "";
+    }
+
+    function getCheckSetRecordPayload(record = {}) {
+      return record?.exportPayload && typeof record.exportPayload === "object"
+        ? record.exportPayload
+        : (record?.payload && typeof record.payload === "object" ? record.payload : {});
+    }
+
+    function getCheckSetRecordClassIds(record = {}) {
+      const payload = getCheckSetRecordPayload(record);
+      return Array.from(new Set(
+        [
+          ...(Array.isArray(record.classIds) ? record.classIds : []),
+          ...(Array.isArray(payload.classIds) ? payload.classIds : [])
+        ]
+          .map((classId) => normalizeProblemText(classId))
+          .filter(Boolean)
+      ));
+    }
+
+    function getCheckSetRecordSourceRound(record = {}) {
+      const payload = getCheckSetRecordPayload(record);
+      return normalizeProblemText(record.sourceRound || payload.sourceRound || "");
+    }
+
+    function getCheckSetRecordSourceKey(record = {}) {
+      const payload = getCheckSetRecordPayload(record);
+      const mappings = Array.isArray(record.questionMappings) && record.questionMappings.length
+        ? record.questionMappings
+        : (Array.isArray(payload.questionMappings) ? payload.questionMappings : []);
+      const mappingSourceKey = mappings.length
+        ? mappings.find((mapping) => normalizeProblemText(mapping?.librarySourceKey || ""))?.librarySourceKey
+        : "";
+      return normalizeSchoolSourceFilterKey(
+        record.librarySourceKey ||
+        payload.librarySourceKey ||
+        mappingSourceKey ||
+        DEFAULT_LIBRARY_SOURCE_KEY
+      );
+    }
+
+    function isAllLibrarySourceFilterKey(sourceKey) {
+      return normalizeProblemTypeToken(sourceKey || "") === normalizeProblemTypeToken(LIBRARY_SOURCE_FILTER_ALL);
+    }
+
+    function doesRetrySourceFilterMatch(recordSourceKey, selectedSourceKey = getStudentRetrySourceKey()) {
+      const selected = normalizeSchoolSourceFilterKey(selectedSourceKey || LIBRARY_SOURCE_FILTER_ALL);
+      if (isAllLibrarySourceFilterKey(selected)) {
+        return true;
+      }
+      return normalizeLibrarySourceKey(recordSourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === selected;
+    }
+
+    function normalizeCheckSetQuestionMappings(source = {}) {
+      const payload = getCheckSetRecordPayload(source);
+      const rawMappings = Array.isArray(source.questionMappings) && source.questionMappings.length
+        ? source.questionMappings
+        : (Array.isArray(payload.questionMappings) ? payload.questionMappings : []);
+      return rawMappings
+        .map((mapping, index) => {
+          const questionId = normalizeProblemText(
+            mapping?.questionId ||
+            mapping?.id ||
+            mapping?.question?.id ||
+            `q-${index + 1}`
+          );
+          const problemRecordId = normalizeProblemText(
+            mapping?.problemRecordId ||
+            mapping?.sourceProblemId ||
+            mapping?.recordId ||
+            mapping?.problemId ||
+            mapping?.sourceId ||
+            ""
+          );
+          if (!questionId || !problemRecordId) {
+            return null;
+          }
+          return {
+            questionId,
+            number: Number.parseInt(mapping?.number || mapping?.displayNumber, 10) || index + 1,
+            problemRecordId,
+            sourceProblemId: normalizeProblemText(mapping?.sourceProblemId || problemRecordId),
+            passageKey: normalizeProblemText(mapping?.passageKey || ""),
+            typeLabel: normalizeProblemText(mapping?.typeLabel || mapping?.problemType || PROBLEM_TYPE_OTHER),
+            textbookName: normalizeProblemText(mapping?.textbookName || ""),
+            librarySourceKey: normalizeLibrarySourceKey(mapping?.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY),
+            librarySourceName: normalizeProblemText(mapping?.librarySourceName || "")
+          };
+        })
+        .filter(Boolean);
+    }
+
     function doesRetryStudentMatchCheckSetRecord(record = {}, student = {}) {
-      const recordUid = normalizeProblemText(record.targetFirebaseUid || "");
-      const recordStudentId = normalizeProblemText(record.targetFirebaseStudentId || "");
-      const recordLoginId = normalizeProblemText(record.targetFirebaseLoginId || "");
-      const recordEmail = normalizeProblemText(record.targetFirebaseEmail || "").toLowerCase();
-      const recordName = normalizeSchoolName(record.targetStudentName || "");
+      const payload = getCheckSetRecordPayload(record);
+      const recordUid = getFirstNormalizedValue([
+        record.targetFirebaseUid,
+        record.targetUserIds,
+        payload.targetUserIds
+      ].flat());
+      const recordStudentId = getFirstNormalizedValue([
+        record.targetFirebaseStudentId,
+        record.targetStudentId,
+        record.targetStudentIds,
+        payload.targetStudentId,
+        payload.targetStudentIds
+      ].flat());
+      const recordLoginId = getFirstNormalizedValue([
+        record.targetFirebaseLoginId,
+        record.targetLoginIds,
+        payload.targetLoginIds
+      ].flat());
+      const recordEmail = getFirstNormalizedValue([
+        record.targetFirebaseEmail,
+        record.targetEmails,
+        payload.targetEmails
+      ].flat(), { lower: true });
+      const recordName = getFirstNormalizedValue([
+        record.targetStudentName,
+        record.targetStudentNames,
+        payload.targetStudentName,
+        payload.targetStudentNames
+      ].flat(), { schoolName: true });
       const studentUid = normalizeProblemText(student.firebaseUid || "");
       const studentId = normalizeProblemText(student.firebaseStudentId || "");
       const studentLoginId = normalizeProblemText(student.firebaseLoginId || "");
@@ -9797,6 +9946,370 @@
       return Boolean(responseName && studentName && responseName === studentName);
     }
 
+    function doesCheckSetRecordMatchRetrySchool(record = {}, schoolKey = getStudentRetrySchoolKey()) {
+      const selectedSchoolKey = normalizeSchoolKey(schoolKey || "");
+      if (!selectedSchoolKey) {
+        return false;
+      }
+      const recordSchoolKey = normalizeSchoolKey(record.schoolKey || getCheckSetRecordPayload(record).schoolKey || "");
+      if (recordSchoolKey && recordSchoolKey === selectedSchoolKey) {
+        return true;
+      }
+      const selectedClassIds = new Set(getSelectedSchoolClassIds());
+      const recordClassIds = getCheckSetRecordClassIds(record);
+      return Boolean(selectedClassIds.size && recordClassIds.some((classId) => selectedClassIds.has(classId)));
+    }
+
+    function getFirstRoundRetryCheckSetCandidates(student = getSelectedRetryStudent()) {
+      if (!student) {
+        return [];
+      }
+      const selectedSchoolKey = getStudentRetrySchoolKey();
+      const selectedSourceKey = getStudentRetrySourceKey();
+      return getStoredCheckSetRecords()
+        .filter((record) => getCheckSetRecordSourceRound(record) === "round1")
+        .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
+        .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
+        .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
+        .filter((record) => normalizeCheckSetQuestionMappings(record).length)
+        .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
+    }
+
+    function createRetryBaseItemsFromCheckSetRecord(record = {}) {
+      const seenProblemIds = new Set();
+      return normalizeCheckSetQuestionMappings(record)
+        .map((mapping, index) => {
+          const sourceRecord = getRetryRecordById(mapping.problemRecordId);
+          if (!sourceRecord || seenProblemIds.has(sourceRecord.recordId)) {
+            return null;
+          }
+          seenProblemIds.add(sourceRecord.recordId);
+          return createRetryItemFromRecord(
+            sourceRecord,
+            mapping.number || index + 1,
+            mapping.sourceProblemId || mapping.problemRecordId
+          );
+        })
+        .filter(Boolean);
+    }
+
+    function buildRetrySessionIdFromCheckSetRecord(record = {}, baseItems = []) {
+      const signature = buildRetryProblemRecordSignature(baseItems);
+      const key = [
+        normalizeSchoolKey(record.schoolKey || getStudentRetrySchoolKey()),
+        getCheckSetRecordSourceKey(record),
+        normalizeProblemText(record.sourceBatchId || getCheckSetRecordPayload(record).sourceBatchId || ""),
+        normalizeProblemText(record.sourceSetId || getCheckSetRecordPayload(record).sourceSetId || ""),
+        getCheckSetRecordSourceRound(record) || "round1",
+        signature || normalizeProblemText(record.checkSetId || "")
+      ].filter(Boolean).join("-");
+      return `retry-session-${buildPortableCheckSetId(key, "check-set")}`;
+    }
+
+    function findExistingRetrySessionForCheckSetRecord(record = {}, baseItems = []) {
+      const sessionId = buildRetrySessionIdFromCheckSetRecord(record, baseItems);
+      const signature = buildRetryProblemRecordSignature(baseItems);
+      const sourceBatchId = normalizeProblemText(record.sourceBatchId || getCheckSetRecordPayload(record).sourceBatchId || "");
+      const sourceSetId = normalizeProblemText(record.sourceSetId || getCheckSetRecordPayload(record).sourceSetId || "");
+      return (state.studentRetry.sessions || []).find((session) => {
+        if (String(session.sessionId || "") === sessionId) {
+          return true;
+        }
+        if (
+          sourceBatchId &&
+          sourceSetId &&
+          normalizeProblemText(session.sourceBatchId || "") === sourceBatchId &&
+          normalizeProblemText(session.sourceSetId || "") === sourceSetId &&
+          normalizeProblemText(session.sourceRound || "round1") === "round1"
+        ) {
+          return true;
+        }
+        return normalizeSchoolKey(session.schoolKey || "") === normalizeSchoolKey(record.schoolKey || getStudentRetrySchoolKey()) &&
+          doesRetrySourceFilterMatch(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY, getCheckSetRecordSourceKey(record)) &&
+          buildRetryProblemRecordSignature(session.baseItems || []) === signature;
+      }) || null;
+    }
+
+    function ensureStudentRetrySessionsFromAvailableCheckSets(student = getSelectedRetryStudent()) {
+      if (!student) {
+        return { created: 0, matched: 0 };
+      }
+      if (!Array.isArray(state.studentRetry.sessions)) {
+        state.studentRetry.sessions = [];
+      }
+      const selectedSchool = getSelectedSchoolProfile();
+      const records = getFirstRoundRetryCheckSetCandidates(student);
+      let created = 0;
+      records.forEach((record) => {
+        const baseItems = createRetryBaseItemsFromCheckSetRecord(record);
+        if (!baseItems.length) {
+          return;
+        }
+        const existing = findExistingRetrySessionForCheckSetRecord(record, baseItems);
+        if (existing) {
+          existing.sourceBatchId = existing.sourceBatchId || normalizeProblemText(record.sourceBatchId || getCheckSetRecordPayload(record).sourceBatchId || "");
+          existing.sourceSetId = existing.sourceSetId || normalizeProblemText(record.sourceSetId || getCheckSetRecordPayload(record).sourceSetId || "");
+          existing.sourceRound = existing.sourceRound || "round1";
+          getStudentRetryState(existing, student.studentId);
+          return;
+        }
+        const createdAt = getTimestampMillis(record.createdAt, Date.now());
+        const updatedAt = getTimestampMillis(record.updatedAt, createdAt);
+        const payload = getCheckSetRecordPayload(record);
+        const session = {
+          sessionId: buildRetrySessionIdFromCheckSetRecord(record, baseItems),
+          schoolKey: normalizeSchoolKey(record.schoolKey || selectedSchool?.key || getStudentRetrySchoolKey()),
+          sourceKey: getCheckSetRecordSourceKey(record),
+          name: normalizeProblemText(record.title || payload.title || "1차 공통 CHECK"),
+          createdAt,
+          updatedAt,
+          baseTitle: normalizeProblemText(payload.title || record.title || "1차 공통 세트"),
+          sourceBatchId: normalizeProblemText(record.sourceBatchId || payload.sourceBatchId || ""),
+          sourceSetId: normalizeProblemText(record.sourceSetId || payload.sourceSetId || ""),
+          sourceRound: "round1",
+          baseItems,
+          studentStates: {}
+        };
+        getStudentRetryState(session, student.studentId);
+        state.studentRetry.sessions.unshift(session);
+        if (!state.studentRetry.selectedSessionId) {
+          state.studentRetry.selectedSessionId = session.sessionId;
+        }
+        created += 1;
+      });
+      if (created) {
+        writeStudentRetryState({ syncFolder: false });
+      }
+      return { created, matched: records.length };
+    }
+
+    function normalizePortalCheckSetDocForRetry(doc) {
+      const data = doc && typeof doc.data === "function" ? (doc.data() || {}) : (doc || {});
+      const payload = data.payload && typeof data.payload === "object" ? data.payload : {};
+      const source = normalizeProblemText(data.source || payload.source || "").toLowerCase();
+      const createdByLab = normalizeProblemText(data.createdByLab || payload.createdByLab || "").toLowerCase();
+      if (source && source !== "pdf-lab" && createdByLab !== "pdf-lab") {
+        return null;
+      }
+      if (!source && createdByLab && createdByLab !== "pdf-lab") {
+        return null;
+      }
+      const questions = Array.isArray(payload.questions) ? payload.questions : [];
+      if (!questions.length) {
+        return null;
+      }
+      const classIds = Array.from(new Set(
+        [
+          ...(Array.isArray(data.classIds) ? data.classIds : []),
+          ...(Array.isArray(payload.classIds) ? payload.classIds : [])
+        ].map((classId) => normalizeProblemText(classId)).filter(Boolean)
+      ));
+      const targetStudentIds = [
+        data.targetStudentId,
+        data.targetStudentIds,
+        payload.targetStudentId,
+        payload.targetStudentIds
+      ].flat();
+      const targetLoginIds = [data.targetLoginIds, payload.targetLoginIds].flat();
+      const targetEmails = [data.targetEmails, payload.targetEmails].flat();
+      const targetNames = [
+        data.targetStudentName,
+        data.targetStudentNames,
+        payload.targetStudentName,
+        payload.targetStudentNames
+      ].flat();
+      const checkSetId = normalizeProblemText(data.docId || data.id || payload.id || doc?.id || "");
+      const questionMappings = normalizeCheckSetQuestionMappings({
+        ...data,
+        checkSetId,
+        payload
+      });
+      return {
+        checkSetRecordId: `firebase-check-set-${buildPortableCheckSetId(checkSetId || doc?.id || `${Date.now()}`, "check-set")}`,
+        checkSetId,
+        title: normalizeProblemText(data.title || payload.title || "CHECK 세트"),
+        description: normalizeProblemText(payload.description || data.description || ""),
+        classIds,
+        schoolKey: normalizeSchoolKey(data.schoolKey || payload.schoolKey || ""),
+        schoolName: normalizeSchoolName(data.schoolName || payload.schoolName || ""),
+        librarySourceKey: getCheckSetRecordSourceKey({ ...data, payload, questionMappings }),
+        librarySourceName: normalizeProblemText(data.librarySourceName || payload.librarySourceName || ""),
+        historyScope: normalizeProblemText(data.historyScope || payload.historyScope || EXAM_HISTORY_SCOPE_SCHOOL),
+        workflowMode: normalizeProblemText(data.workflowMode || payload.workflowMode || ""),
+        assignmentMode: normalizeProblemText(data.assignmentMode || payload.assignmentMode || "student"),
+        source: source || "pdf-lab",
+        createdByLab: createdByLab || "pdf-lab",
+        sourceBatchId: normalizeProblemText(data.sourceBatchId || payload.sourceBatchId || ""),
+        sourceSetId: normalizeProblemText(data.sourceSetId || payload.sourceSetId || ""),
+        sourceRound: normalizeProblemText(data.sourceRound || payload.sourceRound || ""),
+        studentRetrySessionId: normalizeProblemText(data.studentRetrySessionId || payload.studentRetrySessionId || payload.pdfLabSessionId || ""),
+        studentRetrySessionName: normalizeProblemText(data.studentRetrySessionName || payload.studentRetrySessionName || payload.pdfLabSessionName || ""),
+        studentRetryStudentId: normalizeProblemText(data.studentRetryStudentId || payload.studentRetryStudentId || payload.pdfLabStudentId || ""),
+        studentRetryStudentName: normalizeSchoolName(data.studentRetryStudentName || payload.studentRetryStudentName || payload.targetStudentName || ""),
+        studentRetryRoundIndex: Number(data.studentRetryRoundIndex || payload.studentRetryRoundIndex || payload.pdfLabRoundIndex || 0) || 0,
+        targetStudentName: getFirstNormalizedValue(targetNames, { schoolName: true }),
+        targetFirebaseUid: getFirstNormalizedValue([data.targetUserIds, payload.targetUserIds].flat()),
+        targetFirebaseLoginId: getFirstNormalizedValue(targetLoginIds),
+        targetFirebaseEmail: getFirstNormalizedValue(targetEmails, { lower: true }),
+        targetFirebaseStudentId: getFirstNormalizedValue(targetStudentIds),
+        questionCount: Number(data.questionCount || questions.length) || questions.length,
+        objectiveCount: questions.filter((question) => question?.type === "객관식").length,
+        subjectiveCount: questions.filter((question) => question?.type !== "객관식").length,
+        createdAt: getTimestampMillis(data.createdAt || data.sortOrder || payload.savedAt, Date.now()),
+        updatedAt: getTimestampMillis(data.updatedAt || payload.savedAt || data.createdAt, Date.now()),
+        fileStem: checkSetId,
+        exportPayload: {
+          ...payload,
+          id: payload.id || checkSetId,
+          classIds: Array.isArray(payload.classIds) && payload.classIds.length ? payload.classIds : classIds,
+          questionMappings
+        },
+        questionMappings
+      };
+    }
+
+    async function upsertCheckSetRecordsFromFirebase(records = []) {
+      const usableRecords = (Array.isArray(records) ? records : [])
+        .filter((record) => record?.checkSetId);
+      if (!usableRecords.length) {
+        return 0;
+      }
+      const existingRecords = getStoredCheckSetRecords();
+      const existingByCheckSetId = new Map(existingRecords.map((record) => [String(record.checkSetId || ""), record]));
+      const mergedRecords = usableRecords.map((record) => {
+        const existing = existingByCheckSetId.get(String(record.checkSetId || ""));
+        const merged = {
+          ...(existing || {}),
+          ...record,
+          checkSetRecordId: existing?.checkSetRecordId || record.checkSetRecordId,
+          createdAt: existing?.createdAt || record.createdAt,
+          updatedAt: Math.max(getTimestampMillis(existing?.updatedAt, 0), getTimestampMillis(record.updatedAt, 0))
+        };
+        if ((!Array.isArray(merged.questionMappings) || !merged.questionMappings.length) && Array.isArray(existing?.questionMappings)) {
+          merged.questionMappings = existing.questionMappings;
+        }
+        if (merged.exportPayload && (!Array.isArray(merged.exportPayload.questionMappings) || !merged.exportPayload.questionMappings.length) && Array.isArray(merged.questionMappings)) {
+          merged.exportPayload = {
+            ...merged.exportPayload,
+            questionMappings: merged.questionMappings
+          };
+        }
+        return merged;
+      });
+      const db = await openLibraryDb();
+      const transaction = db.transaction(LIBRARY_CHECK_SET_STORE, "readwrite");
+      const store = transaction.objectStore(LIBRARY_CHECK_SET_STORE);
+      mergedRecords.forEach((record) => {
+        store.put(record);
+      });
+      await idbTransactionDone(transaction);
+      const mergedByRecordId = new Map(existingRecords.map((record) => [String(record.checkSetRecordId || ""), record]));
+      mergedRecords.forEach((record) => {
+        mergedByRecordId.set(String(record.checkSetRecordId || ""), record);
+      });
+      state.libraryCache.checkSetRecords = Array.from(mergedByRecordId.values())
+        .sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0));
+      return mergedRecords.length;
+    }
+
+    function getStudentRetrySessionSyncContextKey(student = getSelectedRetryStudent()) {
+      const selectedClassIds = getSelectedSchoolClassIds().sort().join(",");
+      const studentKey = [
+        student?.studentId,
+        student?.firebaseUid,
+        student?.firebaseStudentId,
+        student?.firebaseLoginId,
+        student?.firebaseEmail,
+        student?.name
+      ].map((value) => normalizeProblemText(value || "")).filter(Boolean).join("|");
+      return [
+        getStudentRetrySchoolKey(),
+        selectedClassIds,
+        getStudentRetrySourceKey(),
+        studentKey
+      ].join("::");
+    }
+
+    async function syncStudentRetrySessionsFromFirebaseCheckSets(options = {}) {
+      const { silent = true, force = false } = options;
+      const bridge = state.firebaseSchoolBridge || {};
+      const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
+      const student = getSelectedRetryStudent();
+      if (!student || !bridge.db || profileRole !== "admin") {
+        return { synced: false, imported: 0, created: 0, reason: "unavailable" };
+      }
+      const contextKey = getStudentRetrySessionSyncContextKey(student);
+      const recentlySynced = bridge.lastRetrySessionSyncContextKey === contextKey &&
+        bridge.lastRetrySessionSyncedAt &&
+        Date.now() - bridge.lastRetrySessionSyncedAt < 30000;
+      if (!force && recentlySynced) {
+        return { synced: true, imported: 0, created: 0, skipped: true };
+      }
+      if (!force && bridge.retrySessionSyncPromise && bridge.retrySessionSyncContextKey === contextKey) {
+        return bridge.retrySessionSyncPromise;
+      }
+      const task = (async () => {
+        const snapshot = await bridge.db.collection("portalCheckSets").get();
+        const selectedSchoolKey = getStudentRetrySchoolKey();
+        const selectedSourceKey = getStudentRetrySourceKey();
+        const selectedSchool = getSelectedSchoolProfile();
+        const records = snapshot.docs
+          .map((doc) => normalizePortalCheckSetDocForRetry(doc))
+          .filter(Boolean)
+          .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
+          .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
+          .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
+          .map((record) => ({
+            ...record,
+            schoolKey: normalizeSchoolKey(record.schoolKey || selectedSchoolKey),
+            schoolName: normalizeSchoolName(record.schoolName || selectedSchool?.name || "")
+          }));
+        const round1Records = records.filter((record) => getCheckSetRecordSourceRound(record) === "round1");
+        const usableRecords = records.filter((record) => normalizeCheckSetQuestionMappings(record).length);
+        const imported = await upsertCheckSetRecordsFromFirebase(usableRecords);
+        const localResult = ensureStudentRetrySessionsFromAvailableCheckSets(student);
+        bridge.lastRetrySessionSyncContextKey = contextKey;
+        bridge.lastRetrySessionSyncedAt = Date.now();
+        if (imported || localResult.created) {
+          ensureStudentRetrySelection();
+          renderStudentRetryPanel();
+          if (!silent) {
+            setStatus(`CODE LAB CHECK 세트 ${imported}개를 오답 세션 후보로 연결했습니다.`, "idle", "오답유형");
+          }
+        } else if (!silent && round1Records.length && !round1Records.some((record) => normalizeCheckSetQuestionMappings(record).length)) {
+          setStatus("CODE LAB CHECK 세트는 찾았지만 PDF LAB 문제 매핑이 없어 오답 세션으로 연결하지 못했습니다. 새로 저장하는 CHECK 세트부터 자동 연동됩니다.", "error", "오답유형");
+        }
+        return {
+          synced: true,
+          imported,
+          created: localResult.created,
+          matched: round1Records.length,
+          usable: usableRecords.length
+        };
+      })()
+        .catch((error) => {
+          console.warn("Failed to sync retry sessions from portal CHECK sets", error);
+          if (!silent) {
+            setStatus(`CODE LAB CHECK 세트 불러오기 실패: ${error?.message || "알 수 없는 오류"}`, "error", "오답유형");
+          }
+          return { synced: false, imported: 0, created: 0, reason: error?.message || "failed" };
+        })
+        .finally(() => {
+          if (bridge.retrySessionSyncPromise === task) {
+            bridge.retrySessionSyncPromise = null;
+          }
+        });
+      bridge.retrySessionSyncContextKey = contextKey;
+      bridge.retrySessionSyncPromise = task;
+      return task;
+    }
+
+    function scheduleStudentRetrySessionSync(options = {}) {
+      syncStudentRetrySessionsFromFirebaseCheckSets(options).catch((error) => {
+        console.warn("Scheduled retry session sync failed", error);
+      });
+    }
+
     function getRetryCheckSetRecordsForRound(session, student, round) {
       if (!session || !student || !round) {
         return [];
@@ -9808,11 +10321,11 @@
       if (roundIndex <= 1) {
         const baseSignature = buildRetryProblemRecordSignature(session.baseItems || []);
         return allRecords
-          .filter((record) => normalizeSchoolKey(record.schoolKey || "") === selectedSchoolKey)
-          .filter((record) => normalizeLibrarySourceKey(record.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === selectedSourceKey)
-          .filter((record) => String(record.sourceRound || "") === "round1")
+          .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
+          .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
+          .filter((record) => getCheckSetRecordSourceRound(record) === "round1")
           .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
-          .filter((record) => buildRetryProblemRecordSignature(record.questionMappings || []) === baseSignature)
+          .filter((record) => buildRetryProblemRecordSignature(normalizeCheckSetQuestionMappings(record)) === baseSignature)
           .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
       }
       return allRecords
@@ -9824,7 +10337,7 @@
 
     function getRetryRoundWrongProblemIdsFromCheckResponse(record = {}, response = {}) {
       const mappingByQuestionId = new Map(
-        (Array.isArray(record.questionMappings) ? record.questionMappings : [])
+        normalizeCheckSetQuestionMappings(record)
           .map((mapping) => [String(mapping?.questionId || ""), String(mapping?.problemRecordId || "")])
           .filter(([questionId, problemRecordId]) => Boolean(questionId) && Boolean(problemRecordId))
       );
@@ -10417,17 +10930,23 @@
 
     async function generateNextStudentRetryRoundAfterResponseSync() {
       const student = getSelectedRetryStudent();
-      const session = getSelectedRetrySession();
       if (!student) {
         throw new Error("오답 재출제를 만들 학생을 선택해주세요.");
-      }
-      if (!session) {
-        throw new Error("먼저 1차 공통 오답 세트를 시작해주세요.");
       }
 
       setBusy(true);
       setStatus(`${student.name} 학생의 CODE LAB CHECK 제출 결과를 확인하는 중입니다...`, "working", "오답유형");
       try {
+        let session = getSelectedRetrySession();
+        if (!session) {
+          await syncStudentRetrySessionsFromFirebaseCheckSets({ silent: false, force: true });
+          ensureStudentRetrySessionsFromAvailableCheckSets(student);
+          ensureStudentRetrySelection();
+          session = getSelectedRetrySession();
+        }
+        if (!session) {
+          throw new Error("연결할 1차 공통 CHECK 세트를 찾지 못했습니다. 1차 공통 CHECK 저장 여부와 학생 배정 정보를 확인해주세요.");
+        }
         await syncSelectedStudentRetryResultsFromCheckResponses({ silent: false, force: true });
         generateNextStudentRetryRound();
       } finally {
@@ -10820,7 +11339,14 @@
         return;
       }
       renderStudentRetryFirebaseControls();
+      const addedFirebaseRetryStudents = ensureFirebaseRetryStudentsForSelectedSchool();
+      if (addedFirebaseRetryStudents) {
+        writeStudentRetryState({ syncFolder: false });
+      }
       ensureStudentRetrySelection();
+      ensureStudentRetrySessionsFromAvailableCheckSets(getSelectedRetryStudent());
+      ensureStudentRetrySelection();
+      scheduleStudentRetrySessionSync();
       const students = getRetryStudentsForSelectedSchool();
       const sessions = getRetrySessionsForSelectedSchool();
       const selectedStudent = getSelectedRetryStudent();
@@ -10879,10 +11405,11 @@
       }
       if (!selectedSession) {
         scheduleStudentRetryCheckResponseSync();
+        const isSyncingCheckSets = Boolean(state.firebaseSchoolBridge?.retrySessionSyncPromise);
         elements.studentRetryRoot.innerHTML = `
           <div class="exam-empty-state">
             <h3>오답 재출제 세트가 없습니다</h3>
-            <p>먼저 1차 공통 draft를 생성한 뒤 현재 draft를 1차 공통으로 시작하세요.</p>
+            <p>${isSyncingCheckSets ? "CODE LAB CHECK 세트와 제출 결과를 확인하는 중입니다." : "1차 공통 CHECK를 저장한 뒤 학생을 선택하면 CODE LAB 제출 결과와 자동 연결됩니다."}</p>
           </div>
         `;
         return;
@@ -12638,10 +13165,17 @@
           title,
           description,
           classIds,
+          schoolKey,
+          schoolName,
+          librarySourceKey: sourceKey,
+          librarySourceName: sourceName,
+          historyScope: retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL,
+          workflowMode: state.schoolWorkflow.draftMode,
           availableFrom: "",
           availableTo: "",
           ...sourceMeta,
-          questions
+          questions,
+          questionMappings
         }
       };
     }
@@ -12756,6 +13290,11 @@
           sourceSetId: baseDraft.sourceSetId || "",
           sourceRound,
           createdByLab: baseDraft.createdByLab || "pdf-lab",
+          studentRetrySessionId: baseDraft.studentRetrySessionId || "",
+          studentRetrySessionName: baseDraft.studentRetrySessionName || "",
+          studentRetryStudentId: baseDraft.studentRetryStudentId || targetInfo.localStudentId || "",
+          studentRetryStudentName: baseDraft.studentRetryStudentName || targetInfo.name || "",
+          studentRetryRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
           pdfLabStudentId: targetInfo.localStudentId,
           pdfLabSessionId: baseDraft.studentRetrySessionId || "",
           pdfLabSessionName: baseDraft.studentRetrySessionName || "",
@@ -12905,48 +13444,59 @@
       if (!payload || !Array.isArray(payload.questions)) {
         throw new Error("CODE LAB에 업로드할 CHECK 세트 데이터가 없습니다.");
       }
+      const questionMappings = normalizeCheckSetQuestionMappings(record);
+      const payloadWithMappings = {
+        ...payload,
+        questionMappings
+      };
       const bridge = state.firebaseSchoolBridge || {};
       const user = bridge.currentUser || bridge.auth?.currentUser || null;
       const profile = bridge.currentProfile || {};
-      const targetUserIds = Array.isArray(payload.targetUserIds) && payload.targetUserIds.length
-        ? payload.targetUserIds
+      const targetUserIds = Array.isArray(payloadWithMappings.targetUserIds) && payloadWithMappings.targetUserIds.length
+        ? payloadWithMappings.targetUserIds
         : (record?.targetFirebaseUid ? [record.targetFirebaseUid] : []);
-      const targetStudentIds = Array.isArray(payload.targetStudentIds) && payload.targetStudentIds.length
-        ? payload.targetStudentIds
+      const targetStudentIds = Array.isArray(payloadWithMappings.targetStudentIds) && payloadWithMappings.targetStudentIds.length
+        ? payloadWithMappings.targetStudentIds
         : Array.from(new Set([record?.targetFirebaseStudentId, record?.targetFirebaseLoginId].filter(Boolean)));
-      const targetLoginIds = Array.isArray(payload.targetLoginIds) && payload.targetLoginIds.length
-        ? payload.targetLoginIds
+      const targetLoginIds = Array.isArray(payloadWithMappings.targetLoginIds) && payloadWithMappings.targetLoginIds.length
+        ? payloadWithMappings.targetLoginIds
         : (record?.targetFirebaseLoginId ? [record.targetFirebaseLoginId] : []);
-      const targetEmails = Array.isArray(payload.targetEmails) && payload.targetEmails.length
-        ? payload.targetEmails
+      const targetEmails = Array.isArray(payloadWithMappings.targetEmails) && payloadWithMappings.targetEmails.length
+        ? payloadWithMappings.targetEmails
         : (record?.targetFirebaseEmail ? [record.targetFirebaseEmail] : []);
-      const targetStudentNames = Array.isArray(payload.targetStudentNames) && payload.targetStudentNames.length
-        ? payload.targetStudentNames
+      const targetStudentNames = Array.isArray(payloadWithMappings.targetStudentNames) && payloadWithMappings.targetStudentNames.length
+        ? payloadWithMappings.targetStudentNames
         : (record?.targetStudentName ? [record.targetStudentName] : []);
       const targetStudentName = normalizeSchoolName(
-        payload.targetStudentName ||
+        payloadWithMappings.targetStudentName ||
         record?.targetStudentName ||
-        payload.targetStudentNames?.[0] ||
+        payloadWithMappings.targetStudentNames?.[0] ||
         ""
       );
       const targetStudentId = normalizeProblemText(
-        payload.targetStudentId ||
+        payloadWithMappings.targetStudentId ||
         record?.targetFirebaseStudentId ||
         record?.targetFirebaseLoginId ||
-        payload.targetStudentIds?.[0] ||
+        payloadWithMappings.targetStudentIds?.[0] ||
         ""
       );
       return {
         docId: record.checkSetId,
-        title: record.title || payload.title || "CHECK 세트",
-        fileName: `${buildPortableCheckSetId(record.fileStem || record.checkSetId || payload.id || "pdflab-check-set")}.json`,
-        payload,
+        title: record.title || payloadWithMappings.title || "CHECK 세트",
+        fileName: `${buildPortableCheckSetId(record.fileStem || record.checkSetId || payloadWithMappings.id || "pdflab-check-set")}.json`,
+        payload: payloadWithMappings,
         classIds: Array.from(new Set(
-          (Array.isArray(record.classIds) && record.classIds.length ? record.classIds : payload.classIds || [])
+          (Array.isArray(record.classIds) && record.classIds.length ? record.classIds : payloadWithMappings.classIds || [])
             .map((classId) => normalizeProblemText(classId))
             .filter(Boolean)
         )),
-        assignmentMode: payload.assignmentMode || record.assignmentMode || "student",
+        schoolKey: record.schoolKey || payloadWithMappings.schoolKey || "",
+        schoolName: record.schoolName || payloadWithMappings.schoolName || "",
+        librarySourceKey: record.librarySourceKey || payloadWithMappings.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY,
+        librarySourceName: record.librarySourceName || payloadWithMappings.librarySourceName || "",
+        historyScope: record.historyScope || payloadWithMappings.historyScope || "",
+        workflowMode: record.workflowMode || payloadWithMappings.workflowMode || "",
+        assignmentMode: payloadWithMappings.assignmentMode || record.assignmentMode || "student",
         targetUserIds,
         targetStudentIds,
         targetLoginIds,
@@ -12954,12 +13504,18 @@
         targetStudentNames,
         targetStudentName,
         targetStudentId,
-        source: payload.source || "pdf-lab",
-        sourceBatchId: payload.sourceBatchId || record.sourceBatchId || "",
-        sourceSetId: payload.sourceSetId || record.sourceSetId || "",
-        sourceRound: payload.sourceRound || record.sourceRound || "",
-        createdByLab: payload.createdByLab || record.createdByLab || "pdf-lab",
-        questionCount: Array.isArray(payload.questions) ? payload.questions.length : 0,
+        source: payloadWithMappings.source || "pdf-lab",
+        sourceBatchId: payloadWithMappings.sourceBatchId || record.sourceBatchId || "",
+        sourceSetId: payloadWithMappings.sourceSetId || record.sourceSetId || "",
+        sourceRound: payloadWithMappings.sourceRound || record.sourceRound || "",
+        createdByLab: payloadWithMappings.createdByLab || record.createdByLab || "pdf-lab",
+        studentRetrySessionId: record.studentRetrySessionId || payloadWithMappings.studentRetrySessionId || payloadWithMappings.pdfLabSessionId || "",
+        studentRetrySessionName: record.studentRetrySessionName || payloadWithMappings.studentRetrySessionName || payloadWithMappings.pdfLabSessionName || "",
+        studentRetryStudentId: record.studentRetryStudentId || payloadWithMappings.studentRetryStudentId || payloadWithMappings.pdfLabStudentId || "",
+        studentRetryStudentName: record.studentRetryStudentName || payloadWithMappings.studentRetryStudentName || payloadWithMappings.targetStudentName || "",
+        studentRetryRoundIndex: record.studentRetryRoundIndex || payloadWithMappings.studentRetryRoundIndex || payloadWithMappings.pdfLabRoundIndex || 0,
+        questionMappings,
+        questionCount: Array.isArray(payloadWithMappings.questions) ? payloadWithMappings.questions.length : 0,
         createdAt: getIsoTimestampFromMillis(record.createdAt),
         updatedAt: uploadedAtIso,
         sortOrder: Number(record.createdAt || Date.now()),
