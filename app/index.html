@@ -10388,6 +10388,27 @@
       );
     }
 
+    async function generateNextStudentRetryRoundAfterResponseSync() {
+      const student = getSelectedRetryStudent();
+      const session = getSelectedRetrySession();
+      if (!student) {
+        throw new Error("오답 재출제를 만들 학생을 선택해주세요.");
+      }
+      if (!session) {
+        throw new Error("먼저 1차 공통 오답 세트를 시작해주세요.");
+      }
+
+      setBusy(true);
+      setStatus(`${student.name} 학생의 CODE LAB CHECK 제출 결과를 확인하는 중입니다...`, "working", "오답유형");
+      try {
+        await syncSelectedStudentRetryResultsFromCheckResponses({ silent: false, force: true });
+        generateNextStudentRetryRound();
+      } finally {
+        setBusy(false);
+        renderStudentRetryPanel();
+      }
+    }
+
     function getSchoolPassageUsageCounts() {
       const counts = new Map();
       getSchoolHistoryExamItems().forEach((item) => {
@@ -14386,19 +14407,20 @@
         if (commitHistory) {
           setStatus(
             retryContext
-              ? "학생 출력 이력을 저장하고 PDF 출력을 준비하는 중입니다..."
-              : "시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...",
+              ? "학생 출력 이력과 draft를 저장하고 PDF 출력을 준비하는 중입니다..."
+              : "시험지 이력과 draft를 저장하고 PDF 출력을 준비하는 중입니다...",
             "working",
             retryContext ? "학생 출력" : "시험지 확정"
           );
           await persistExamHistory();
+          await persistCurrentExamWorkRecord();
         } else {
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
         await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
-          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"} 저장 후 인쇄/PDF 출력 창을 열었습니다.`
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"}과 draft 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
       } catch (error) {
@@ -18093,11 +18115,7 @@
       }
       if (elements.generateStudentRetryButton) {
         elements.generateStudentRetryButton.addEventListener("click", () => {
-          try {
-            generateNextStudentRetryRound();
-          } catch (error) {
-            handleError(error);
-          }
+          generateNextStudentRetryRoundAfterResponseSync().catch(handleError);
         });
       }
       if (elements.studentRetryRoot) {
