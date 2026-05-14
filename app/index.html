@@ -5554,6 +5554,10 @@
             passageKey: String(item?.passageKey || ""),
             passageLabel: normalizeProblemText(item?.passageLabel || item?.passageKey || ""),
             typeLabel: String(item?.typeLabel || PROBLEM_TYPE_OTHER),
+            librarySourceKey: item?.librarySourceKey
+              ? normalizeSchoolSourceFilterKey(item.librarySourceKey)
+              : "",
+            librarySourceName: normalizeProblemText(item?.librarySourceName || ""),
             displayNumber: Number.parseInt(item?.displayNumber, 10) || index + 1,
             result: item?.result === "wrong" ? "wrong" : "correct",
             exhausted: Boolean(item?.exhausted),
@@ -9699,6 +9703,8 @@
         passageKey: record.passageKey || "",
         passageLabel: record.passageLabel || record.passageKey || "",
         typeLabel,
+        librarySourceKey: getRecordSourceKey(record),
+        librarySourceName: getRecordSourceLabel(record),
         displayNumber,
         result: "correct",
         exhausted: false,
@@ -10531,10 +10537,31 @@
       writeStudentRetryState({ syncFolder: false });
     }
 
+    function getRetryItemSourceKey(item = {}) {
+      const rawSourceKey = normalizeProblemText(item.librarySourceKey || item.sourceKey || "");
+      if (rawSourceKey) {
+        const normalizedSourceKey = normalizeSchoolSourceFilterKey(rawSourceKey);
+        if (!isAllLibrarySourceFilterKey(normalizedSourceKey)) {
+          return normalizeLibrarySourceKey(normalizedSourceKey);
+        }
+      }
+      const sourceRecord = getRetryRecordById(item.problemRecordId) || getRetryRecordById(item.sourceProblemId);
+      return sourceRecord ? getRecordSourceKey(sourceRecord) : "";
+    }
+
+    function doesRetryCandidateMatchItemSource(record, item) {
+      const selectedSourceKey = getStudentRetrySourceKey();
+      const recordSourceKey = getRecordSourceKey(record);
+      if (isAllLibrarySourceFilterKey(selectedSourceKey)) {
+        const itemSourceKey = getRetryItemSourceKey(item);
+        return itemSourceKey ? recordSourceKey === itemSourceKey : true;
+      }
+      return recordSourceKey === normalizeLibrarySourceKey(selectedSourceKey);
+    }
+
     function findNextRetryCandidateForItem(item, usedProblemIds) {
-      const sourceKey = getStudentRetrySourceKey();
       const candidates = getProblemRecordsOnly()
-        .filter((record) => getRecordSourceKey(record) === sourceKey)
+        .filter((record) => doesRetryCandidateMatchItemSource(record, item))
         .filter((record) => record.problemType !== PROBLEM_TYPE_TAIL)
         .filter((record) => record.passageKey === item.passageKey)
         .filter((record) => getRecordTypeLabel(record) === normalizeEffectiveProblemType(item.typeLabel))
