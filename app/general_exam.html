@@ -7017,6 +7017,10 @@
       return limited;
     }
 
+    function isRuntimeUsableBlob(value) {
+      return typeof Blob !== "undefined" && value instanceof Blob && value.size > 0;
+    }
+
     function createRuntimeSegmentImagesFromBlobs(record, blobs, segments, urlBucket, suffix, emptyMessage, options = {}) {
       const sourceBlobs = Array.isArray(blobs) ? blobs : [];
       const allowMissing = Boolean(options.allowMissing);
@@ -7027,7 +7031,7 @@
         return [];
       }
       return sourceBlobs.map((blob, index) => {
-        if (!blob) {
+        if (!isRuntimeUsableBlob(blob)) {
           if (allowMissing) {
             return null;
           }
@@ -7207,6 +7211,18 @@
       `;
     }
 
+    function createSafeExamAnswerImageMarkup(settings, problems) {
+      if (!settings.includeAnswerKey) {
+        return "";
+      }
+      try {
+        return createAnswerImageSheetsMarkup({ ...settings, answerOutputMode: REPACK_ANSWER_MODE_WITH_ANSWER }, problems);
+      } catch (error) {
+        console.warn("Failed to create exam answer image sheets", error);
+        return "";
+      }
+    }
+
     async function buildExamPreviewDocument(urlBucket = "exportUrls", options = {}) {
       const settings = readExamExportSettings();
       const {
@@ -7221,9 +7237,7 @@
       container.innerHTML = rawMarkup;
       container.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
       const limitNotice = createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount);
-      const answerMarkup = settings.includeAnswerKey
-        ? createAnswerImageSheetsMarkup({ ...settings, answerOutputMode: REPACK_ANSWER_MODE_WITH_ANSWER }, problems)
-        : "";
+      const answerMarkup = createSafeExamAnswerImageMarkup(settings, problems);
       const markup = limitNotice + container.innerHTML + answerMarkup;
       return {
         settings,

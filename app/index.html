@@ -13966,6 +13966,21 @@
         .join("");
     }
 
+    function createSafeExamAnswerMarkup(settings, problems) {
+      if (!settings.includeAnswerKey) {
+        return "";
+      }
+      if (normalizeExamContentMode(settings.contentRenderMode) === EXAM_CONTENT_MODE_TEXT) {
+        return createAnswerKeyMarkup(problems);
+      }
+      try {
+        return createAnswerImageSheetsMarkup(settings, problems);
+      } catch (error) {
+        console.warn("Failed to create exam answer image sheets", error);
+        return "";
+      }
+    }
+
     async function buildExamProblemPayloadFromSlots(urlBucket = "previewUrls", options = {}) {
       cleanupExamUrls(urlBucket);
       const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
@@ -14071,13 +14086,7 @@
       container.innerHTML = rawMarkup;
       container.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
       const limitNotice = createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount);
-      const answerMarkup = settings.includeAnswerKey
-        ? (
-            normalizeExamContentMode(settings.contentRenderMode) === EXAM_CONTENT_MODE_IMAGE
-              ? createAnswerImageSheetsMarkup(settings, problems)
-              : createAnswerKeyMarkup(problems)
-          )
-        : "";
+      const answerMarkup = createSafeExamAnswerMarkup(settings, problems);
       const markup = limitNotice + container.innerHTML + answerMarkup;
       return {
         settings,
