@@ -6159,6 +6159,29 @@
       return await response.blob();
     }
 
+    function isUsableLibraryBlob(value) {
+      return typeof Blob !== "undefined" && value instanceof Blob && value.size > 0;
+    }
+
+    function hasUsableLibraryBlobs(values) {
+      return Array.isArray(values) && values.some((value) => isUsableLibraryBlob(value));
+    }
+
+    function hasSharedStoragePaths(record, key) {
+      return Array.isArray(record?.[key]) && record[key].some((value) => normalizeProblemText(value));
+    }
+
+    function shouldRefreshProblemAssetFromSharedLibrary(record, assetRecord = {}) {
+      if (!isSharedFirebaseLibraryActive() || !record) {
+        return false;
+      }
+      const needsSegments = hasSharedStoragePaths(record, "segmentStoragePaths") &&
+        !hasUsableLibraryBlobs(assetRecord.segmentBlobs);
+      const needsAnswers = hasSharedStoragePaths(record, "answerSegmentStoragePaths") &&
+        !hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs);
+      return needsSegments || needsAnswers;
+    }
+
     async function deleteSharedLibraryAssetPaths(paths = []) {
       const storage = state.firebaseSchoolBridge?.storage;
       if (!storage) {
@@ -8676,7 +8699,16 @@
         return [];
       }
       const cache = state.libraryCache.problemAssetCache || {};
-      const missingIds = uniqueIds.filter((recordId) => !Object.prototype.hasOwnProperty.call(cache, recordId));
+      const recordMap = new Map(
+        (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
+          .map((record) => [record.recordId, record])
+      );
+      const shouldRefreshAsset = (recordId, assetRecord) =>
+        shouldRefreshProblemAssetFromSharedLibrary(recordMap.get(recordId), assetRecord || {});
+      const missingIds = uniqueIds.filter((recordId) =>
+        !Object.prototype.hasOwnProperty.call(cache, recordId) ||
+        shouldRefreshAsset(recordId, cache[recordId])
+      );
       if (missingIds.length) {
         const db = await openLibraryDb();
         const transaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readonly");
@@ -8684,7 +8716,7 @@
         const unresolvedIds = [];
         await Promise.all(missingIds.map(async (recordId) => {
           const assetRecord = await idbRequestToPromise(store.get(recordId));
-          if (assetRecord) {
+          if (assetRecord && !shouldRefreshAsset(recordId, assetRecord)) {
             cache[recordId] = assetRecord;
           } else {
             unresolvedIds.push(recordId);
@@ -8692,10 +8724,6 @@
         }));
         await idbTransactionDone(transaction);
         if (unresolvedIds.length && isSharedFirebaseLibraryActive()) {
-          const recordMap = new Map(
-            (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
-              .map((record) => [record.recordId, record])
-          );
           const remoteAssetRecords = await Promise.all(unresolvedIds.map(async (recordId) => {
             const record = recordMap.get(recordId);
             if (!record) {
@@ -8747,19 +8775,18 @@
       }
       const assetRecords = await loadProblemAssetRecords(normalizedRecords.map((record) => record.recordId));
       const assetMap = new Map(assetRecords.map((assetRecord) => [assetRecord.recordId, assetRecord]));
-      return normalizedRecords.map((record) => ({
-        ...record,
-        segmentBlobs: Array.isArray(assetMap.get(record.recordId)?.segmentBlobs) && assetMap.get(record.recordId).segmentBlobs.length
-          ? assetMap.get(record.recordId).segmentBlobs
-          : Array.isArray(record.segmentBlobs)
-            ? record.segmentBlobs
-            : [],
-        answerSegmentBlobs: Array.isArray(assetMap.get(record.recordId)?.answerSegmentBlobs) && assetMap.get(record.recordId).answerSegmentBlobs.length
-          ? assetMap.get(record.recordId).answerSegmentBlobs
-          : Array.isArray(record.answerSegmentBlobs)
-            ? record.answerSegmentBlobs
-            : []
-      }));
+      return normalizedRecords.map((record) => {
+        const assetRecord = assetMap.get(record.recordId) || {};
+        const assetSegmentBlobs = Array.isArray(assetRecord.segmentBlobs) ? assetRecord.segmentBlobs : [];
+        const localSegmentBlobs = Array.isArray(record.segmentBlobs) ? record.segmentBlobs : [];
+        const assetAnswerSegmentBlobs = Array.isArray(assetRecord.answerSegmentBlobs) ? assetRecord.answerSegmentBlobs : [];
+        const localAnswerSegmentBlobs = Array.isArray(record.answerSegmentBlobs) ? record.answerSegmentBlobs : [];
+        return {
+          ...record,
+          segmentBlobs: hasUsableLibraryBlobs(assetSegmentBlobs) ? assetSegmentBlobs : localSegmentBlobs,
+          answerSegmentBlobs: hasUsableLibraryBlobs(assetAnswerSegmentBlobs) ? assetAnswerSegmentBlobs : localAnswerSegmentBlobs
+        };
+      });
     }
 
     async function deleteProblemsForSourceId(sourceId) {
@@ -10386,6 +10413,27 @@
         "idle",
         `${nextRoundIndex}차`
       );
+    }
+
+    async function generateNextStudentRetryRoundAfterResponseSync() {
+      const student = getSelectedRetryStudent();
+      const session = getSelectedRetrySession();
+      if (!student) {
+        throw new Error("오답 재출제를 만들 학생을 선택해주세요.");
+      }
+      if (!session) {
+        throw new Error("먼저 1차 공통 오답 세트를 시작해주세요.");
+      }
+
+      setBusy(true);
+      setStatus(`${student.name} 학생의 CODE LAB CHECK 제출 결과를 확인하는 중입니다...`, "working", "오답유형");
+      try {
+        await syncSelectedStudentRetryResultsFromCheckResponses({ silent: false, force: true });
+        generateNextStudentRetryRound();
+      } finally {
+        setBusy(false);
+        renderStudentRetryPanel();
+      }
     }
 
     function getSchoolPassageUsageCounts() {
@@ -13716,11 +13764,11 @@
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
         : (() => {
-            if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
-              throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
+            if (!Array.isArray(record.segmentBlobs) || !hasUsableLibraryBlobs(record.segmentBlobs)) {
+              throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
             return record.segmentBlobs.map((blob, index) => {
-              if (!blob) {
+              if (!isUsableLibraryBlob(blob)) {
                 throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
               }
               const url = URL.createObjectURL(blob);
@@ -14210,7 +14258,7 @@
       const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}|${settings.contentRenderMode}`;
       const retryContext = getCurrentStudentRetryDraftContext();
       const historyScope = retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL;
-      if (getExamSets().some((examSet) =>
+      const duplicateExam = getExamSets().find((examSet) =>
         examSet.signature === signature &&
         normalizeSchoolKey(examSet.schoolKey || "") === normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "") &&
         getExamSetHistoryScope(examSet) === historyScope &&
@@ -14223,10 +14271,9 @@
           )
         ) &&
         examSet.examId !== state.examBuilder.loadedExamId
-      )) {
-        throw new Error(historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
-          ? "같은 학생의 같은 오답 차수 구성은 이미 확정 저장되어 있습니다."
-          : "같은 시험지 구성은 이미 확정 저장되어 있습니다.");
+      );
+      if (duplicateExam?.examId) {
+        state.examBuilder.loadedExamId = duplicateExam.examId;
       }
 
       const existingExam = state.examBuilder.loadedExamId
@@ -14379,6 +14426,7 @@
     async function printExamLayout(commitHistory = false) {
       validateExamBuilderForExport();
       const printWindow = openPendingStandaloneWindow("PDF 출력 문서를 준비하는 중입니다...");
+      let shouldClosePrintWindowOnError = true;
       setBusy(true);
       try {
         cleanupExamExportUrls();
@@ -14386,23 +14434,55 @@
         if (commitHistory) {
           setStatus(
             retryContext
-              ? "학생 출력 이력을 저장하고 PDF 출력을 준비하는 중입니다..."
-              : "시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...",
+              ? "학생 출력 PDF를 먼저 준비하는 중입니다..."
+              : "시험지 PDF를 먼저 준비하는 중입니다...",
             "working",
             retryContext ? "학생 출력" : "시험지 확정"
           );
-          await persistExamHistory();
         } else {
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
-        await printStandaloneHtml(html, printWindow);
+        const printTask = printStandaloneHtml(html, printWindow);
+        shouldClosePrintWindowOnError = false;
+        let saveError = null;
+        if (commitHistory) {
+          setStatus(
+            retryContext
+              ? "학생 출력 이력과 draft를 저장하는 중입니다..."
+              : "시험지 이력과 draft를 저장하는 중입니다...",
+            "working",
+            retryContext ? "학생 출력" : "시험지 확정"
+          );
+          try {
+            await persistExamHistory();
+          } catch (error) {
+            saveError = error;
+            console.warn("Failed to save exam history before draft save", error);
+          }
+          try {
+            await persistCurrentExamWorkRecord();
+          } catch (error) {
+            saveError = error;
+          }
+        }
+        try {
+          await printTask;
+        } catch (error) {
+          if (!saveError) {
+            throw error;
+          }
+          console.warn("PDF print task failed after save error", error);
+        }
+        if (saveError) {
+          throw saveError;
+        }
         setOptionalText(elements.examExportSummary, commitHistory
-          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"} 저장 후 인쇄/PDF 출력 창을 열었습니다.`
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"}과 draft 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
         setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
       } catch (error) {
-        if (printWindow && !printWindow.closed) {
+        if (shouldClosePrintWindowOnError && printWindow && !printWindow.closed) {
           printWindow.close();
         }
         throw error;
@@ -18093,11 +18173,7 @@
       }
       if (elements.generateStudentRetryButton) {
         elements.generateStudentRetryButton.addEventListener("click", () => {
-          try {
-            generateNextStudentRetryRound();
-          } catch (error) {
-            handleError(error);
-          }
+          generateNextStudentRetryRoundAfterResponseSync().catch(handleError);
         });
       }
       if (elements.studentRetryRoot) {
