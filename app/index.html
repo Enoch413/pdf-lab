@@ -732,6 +732,13 @@
     const FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION = "pdfLabSharedLibraryImports";
     const FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION = "pdfLabSharedLibraryProblems";
     const FIREBASE_SHARED_LIBRARY_ASSET_ROOT = "pdf-lab/shared-library";
+    const FIREBASE_STUDENT_RETRY_PREF_COLLECTION = "pdfLabStudentRetryPrefs";
+    const FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION = "pdfLabStudentRetryStudents";
+    const FIREBASE_STUDENT_RETRY_SESSION_COLLECTION = "pdfLabStudentRetrySessions";
+    const FIREBASE_STUDENT_RETRY_STATE_COLLECTION = "pdfLabStudentRetryStudentStates";
+    const FIREBASE_STUDENT_RETRY_EXAM_COLLECTION = "pdfLabStudentRetryExamSets";
+    const FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION = "pdfLabStudentRetryExamItems";
+    const FIREBASE_STUDENT_RETRY_WORK_COLLECTION = "pdfLabStudentRetryWorks";
     const LIBRARY_STUDENT_RETRY_FILE = "pdflab_student_retry.json";
     const LIBRARY_SAVE_MODE_AUTO = "auto";
     const LIBRARY_SAVE_MODE_FIREBASE = "firebase";
@@ -1358,6 +1365,12 @@
         retrySessionSyncPromise: null,
         lastRetrySessionSyncContextKey: "",
         lastRetrySessionSyncedAt: 0,
+        retryStateLoadPromise: null,
+        retryStateSaveTimerId: 0,
+        retryStateSavePromise: null,
+        retryStateLastLoadedAt: 0,
+        retryStateLastSavedAt: 0,
+        retryStateSyncError: "",
         sharedLibraryEnabled: false,
         sharedLibraryError: "",
         sharedLibraryLastSyncedAt: 0
@@ -5668,6 +5681,7 @@
       } catch (error) {
         console.warn("Failed to write student retry state", error);
       }
+      scheduleStudentRetryStateFirebaseSave();
       if (!syncFolder) {
         return;
       }
@@ -5683,6 +5697,514 @@
       } catch (error) {
         console.warn("Failed to persist loaded student retry state", error);
       }
+    }
+
+    function getFirebaseStudentRetryBridge() {
+      return state.firebaseSchoolBridge || {};
+    }
+
+    function canUseFirebaseStudentRetryStorage() {
+      const bridge = getFirebaseStudentRetryBridge();
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
+      return Boolean(bridge.db && typeof bridge.db.collection === "function" && user?.uid && profileRole === "admin");
+    }
+
+    function getFirebaseStudentRetryOwnerUid() {
+      const bridge = getFirebaseStudentRetryBridge();
+      return normalizeProblemText(bridge.currentUser?.uid || bridge.auth?.currentUser?.uid || "");
+    }
+
+    function getFirebaseStudentRetryOwnerMeta() {
+      const bridge = getFirebaseStudentRetryBridge();
+      const user = bridge.currentUser || bridge.auth?.currentUser || {};
+      const profile = bridge.currentProfile || {};
+      return {
+        ownerUid: normalizeProblemText(user.uid || ""),
+        ownerEmail: normalizeProblemText(user.email || profile.email || "").toLowerCase(),
+        ownerName: normalizeSchoolName(user.displayName || profile.name || profile.displayName || "")
+      };
+    }
+
+    function createFirebaseRetryDocId(...parts) {
+      const raw = parts
+        .map((part) => normalizeProblemText(part))
+        .filter(Boolean)
+        .join("__");
+      return buildPortableCheckSetId(raw || `retry-${Date.now()}`, "retry-doc");
+    }
+
+    function stripFirebaseOwnerFields(record = {}) {
+      const {
+        ownerUid,
+        ownerEmail,
+        ownerName,
+        docKey,
+        savedAt,
+        savedAtIso,
+        ...rest
+      } = record || {};
+      return rest;
+    }
+
+    function hasStudentRetryStateContent(rawState = state.studentRetry) {
+      const normalized = normalizeStudentRetryState(rawState || {});
+      return Boolean(
+        normalized.selectedStudentId ||
+        normalized.selectedSessionId ||
+        Object.keys(normalized.expandedRoundKeys || {}).length ||
+        normalized.students.length ||
+        normalized.sessions.length
+      );
+    }
+
+    async function commitFirestoreOperations(db, operations = []) {
+      const rows = Array.isArray(operations) ? operations.filter(Boolean) : [];
+      if (!rows.length || !db || typeof db.batch !== "function") {
+        return 0;
+      }
+      let committed = 0;
+      for (let start = 0; start < rows.length; start += 450) {
+        const batch = db.batch();
+        rows.slice(start, start + 450).forEach((operation) => {
+          if (operation.type === "delete") {
+            batch.delete(operation.ref);
+          } else {
+            batch.set(operation.ref, operation.data, operation.options || {});
+          }
+        });
+        await batch.commit();
+        committed += Math.min(450, rows.length - start);
+      }
+      return committed;
+    }
+
+    async function replaceFirebaseOwnerCollection(collectionName, rows = []) {
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const owner = getFirebaseStudentRetryOwnerMeta();
+      if (!owner.ownerUid || !db) {
+        return { saved: 0, deleted: 0 };
+      }
+      const snapshot = await db.collection(collectionName).where("ownerUid", "==", owner.ownerUid).get();
+      const nextIds = new Set(rows.map((row) => row.docId).filter(Boolean));
+      const operations = [];
+      snapshot.docs.forEach((doc) => {
+        if (!nextIds.has(doc.id)) {
+          operations.push({ type: "delete", ref: doc.ref });
+        }
+      });
+      const now = Date.now();
+      const nowIso = new Date(now).toISOString();
+      rows.forEach((row) => {
+        if (!row?.docId) {
+          return;
+        }
+        operations.push({
+          type: "set",
+          ref: db.collection(collectionName).doc(row.docId),
+          data: {
+            ...row.data,
+            ...owner,
+            docKey: row.docId,
+            savedAt: now,
+            savedAtIso: nowIso
+          },
+          options: { merge: false }
+        });
+      });
+      await commitFirestoreOperations(db, operations);
+      return {
+        saved: rows.length,
+        deleted: Math.max(0, snapshot.size - nextIds.size)
+      };
+    }
+
+    function flattenStudentRetryStateForFirebase(rawState = state.studentRetry) {
+      const normalized = normalizeStudentRetryState(rawState || {});
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
+      const students = normalized.students.map((student) => ({
+        docId: createFirebaseRetryDocId(ownerUid, "student", student.studentId),
+        data: { ...student }
+      }));
+      const sessions = [];
+      const studentStates = [];
+      normalized.sessions.forEach((session) => {
+        const { studentStates: sessionStudentStates, ...sessionMeta } = session;
+        sessions.push({
+          docId: createFirebaseRetryDocId(ownerUid, "session", session.sessionId),
+          data: { ...sessionMeta }
+        });
+        Object.entries(sessionStudentStates || {}).forEach(([studentId, value]) => {
+          const rounds = Array.isArray(value?.rounds)
+            ? value.rounds.map((round, index) => normalizeStudentRetryRound(round, index + 1)).filter((round) => round.items.length)
+            : [];
+          if (!studentId || !rounds.length) {
+            return;
+          }
+          studentStates.push({
+            docId: createFirebaseRetryDocId(ownerUid, "session-state", session.sessionId, studentId),
+            data: {
+              sessionId: session.sessionId,
+              studentId,
+              schoolKey: session.schoolKey || "",
+              sourceKey: session.sourceKey || "",
+              rounds
+            }
+          });
+        });
+      });
+      return {
+        prefs: {
+          selectedStudentId: normalized.selectedStudentId,
+          selectedSessionId: normalized.selectedSessionId,
+          expandedRoundKeys: { ...(normalized.expandedRoundKeys || {}) }
+        },
+        students,
+        sessions,
+        studentStates
+      };
+    }
+
+    async function saveStudentRetryStateToFirebase(options = {}) {
+      const { force = false } = options;
+      const bridge = getFirebaseStudentRetryBridge();
+      if (!canUseFirebaseStudentRetryStorage()) {
+        return { synced: false, reason: "unavailable" };
+      }
+      if (!force && bridge.retryStateSavePromise) {
+        return bridge.retryStateSavePromise;
+      }
+      const task = (async () => {
+        const db = bridge.db;
+        const owner = getFirebaseStudentRetryOwnerMeta();
+        if (!owner.ownerUid) {
+          return { synced: false, reason: "missing-owner" };
+        }
+        const snapshot = flattenStudentRetryStateForFirebase();
+        const now = Date.now();
+        const nowIso = new Date(now).toISOString();
+        await Promise.all([
+          db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(owner.ownerUid).set({
+            ...snapshot.prefs,
+            ...owner,
+            savedAt: now,
+            savedAtIso: nowIso
+          }, { merge: false }),
+          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION, snapshot.students),
+          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_SESSION_COLLECTION, snapshot.sessions),
+          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STATE_COLLECTION, snapshot.studentStates)
+        ]);
+        bridge.retryStateLastSavedAt = Date.now();
+        bridge.retryStateSyncError = "";
+        return {
+          synced: true,
+          students: snapshot.students.length,
+          sessions: snapshot.sessions.length,
+          studentStates: snapshot.studentStates.length
+        };
+      })()
+        .catch((error) => {
+          bridge.retryStateSyncError = error?.message || "Firebase 오답 상태 저장 실패";
+          console.warn("Failed to save student retry state to Firebase", error);
+          return { synced: false, reason: bridge.retryStateSyncError };
+        })
+        .finally(() => {
+          if (bridge.retryStateSavePromise === task) {
+            bridge.retryStateSavePromise = null;
+          }
+        });
+      bridge.retryStateSavePromise = task;
+      return task;
+    }
+
+    function scheduleStudentRetryStateFirebaseSave() {
+      const bridge = getFirebaseStudentRetryBridge();
+      if (!canUseFirebaseStudentRetryStorage()) {
+        return;
+      }
+      if (bridge.retryStateSaveTimerId) {
+        window.clearTimeout(bridge.retryStateSaveTimerId);
+      }
+      bridge.retryStateSaveTimerId = window.setTimeout(() => {
+        bridge.retryStateSaveTimerId = 0;
+        saveStudentRetryStateToFirebase().catch((error) => {
+          console.warn("Scheduled Firebase student retry save failed", error);
+        });
+      }, 650);
+    }
+
+    async function loadStudentRetryStateFromFirebase() {
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
+      if (!canUseFirebaseStudentRetryStorage() || !ownerUid) {
+        return { loaded: false, hasRemote: false, reason: "unavailable" };
+      }
+      const [prefDoc, studentSnapshot, sessionSnapshot, studentStateSnapshot] = await Promise.all([
+        db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(ownerUid).get(),
+        db.collection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION).where("ownerUid", "==", ownerUid).get(),
+        db.collection(FIREBASE_STUDENT_RETRY_SESSION_COLLECTION).where("ownerUid", "==", ownerUid).get(),
+        db.collection(FIREBASE_STUDENT_RETRY_STATE_COLLECTION).where("ownerUid", "==", ownerUid).get()
+      ]);
+      const pref = prefDoc.exists ? stripFirebaseOwnerFields(prefDoc.data() || {}) : {};
+      const students = studentSnapshot.docs.map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }));
+      const sessions = sessionSnapshot.docs.map((doc) => ({
+        ...stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }),
+        studentStates: {}
+      }));
+      const sessionsById = new Map(sessions.map((session) => [String(session.sessionId || ""), session]));
+      studentStateSnapshot.docs.forEach((doc) => {
+        const data = stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) });
+        const sessionId = String(data.sessionId || "");
+        const studentId = String(data.studentId || "");
+        const session = sessionsById.get(sessionId);
+        if (!session || !studentId) {
+          return;
+        }
+        session.studentStates[studentId] = {
+          rounds: Array.isArray(data.rounds)
+            ? data.rounds.map((round, index) => normalizeStudentRetryRound(round, index + 1)).filter((round) => round.items.length)
+            : []
+        };
+      });
+      const remoteState = normalizeStudentRetryState({
+        selectedStudentId: pref.selectedStudentId || "",
+        selectedSessionId: pref.selectedSessionId || "",
+        expandedRoundKeys: pref.expandedRoundKeys || {},
+        students,
+        sessions
+      });
+      return {
+        loaded: true,
+        hasRemote: hasStudentRetryStateContent(remoteState),
+        state: remoteState
+      };
+    }
+
+    async function syncStudentRetryStateFromFirebase(options = {}) {
+      const { silent = true, force = false } = options;
+      const bridge = getFirebaseStudentRetryBridge();
+      if (!canUseFirebaseStudentRetryStorage()) {
+        return { synced: false, reason: "unavailable" };
+      }
+      if (!force && bridge.retryStateLoadPromise) {
+        return bridge.retryStateLoadPromise;
+      }
+      const task = (async () => {
+        const remote = await loadStudentRetryStateFromFirebase();
+        if (!remote.loaded) {
+          return { synced: false, reason: remote.reason || "unavailable" };
+        }
+        if (remote.hasRemote) {
+          applyStudentRetryState(remote.state);
+          bridge.retryStateLastLoadedAt = Date.now();
+          bridge.retryStateSyncError = "";
+          if (!silent) {
+            setStatus("Firebase 오답출제 상태를 불러왔습니다.", "idle", "오답유형");
+          }
+          return { synced: true, source: "firebase" };
+        }
+        if (hasStudentRetryStateContent(state.studentRetry)) {
+          const saveResult = await saveStudentRetryStateToFirebase({ force: true });
+          return { synced: Boolean(saveResult.synced), source: "local-bootstrap" };
+        }
+        return { synced: true, source: "empty" };
+      })()
+        .catch((error) => {
+          bridge.retryStateSyncError = error?.message || "Firebase 오답 상태 동기화 실패";
+          console.warn("Failed to sync student retry state from Firebase", error);
+          if (!silent) {
+            setStatus(`Firebase 오답 상태 동기화 실패: ${bridge.retryStateSyncError}`, "error", "오답유형");
+          }
+          return { synced: false, reason: bridge.retryStateSyncError };
+        })
+        .finally(() => {
+          if (bridge.retryStateLoadPromise === task) {
+            bridge.retryStateLoadPromise = null;
+          }
+        });
+      bridge.retryStateLoadPromise = task;
+      return task;
+    }
+
+    function mergeRecordsByKey(localRows = [], remoteRows = [], keyField, timestampField = "updatedAt") {
+      const merged = new Map();
+      (Array.isArray(localRows) ? localRows : []).forEach((row) => {
+        const key = String(row?.[keyField] || "");
+        if (key) {
+          merged.set(key, row);
+        }
+      });
+      (Array.isArray(remoteRows) ? remoteRows : []).forEach((row) => {
+        const key = String(row?.[keyField] || "");
+        if (!key) {
+          return;
+        }
+        const existing = merged.get(key);
+        if (!existing || Number(row?.[timestampField] || row?.createdAt || 0) >= Number(existing?.[timestampField] || existing?.createdAt || 0)) {
+          merged.set(key, row);
+        }
+      });
+      return Array.from(merged.values());
+    }
+
+    function isStudentRetryWorkRecord(record = {}) {
+      return record?.kind === "exam" && Boolean(record?.payload?.studentRetry?.studentId || record?.payload?.studentRetry?.sessionId);
+    }
+
+    async function loadFirebaseStudentRetryOperationalSnapshot() {
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
+      if (!canUseFirebaseStudentRetryStorage() || !ownerUid) {
+        return { examSets: [], examItems: [], savedWorks: [] };
+      }
+      try {
+        const [examSnapshot, itemSnapshot, workSnapshot] = await Promise.all([
+          db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION).where("ownerUid", "==", ownerUid).get(),
+          db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION).where("ownerUid", "==", ownerUid).get(),
+          db.collection(FIREBASE_STUDENT_RETRY_WORK_COLLECTION).where("ownerUid", "==", ownerUid).get()
+        ]);
+        return {
+          examSets: examSnapshot.docs
+            .map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }))
+            .filter((record) => getExamSetHistoryScope(record) === EXAM_HISTORY_SCOPE_STUDENT_RETRY),
+          examItems: itemSnapshot.docs
+            .map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }))
+            .filter((record) => String(record.historyScope || "") === EXAM_HISTORY_SCOPE_STUDENT_RETRY),
+          savedWorks: workSnapshot.docs
+            .map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }))
+            .filter(isStudentRetryWorkRecord)
+        };
+      } catch (error) {
+        bridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력을 불러오지 못했습니다.";
+        console.warn("Failed to load Firebase student retry operational snapshot", error);
+        return { examSets: [], examItems: [], savedWorks: [] };
+      }
+    }
+
+    async function saveStudentRetryExamHistoryToFirebase(examSet, examItems = []) {
+      if (!canUseFirebaseStudentRetryStorage() || getExamSetHistoryScope(examSet) !== EXAM_HISTORY_SCOPE_STUDENT_RETRY) {
+        return { synced: false, reason: "unavailable" };
+      }
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const owner = getFirebaseStudentRetryOwnerMeta();
+      const examId = normalizeProblemText(examSet?.examId || "");
+      if (!owner.ownerUid || !examId) {
+        return { synced: false, reason: "missing-exam-id" };
+      }
+      const now = Date.now();
+      const nowIso = new Date(now).toISOString();
+      const previousItemSnapshot = await db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION)
+        .where("ownerUid", "==", owner.ownerUid)
+        .get();
+      const operations = previousItemSnapshot.docs
+        .filter((doc) => normalizeProblemText(doc.data()?.examId || "") === examId)
+        .map((doc) => ({ type: "delete", ref: doc.ref }));
+      operations.push({
+        type: "set",
+        ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION).doc(createFirebaseRetryDocId(owner.ownerUid, "exam", examId)),
+        data: {
+          ...examSet,
+          ...owner,
+          docKey: createFirebaseRetryDocId(owner.ownerUid, "exam", examId),
+          savedAt: now,
+          savedAtIso: nowIso
+        },
+        options: { merge: false }
+      });
+      (Array.isArray(examItems) ? examItems : [])
+        .filter((item) => String(item.examId || "") === examId)
+        .forEach((item) => {
+          const itemDocId = createFirebaseRetryDocId(owner.ownerUid, "exam-item", item.entryId || `${examId}-${item.slotIndex || 0}`);
+          operations.push({
+            type: "set",
+            ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION).doc(itemDocId),
+            data: {
+              ...item,
+              ...owner,
+              docKey: itemDocId,
+              savedAt: now,
+              savedAtIso: nowIso
+            },
+            options: { merge: false }
+          });
+        });
+      await commitFirestoreOperations(db, operations);
+      bridge.retryStateSyncError = "";
+      return { synced: true, examId, itemCount: operations.length - 1 };
+    }
+
+    async function deleteStudentRetryExamHistoryFromFirebase(examId) {
+      if (!canUseFirebaseStudentRetryStorage() || !examId) {
+        return { deleted: 0, reason: "unavailable" };
+      }
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
+      const normalizedExamId = normalizeProblemText(examId);
+      const [examSnapshot, itemSnapshot] = await Promise.all([
+        db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION)
+          .where("ownerUid", "==", ownerUid)
+          .get(),
+        db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION)
+          .where("ownerUid", "==", ownerUid)
+          .get()
+      ]);
+      const operations = [
+        ...examSnapshot.docs
+          .filter((doc) => normalizeProblemText(doc.data()?.examId || "") === normalizedExamId)
+          .map((doc) => ({ type: "delete", ref: doc.ref })),
+        ...itemSnapshot.docs
+          .filter((doc) => normalizeProblemText(doc.data()?.examId || "") === normalizedExamId)
+          .map((doc) => ({ type: "delete", ref: doc.ref }))
+      ];
+      await commitFirestoreOperations(db, operations);
+      return { deleted: operations.length };
+    }
+
+    async function saveStudentRetryWorkToFirebase(workRecord) {
+      if (!canUseFirebaseStudentRetryStorage() || !isStudentRetryWorkRecord(workRecord)) {
+        return { synced: false, reason: "unavailable" };
+      }
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const owner = getFirebaseStudentRetryOwnerMeta();
+      const workId = normalizeProblemText(workRecord?.workId || "");
+      if (!owner.ownerUid || !workId) {
+        return { synced: false, reason: "missing-work-id" };
+      }
+      const docId = createFirebaseRetryDocId(owner.ownerUid, "work", workId);
+      const now = Date.now();
+      await db.collection(FIREBASE_STUDENT_RETRY_WORK_COLLECTION).doc(docId).set({
+        ...workRecord,
+        ...owner,
+        docKey: docId,
+        savedAt: now,
+        savedAtIso: new Date(now).toISOString()
+      }, { merge: false });
+      bridge.retryStateSyncError = "";
+      return { synced: true, workId };
+    }
+
+    async function deleteStudentRetryWorkFromFirebase(workId) {
+      if (!canUseFirebaseStudentRetryStorage() || !workId) {
+        return { deleted: 0, reason: "unavailable" };
+      }
+      const bridge = getFirebaseStudentRetryBridge();
+      const db = bridge.db;
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
+      const snapshot = await db.collection(FIREBASE_STUDENT_RETRY_WORK_COLLECTION)
+        .where("ownerUid", "==", ownerUid)
+        .get();
+      const normalizedWorkId = normalizeProblemText(workId);
+      const operations = snapshot.docs
+        .filter((doc) => normalizeProblemText(doc.data()?.workId || "") === normalizedWorkId)
+        .map((doc) => ({ type: "delete", ref: doc.ref }));
+      await commitFirestoreOperations(db, operations);
+      return { deleted: operations.length };
     }
 
     function normalizeSchoolName(value) {
@@ -6526,6 +7048,13 @@
       await state.firebaseSchoolBridge.auth.signOut();
       clearStudentRetryCheckResponseSyncTimer();
       clearFirebaseProfileWatcher();
+      if (state.firebaseSchoolBridge.retryStateSaveTimerId) {
+        window.clearTimeout(state.firebaseSchoolBridge.retryStateSaveTimerId);
+      }
+      state.firebaseSchoolBridge.retryStateSaveTimerId = 0;
+      state.firebaseSchoolBridge.retryStateLoadPromise = null;
+      state.firebaseSchoolBridge.retryStateSavePromise = null;
+      state.firebaseSchoolBridge.retryStateSyncError = "";
       state.firebaseSchoolBridge.currentUser = null;
       state.firebaseSchoolBridge.currentProfile = null;
       state.firebaseSchoolBridge.accessibleClassIds = [];
@@ -7242,6 +7771,12 @@
           await syncCodeLabExamResetFromFirebase();
         } catch (error) {
           console.warn("Failed to sync CODE LAB exam reset state", error);
+        }
+        try {
+          await syncStudentRetryStateFromFirebase({ silent: true, force: forceRefresh });
+          await refreshLibrarySummary({ loadShared: false });
+        } catch (error) {
+          console.warn("Failed to sync Firebase student retry state", error);
         }
         renderStudentRetryPanel();
         renderPdfLabFirebaseAuthUi();
@@ -12838,24 +13373,30 @@
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
       const shouldLoadSharedSnapshot = options.loadShared !== false;
-      const sharedSnapshot = shouldLoadSharedSnapshot
-        ? await loadSharedLibrarySnapshotFromFirebase()
-        : null;
+      const [sharedSnapshot, firebaseRetrySnapshot] = await Promise.all([
+        shouldLoadSharedSnapshot
+          ? loadSharedLibrarySnapshotFromFirebase()
+          : Promise.resolve(null),
+        loadFirebaseStudentRetryOperationalSnapshot()
+      ]);
       const imports = Array.isArray(sharedSnapshot?.imports)
         ? mergeSharedAndLocalLibraryImports(localImports, sharedSnapshot.imports)
         : localImports;
       const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
         ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
         : localProblemRecords;
+      const mergedExamSets = mergeRecordsByKey(examSets, firebaseRetrySnapshot.examSets, "examId", "updatedAt");
+      const mergedExamItems = mergeRecordsByKey(examItems, firebaseRetrySnapshot.examItems, "entryId", "savedAt");
+      const mergedSavedWorks = mergeRecordsByKey(savedWorks, firebaseRetrySnapshot.savedWorks, "workId", "updatedAt");
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
         problemRecords: repairedProblemRecords,
         problemAssetCache: state.libraryCache.problemAssetCache || {},
-        examSets: examSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
-        examItems,
+        examSets: mergedExamSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
+        examItems: mergedExamItems,
         checkSetRecords: checkSetRecords.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
-        savedWorks: savedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
+        savedWorks: mergedSavedWorks.sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
       };
       const summary = buildLibrarySummary(state.libraryCache.imports, state.libraryCache.problemRecords);
       [
@@ -14004,6 +14545,14 @@
       const transaction = db.transaction(LIBRARY_WORK_STORE, "readwrite");
       transaction.objectStore(LIBRARY_WORK_STORE).put(workRecord);
       await idbTransactionDone(transaction);
+      if (isStudentRetryWorkRecord(workRecord)) {
+        try {
+          await saveStudentRetryWorkToFirebase(workRecord);
+        } catch (error) {
+          state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 draft 저장 실패";
+          console.warn("Failed to mirror student retry work to Firebase", error);
+        }
+      }
       state.examBuilder.loadedWorkId = workId;
       if (elements.examWorkNameInput) {
         elements.examWorkNameInput.value = workName;
@@ -14169,6 +14718,14 @@
     async function deleteSavedWork(workId) {
       const target = getSavedWorks().find((record) => record.workId === workId);
       await deleteRecordFromStore(LIBRARY_WORK_STORE, workId);
+      if (isStudentRetryWorkRecord(target)) {
+        try {
+          await deleteStudentRetryWorkFromFirebase(workId);
+        } catch (error) {
+          state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 draft 삭제 실패";
+          console.warn("Failed to delete student retry work from Firebase", error);
+        }
+      }
       if (state.loadedRepackWorkId === workId) {
         state.loadedRepackWorkId = "";
       }
@@ -14950,6 +15507,14 @@
       examStore.put(examSet);
       examItems.forEach((item) => examItemStore.put(item));
       await idbTransactionDone(transaction);
+      if (historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY) {
+        try {
+          await saveStudentRetryExamHistoryToFirebase(examSet, examItems);
+        } catch (error) {
+          state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력 저장 실패";
+          console.warn("Failed to mirror student retry exam history to Firebase", error);
+        }
+      }
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
       state.examBuilder.loadedExamId = examId;
@@ -14969,6 +15534,14 @@
       }
       const targetExam = getExamSets().find((examSet) => examSet.examId === examId);
       await deleteExamHistoriesByPredicate((examSet) => examSet.examId === examId);
+      if (getExamSetHistoryScope(targetExam) === EXAM_HISTORY_SCOPE_STUDENT_RETRY) {
+        try {
+          await deleteStudentRetryExamHistoryFromFirebase(examId);
+        } catch (error) {
+          state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력 삭제 실패";
+          console.warn("Failed to delete student retry exam history from Firebase", error);
+        }
+      }
       await refreshLibrarySummary();
       await syncLibraryFolderFromStateIfConnected();
       setOptionalText(
