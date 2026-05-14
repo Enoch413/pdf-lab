@@ -13759,58 +13759,29 @@
       return limited;
     }
 
-    function createExamRuntimeSegmentImagesFromBlobs(record, blobs, segments, urlBucket, suffix, options = {}) {
-      const sourceBlobs = Array.isArray(blobs) ? blobs : [];
-      const allowMissing = Boolean(options.allowMissing);
-      if (!sourceBlobs.length || (!allowMissing && !hasUsableLibraryBlobs(sourceBlobs))) {
-        if (options.emptyMessage) {
-          throw new Error(options.emptyMessage);
-        }
-        return [];
-      }
-      return sourceBlobs.map((blob, index) => {
-        if (!isUsableLibraryBlob(blob)) {
-          if (allowMissing) {
-            return null;
-          }
-          throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
-        }
-        const url = URL.createObjectURL(blob);
-        state.examBuilder[urlBucket].push(url);
-        const segment = segments?.[index] || {};
-        return {
-          id: `${record.recordId}-${suffix}-${index + 1}`,
-          width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
-          height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
-          url
-        };
-      }).filter(Boolean);
-    }
-
     function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
       const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
-        : createExamRuntimeSegmentImagesFromBlobs(
-            record,
-            record.segmentBlobs,
-            record.segmentMeta,
-            urlBucket,
-            "segment",
-            {
-              emptyMessage: `이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`
+        : (() => {
+            if (!Array.isArray(record.segmentBlobs) || !hasUsableLibraryBlobs(record.segmentBlobs)) {
+              throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
-          );
-      const answerSegmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
-        ? []
-        : createExamRuntimeSegmentImagesFromBlobs(
-            record,
-            record.answerSegmentBlobs,
-            record.answerSegmentMeta,
-            urlBucket,
-            "answer-segment",
-            { allowMissing: true }
-          );
+            return record.segmentBlobs.map((blob, index) => {
+              if (!isUsableLibraryBlob(blob)) {
+                throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
+              }
+              const url = URL.createObjectURL(blob);
+              state.examBuilder[urlBucket].push(url);
+              const segment = record.segmentMeta?.[index] || {};
+              return {
+                id: `${record.recordId}-segment-${index + 1}`,
+                width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
+                height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
+                url
+              };
+            });
+          })();
       return {
         id: `exam-${record.recordId}`,
         kind: record.kind || "problem",
@@ -13838,7 +13809,7 @@
         answerText: record.answerText || "",
         explanationText: record.explanationText || "",
         answerSegments: Array.isArray(record.answerSegmentMeta) ? record.answerSegmentMeta.map((segment) => ({ ...segment })) : [],
-        answerSegmentImages,
+        answerSegmentImages: [],
         typeTags: Array.isArray(record.typeTags) ? [...record.typeTags] : [],
         manualSquashPercent: null
       };
@@ -13872,113 +13843,6 @@
           </div>
         </section>
       `;
-    }
-
-    function getAnswerImagePairs(problem) {
-      const answerImages = Array.isArray(problem?.answerSegmentImages) ? problem.answerSegmentImages : [];
-      const answerSegments = Array.isArray(problem?.answerSegments) ? problem.answerSegments : [];
-      return answerImages
-        .map((image, index) => {
-          if (!image?.url) {
-            return null;
-          }
-          const segment = answerSegments[index] || {
-            x0: 0,
-            x1: image.width || 1,
-            y0: 0,
-            y1: image.height || 1
-          };
-          return { image, segment };
-        })
-        .filter(Boolean);
-    }
-
-    function createAnswerImageProblems(problems) {
-      return (Array.isArray(problems) ? problems : [])
-        .filter((problem) => problem?.kind !== "shared")
-        .map((problem) => {
-          const pairs = getAnswerImagePairs(problem);
-          if (!pairs.length) {
-            return null;
-          }
-          return {
-            ...problem,
-            id: `answer-${problem.id}`,
-            kind: "problem",
-            problemType: "답지",
-            typeTags: ["답지"],
-            segments: pairs.map((pair) => ({ ...pair.segment })),
-            segmentImages: pairs.map((pair) => pair.image),
-            manualSquashPercent: null
-          };
-        })
-        .filter(Boolean);
-    }
-
-    function createAnswerImageCardMarkup(entry) {
-      const { problem, fitScale } = entry;
-      const displayNumber = problem.displayNumber ?? problem.number ?? "-";
-      const images = (problem.segmentImages || [])
-        .filter(Boolean)
-        .map((image, index) => (
-          `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${image.height};"><img class="problem-image" src="${escapeHtml(image.url)}" alt="${escapeHtml(displayNumber)}번 답지 이미지 ${index + 1}"></div>`
-        ))
-        .join("");
-      return `
-        <article class="problem-card answer-image-card ${fitScale < 0.999 ? "is-scaled" : ""}">
-          <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
-            <header class="problem-card-header">
-              <div class="problem-heading-stack">
-                <span class="problem-badge">${escapeHtml(displayNumber)}번 답지</span>
-                <span class="problem-type-badge is-answer-image">답지 이미지</span>
-              </div>
-            </header>
-            <div class="problem-segments">${images || `<div class="problem-placeholder">답지 이미지가 없습니다.</div>`}</div>
-          </div>
-        </article>
-      `;
-    }
-
-    function createAnswerImageSheetsMarkup(settings, problems) {
-      if (!settings.includeAnswerKey) {
-        return "";
-      }
-      const answerProblems = createAnswerImageProblems(problems);
-      if (!answerProblems.length) {
-        return "";
-      }
-      const answerSettings = {
-        ...settings,
-        maxPerColumn: 24,
-        pagePadding: Math.min(settings.pagePadding, 7),
-        columnGap: Math.min(settings.columnGap, 4),
-        cardGap: 1.4,
-        kicker: "ANSWER IMAGE",
-        title: "답지",
-        subtitle: "선택한 문항의 답지만 이미지로 정리했습니다."
-      };
-      const answerLayoutMeta = buildLayoutPages(answerSettings, answerProblems, { repeatHeaderEveryPage: false });
-      return answerLayoutMeta.sheets
-        .map((sheet, index) => createSheetMarkup(sheet, answerSettings, index, answerLayoutMeta, {
-          cardRenderer: createAnswerImageCardMarkup,
-          extraClassName: `answer-image-sheet${index === 0 ? " is-answer-start" : ""}`
-        }))
-        .join("");
-    }
-
-    function createSafeExamAnswerMarkup(settings, problems) {
-      if (!settings.includeAnswerKey) {
-        return "";
-      }
-      if (normalizeExamContentMode(settings.contentRenderMode) === EXAM_CONTENT_MODE_TEXT) {
-        return createAnswerKeyMarkup(problems);
-      }
-      try {
-        return createAnswerImageSheetsMarkup(settings, problems);
-      } catch (error) {
-        console.warn("Failed to create exam answer image sheets", error);
-        return "";
-      }
     }
 
     async function buildExamProblemPayloadFromSlots(urlBucket = "previewUrls", options = {}) {
@@ -14086,8 +13950,7 @@
       container.innerHTML = rawMarkup;
       container.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
       const limitNotice = createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount);
-      const answerMarkup = createSafeExamAnswerMarkup(settings, problems);
-      const markup = limitNotice + container.innerHTML + answerMarkup;
+      const markup = limitNotice + container.innerHTML + (settings.includeAnswerKey ? createAnswerKeyMarkup(problems) : "");
       return {
         settings,
         totalQuestionCount,
@@ -16808,21 +16671,19 @@
       }
     }
 
-    function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta, options = {}) {
+    function createSheetMarkup(sheet, settings, sheetIndex, layoutMeta) {
       const pageNumber = sheetIndex + 1;
       const isOddPage = pageNumber % 2 === 1;
       const extraLeftMm = isOddPage ? BINDING_MARGIN_MM : 0;
       const extraRightMm = isOddPage ? 0 : BINDING_MARGIN_MM;
       const contentCenterOffsetMm = (extraLeftMm - extraRightMm) / 2;
-      const cardRenderer = typeof options.cardRenderer === "function" ? options.cardRenderer : createProblemCardMarkup;
-      const extraClassName = options.extraClassName ? ` ${options.extraClassName}` : "";
       const kickerMarkup = settings.kicker ? `<p class="sheet-kicker">${escapeHtml(settings.kicker)}</p>` : "";
       const subtitleMarkup = settings.subtitle ? `<p class="sheet-subtitle">${escapeHtml(settings.subtitle)}</p>` : "";
       const logoSrc = resolveStandaloneAssetSrc(settings.logoSrc);
       const logoMarkup = logoSrc
         ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
-      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(cardRenderer).join("")}</section>`).join("");
+      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
         ? `
           <header class="sheet-header">
@@ -16838,7 +16699,7 @@
         `
         : "";
       return `
-        <section class="sheet${sheet.hasHeader ? " has-sheet-header" : " is-continuation-sheet"}${extraClassName}" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${sheet.columnHeightMm}mm;--sheet-header-height:${sheet.headerHeightMm}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
+        <section class="sheet${sheet.hasHeader ? " has-sheet-header" : " is-continuation-sheet"}" style="--sheet-padding-top:${settings.pagePadding}mm;--sheet-padding-right:${settings.pagePadding + extraRightMm}mm;--sheet-padding-bottom:${settings.pagePadding}mm;--sheet-padding-left:${settings.pagePadding + extraLeftMm}mm;--column-gap:${settings.columnGap}mm;--card-gap:${settings.cardGap}mm;--column-height:${sheet.columnHeightMm}mm;--sheet-header-height:${sheet.headerHeightMm}mm;--content-center-offset:${contentCenterOffsetMm}mm;">
           ${headerMarkup}
           <div class="sheet-columns">${columnsMarkup}</div>
         </section>

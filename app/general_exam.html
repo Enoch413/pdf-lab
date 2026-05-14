@@ -348,7 +348,7 @@
                 <span class="field-label">출력 방식</span>
                 <select class="select-input" id="examAnswerModeSelect">
                   <option value="question-only">문제만 뽑기</option>
-                  <option value="question-answer" selected>문제+답지 이미지</option>
+                  <option value="question-answer" selected>문제+답안 뽑기</option>
                 </select>
               </label>
               <div class="field-row">
@@ -995,7 +995,7 @@
     function getExamAnswerModeLabel(value) {
       return normalizeExamAnswerMode(value) === EXAM_ANSWER_MODE_QUESTION_ONLY
         ? "문제만"
-        : "문제+답지 이미지";
+        : "문제+답안";
     }
 
     function getSelectedExamAnswerMode() {
@@ -7017,59 +7017,24 @@
       return limited;
     }
 
-    function isRuntimeUsableBlob(value) {
-      return typeof Blob !== "undefined" && value instanceof Blob && value.size > 0;
-    }
-
-    function createRuntimeSegmentImagesFromBlobs(record, blobs, segments, urlBucket, suffix, emptyMessage, options = {}) {
-      const sourceBlobs = Array.isArray(blobs) ? blobs : [];
-      const allowMissing = Boolean(options.allowMissing);
-      if (!sourceBlobs.length) {
-        if (emptyMessage) {
-          throw new Error(emptyMessage);
-        }
-        return [];
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
+      if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
+      throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
       }
-      return sourceBlobs.map((blob, index) => {
-        if (!isRuntimeUsableBlob(blob)) {
-          if (allowMissing) {
-            return null;
-          }
+      const segmentImages = record.segmentBlobs.map((blob, index) => {
+        if (!blob) {
           throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
         }
         const url = URL.createObjectURL(blob);
         state.examBuilder[urlBucket].push(url);
-        const segment = segments?.[index] || {};
+        const segment = record.segmentMeta?.[index] || {};
         return {
-          id: `${record.recordId}-${suffix}-${index + 1}`,
+          id: `${record.recordId}-segment-${index + 1}`,
           width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
           height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
           url
         };
-      }).filter(Boolean);
-    }
-
-    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
-      if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
-        throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
-      }
-      const segmentImages = createRuntimeSegmentImagesFromBlobs(
-        record,
-        record.segmentBlobs,
-        record.segmentMeta,
-        urlBucket,
-        "segment",
-        ""
-      );
-      const answerSegmentImages = createRuntimeSegmentImagesFromBlobs(
-        record,
-        record.answerSegmentBlobs,
-        record.answerSegmentMeta,
-        urlBucket,
-        "answer-segment",
-        "",
-        { allowMissing: true }
-      );
+      });
       return {
         id: `exam-${record.recordId}`,
         kind: record.kind || "problem",
@@ -7094,7 +7059,7 @@
         answerText: record.answerText || "",
         explanationText: record.explanationText || "",
         answerSegments: Array.isArray(record.answerSegmentMeta) ? record.answerSegmentMeta.map((segment) => ({ ...segment })) : [],
-        answerSegmentImages,
+        answerSegmentImages: [],
         typeTags: Array.isArray(record.typeTags) ? [...record.typeTags] : [],
         manualSquashPercent: null
       };
@@ -7211,18 +7176,6 @@
       `;
     }
 
-    function createSafeExamAnswerImageMarkup(settings, problems) {
-      if (!settings.includeAnswerKey) {
-        return "";
-      }
-      try {
-        return createAnswerImageSheetsMarkup({ ...settings, answerOutputMode: REPACK_ANSWER_MODE_WITH_ANSWER }, problems);
-      } catch (error) {
-        console.warn("Failed to create exam answer image sheets", error);
-        return "";
-      }
-    }
-
     async function buildExamPreviewDocument(urlBucket = "exportUrls", options = {}) {
       const settings = readExamExportSettings();
       const {
@@ -7237,8 +7190,7 @@
       container.innerHTML = rawMarkup;
       container.querySelectorAll(".problem-squash-control").forEach((node) => node.remove());
       const limitNotice = createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount);
-      const answerMarkup = createSafeExamAnswerImageMarkup(settings, problems);
-      const markup = limitNotice + container.innerHTML + answerMarkup;
+      const markup = limitNotice + container.innerHTML + (settings.includeAnswerKey ? createAnswerKeyMarkup(problems) : "");
       return {
         settings,
         totalQuestionCount,
