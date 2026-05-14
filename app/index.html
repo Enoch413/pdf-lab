@@ -13761,19 +13761,11 @@
 
     function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
       const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
-      const canRenderImageSegments = hasUsableLibraryBlobs(record.segmentBlobs);
-      const hasTextRenderFallback = Boolean(
-        normalizeProblemText(record.promptText || record.analysisText || "") ||
-        record.textStructure
-      );
-      const effectiveRenderMode = normalizedRenderMode === EXAM_CONTENT_MODE_IMAGE && !canRenderImageSegments && hasTextRenderFallback
-        ? EXAM_CONTENT_MODE_TEXT
-        : normalizedRenderMode;
-      const segmentImages = effectiveRenderMode === EXAM_CONTENT_MODE_TEXT
+      const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
         : (() => {
             if (!Array.isArray(record.segmentBlobs) || !hasUsableLibraryBlobs(record.segmentBlobs)) {
-              throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
+              throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
             return record.segmentBlobs.map((blob, index) => {
               if (!isUsableLibraryBlob(blob)) {
@@ -13807,7 +13799,7 @@
         pageSignature: record.pageSignature || "",
         pageCount: record.pageCount || 0,
         contentMode: getLibraryProblemMode(record),
-        renderContentMode: effectiveRenderMode,
+        renderContentMode: normalizedRenderMode,
         promptText: record.promptText || "",
         analysisText: record.analysisText || "",
         textStructure: normalizeStructuredProblemData(record.textStructure, record.problemType || PROBLEM_TYPE_OTHER, Boolean(record.isSubjective)),
