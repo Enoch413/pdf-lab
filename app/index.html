@@ -14266,7 +14266,7 @@
       const signature = `${getExamSelectionSignature(entries)}|${settings.answerOutputMode}|${settings.contentRenderMode}`;
       const retryContext = getCurrentStudentRetryDraftContext();
       const historyScope = retryContext ? EXAM_HISTORY_SCOPE_STUDENT_RETRY : EXAM_HISTORY_SCOPE_SCHOOL;
-      if (getExamSets().some((examSet) =>
+      const duplicateExam = getExamSets().find((examSet) =>
         examSet.signature === signature &&
         normalizeSchoolKey(examSet.schoolKey || "") === normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "") &&
         getExamSetHistoryScope(examSet) === historyScope &&
@@ -14279,10 +14279,9 @@
           )
         ) &&
         examSet.examId !== state.examBuilder.loadedExamId
-      )) {
-        throw new Error(historyScope === EXAM_HISTORY_SCOPE_STUDENT_RETRY
-          ? "같은 학생의 같은 오답 차수 구성은 이미 확정 저장되어 있습니다."
-          : "같은 시험지 구성은 이미 확정 저장되어 있습니다.");
+      );
+      if (duplicateExam?.examId) {
+        state.examBuilder.loadedExamId = duplicateExam.examId;
       }
 
       const existingExam = state.examBuilder.loadedExamId
@@ -14465,6 +14464,11 @@
           );
           try {
             await persistExamHistory();
+          } catch (error) {
+            saveError = error;
+            console.warn("Failed to save exam history before draft save", error);
+          }
+          try {
             await persistCurrentExamWorkRecord();
           } catch (error) {
             saveError = error;
