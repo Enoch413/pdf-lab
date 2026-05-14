@@ -14407,18 +14407,20 @@
         if (commitHistory) {
           setStatus(
             retryContext
-              ? "학생 출력 이력과 draft를 저장하고 PDF 출력을 준비하는 중입니다..."
-              : "시험지 이력과 draft를 저장하고 PDF 출력을 준비하는 중입니다...",
+              ? "학생 출력 이력을 저장하고 PDF 출력을 준비하는 중입니다..."
+              : "시험지 이력을 저장하고 PDF 출력을 준비하는 중입니다...",
             "working",
             retryContext ? "학생 출력" : "시험지 확정"
           );
           await persistExamHistory();
-          await persistCurrentExamWorkRecord();
         } else {
           setStatus("시험지 PDF 출력을 준비하는 중입니다...", "working", "시험지");
         }
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
         await printStandaloneHtml(html, printWindow);
+        if (commitHistory) {
+          await persistCurrentExamWorkRecord();
+        }
         setOptionalText(elements.examExportSummary, commitHistory
           ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · ${retryContext ? "학생 출력 이력" : "이력"}과 draft 저장 후 인쇄/PDF 출력 창을 열었습니다.`
           : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
