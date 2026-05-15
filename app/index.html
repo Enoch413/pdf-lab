@@ -16981,7 +16981,8 @@
       });
 
       questionEvents.sort((a, b) => (a.orderIndex - b.orderIndex) || (a.item.y0 - b.item.y0));
-      const safeQuestionEvents = isSubjectiveSourceFile(fileName, worksheetFamilyOverride)
+      const isSubjectiveSource = isSubjectiveSourceFile(fileName, worksheetFamilyOverride);
+      const safeQuestionEvents = isSubjectiveSource
         ? filterSubjectiveQuestionEvents(questionEvents)
         : questionEvents;
       if (!questionEvents.length) {
@@ -16991,7 +16992,7 @@
         throw new Error("주관식 문항 시작 번호를 정리하는 과정에서 사용할 수 있는 문항을 찾지 못했습니다.");
       }
 
-      const validSharedEvents = sharedEvents
+      const validSharedEvents = isSubjectiveSource ? [] : sharedEvents
         .map((sharedEvent) => {
           const targetQuestion = safeQuestionEvents.find((questionEvent) =>
             questionEvent.number === sharedEvent.startNumber && isAfterEvent(questionEvent, sharedEvent)
