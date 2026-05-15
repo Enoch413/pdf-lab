@@ -6680,9 +6680,30 @@
         const storagePath = buildSharedLibraryAssetPath(recordId, kind, index, blob);
         const storageRef = storage.ref(storagePath);
         await storageRef.put(blob, blob.type ? { contentType: blob.type } : undefined);
+        await storageRef.getDownloadURL();
         uploadedPaths.push(storagePath);
       }
       return uploadedPaths;
+    }
+
+    function countUsableLibraryBlobs(values = []) {
+      return (Array.isArray(values) ? values : []).filter((value) => isUsableLibraryBlob(value)).length;
+    }
+
+    function validateSharedLibraryImageUpload(metadataRecord = {}, assetRecord = {}, segmentStoragePaths = [], answerSegmentStoragePaths = []) {
+      if (metadataRecord.kind === "shared") {
+        return;
+      }
+      const segmentBlobCount = countUsableLibraryBlobs(assetRecord.segmentBlobs);
+      const segmentPathCount = (Array.isArray(segmentStoragePaths) ? segmentStoragePaths : []).filter((value) => normalizeProblemText(value)).length;
+      if (segmentBlobCount <= 0 || segmentPathCount < segmentBlobCount) {
+        throw new Error(`문항 ${metadataRecord.number || metadataRecord.problemId || "-"} 이미지 블록을 Firebase Storage에 저장하지 못했습니다.`);
+      }
+      const answerBlobCount = countUsableLibraryBlobs(assetRecord.answerSegmentBlobs);
+      const answerPathCount = (Array.isArray(answerSegmentStoragePaths) ? answerSegmentStoragePaths : []).filter((value) => normalizeProblemText(value)).length;
+      if (answerBlobCount > 0 && answerPathCount < answerBlobCount) {
+        throw new Error(`문항 ${metadataRecord.number || metadataRecord.problemId || "-"} 답안 이미지 블록을 Firebase Storage에 저장하지 못했습니다.`);
+      }
     }
 
     async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
@@ -6818,6 +6839,7 @@
           const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
           const segmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "segment", assetRecord.segmentBlobs);
           const answerSegmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "answer", assetRecord.answerSegmentBlobs);
+          validateSharedLibraryImageUpload(metadataRecord, assetRecord, segmentStoragePaths, answerSegmentStoragePaths);
           nextRecordIds.add(metadataRecord.recordId);
           const existingRecord = existingMap.get(metadataRecord.recordId);
           const nextRemoteRecord = {
@@ -6885,11 +6907,32 @@
       }
       try {
         for (const record of Array.isArray(problemRecords) ? problemRecords : []) {
-          const metadataRecord = splitProblemRecordStorage(record).metadataRecord;
+          const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
+          let nextMetadataRecord = { ...metadataRecord };
+          if (countUsableLibraryBlobs(assetRecord.segmentBlobs) || countUsableLibraryBlobs(assetRecord.answerSegmentBlobs)) {
+            const segmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "segment", assetRecord.segmentBlobs);
+            const answerSegmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "answer", assetRecord.answerSegmentBlobs);
+            validateSharedLibraryImageUpload(metadataRecord, assetRecord, segmentStoragePaths, answerSegmentStoragePaths);
+            nextMetadataRecord = {
+              ...nextMetadataRecord,
+              segmentStoragePaths,
+              answerSegmentStoragePaths,
+              updatedAt: Number(nextMetadataRecord.updatedAt || Date.now())
+            };
+          } else if (metadataRecord.kind !== "shared") {
+            const existingDoc = await state.firebaseSchoolBridge.db
+              .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
+              .doc(metadataRecord.recordId)
+              .get();
+            const existingData = existingDoc.exists ? normalizeSharedFirebaseProblemRecord(existingDoc.data(), existingDoc.id) : null;
+            if (!hasSharedStoragePaths(existingData, "segmentStoragePaths")) {
+              throw new Error(`문항 ${metadataRecord.number || metadataRecord.problemId || "-"} 이미지 블록이 없어 Firebase 문제 라이브러리에 저장할 수 없습니다.`);
+            }
+          }
           await state.firebaseSchoolBridge.db
             .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
-            .doc(metadataRecord.recordId)
-            .set(metadataRecord, { merge: true });
+            .doc(nextMetadataRecord.recordId)
+            .set(nextMetadataRecord, { merge: true });
         }
         for (const record of Array.isArray(importRecords) ? importRecords : []) {
           await state.firebaseSchoolBridge.db
@@ -9129,6 +9172,9 @@
         const syncResult = await syncSourceRecordToSharedFirebaseLibrary(sourceRecord, problemRecords);
         result.firebase.synced = Boolean(syncResult?.synced);
         result.firebase.reason = normalizeProblemText(syncResult?.reason || "");
+        if (!result.firebase.synced) {
+          throw new Error(result.firebase.reason || "Firebase 공용 문제 라이브러리 저장에 실패했습니다.");
+        }
       }
       if (doesLibrarySaveModeUseFolder(mode)) {
         result.folder.attempted = true;
