@@ -5690,8 +5690,12 @@
       });
     }
 
-    function applyStudentRetryState(rawState = {}) {
+    function applyStudentRetryState(rawState = {}, options = {}) {
+      const { persistLocal = true } = options;
       state.studentRetry = normalizeStudentRetryState(rawState);
+      if (!persistLocal) {
+        return;
+      }
       try {
         window.localStorage.setItem(STUDENT_RETRY_STORAGE_KEY, JSON.stringify(captureStudentRetryState()));
       } catch (error) {
@@ -5708,6 +5712,10 @@
       const user = bridge.currentUser || bridge.auth?.currentUser || null;
       const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
       return Boolean(bridge.db && typeof bridge.db.collection === "function" && user?.uid && profileRole === "admin");
+    }
+
+    function shouldUseFirebaseStudentRetryAsPrimaryStore() {
+      return canUseFirebaseStudentRetryStorage();
     }
 
     function getFirebaseStudentRetryOwnerUid() {
@@ -6005,10 +6013,7 @@
           }
           return { synced: true, source: "firebase" };
         }
-        if (hasStudentRetryStateContent(state.studentRetry)) {
-          const saveResult = await saveStudentRetryStateToFirebase({ force: true });
-          return { synced: Boolean(saveResult.synced), source: "local-bootstrap" };
-        }
+        applyStudentRetryState({}, { persistLocal: false });
         return { synced: true, source: "empty" };
       })()
         .catch((error) => {
@@ -6051,6 +6056,11 @@
 
     function isStudentRetryWorkRecord(record = {}) {
       return record?.kind === "exam" && Boolean(record?.payload?.studentRetry?.studentId || record?.payload?.studentRetry?.sessionId);
+    }
+
+    function isStudentRetryExamItemRecord(record = {}) {
+      return String(record?.historyScope || "") === EXAM_HISTORY_SCOPE_STUDENT_RETRY ||
+        Boolean(record?.studentRetrySessionId && record?.studentRetryStudentId);
     }
 
     async function loadFirebaseStudentRetryOperationalSnapshot() {
@@ -13385,9 +13395,25 @@
       const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
         ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
         : localProblemRecords;
-      const mergedExamSets = mergeRecordsByKey(examSets, firebaseRetrySnapshot.examSets, "examId", "updatedAt");
-      const mergedExamItems = mergeRecordsByKey(examItems, firebaseRetrySnapshot.examItems, "entryId", "savedAt");
-      const mergedSavedWorks = mergeRecordsByKey(savedWorks, firebaseRetrySnapshot.savedWorks, "workId", "updatedAt");
+      const useFirebaseRetryPrimary = shouldUseFirebaseStudentRetryAsPrimaryStore();
+      const localExamSetsForView = useFirebaseRetryPrimary
+        ? examSets.filter((examSet) => getExamSetHistoryScope(examSet) !== EXAM_HISTORY_SCOPE_STUDENT_RETRY)
+        : examSets;
+      const localExamItemsForView = useFirebaseRetryPrimary
+        ? examItems.filter((item) => !isStudentRetryExamItemRecord(item))
+        : examItems;
+      const localSavedWorksForView = useFirebaseRetryPrimary
+        ? savedWorks.filter((work) => !isStudentRetryWorkRecord(work))
+        : savedWorks;
+      const mergedExamSets = useFirebaseRetryPrimary
+        ? [...localExamSetsForView, ...firebaseRetrySnapshot.examSets]
+        : mergeRecordsByKey(localExamSetsForView, firebaseRetrySnapshot.examSets, "examId", "updatedAt");
+      const mergedExamItems = useFirebaseRetryPrimary
+        ? [...localExamItemsForView, ...firebaseRetrySnapshot.examItems]
+        : mergeRecordsByKey(localExamItemsForView, firebaseRetrySnapshot.examItems, "entryId", "savedAt");
+      const mergedSavedWorks = useFirebaseRetryPrimary
+        ? [...localSavedWorksForView, ...firebaseRetrySnapshot.savedWorks]
+        : mergeRecordsByKey(localSavedWorksForView, firebaseRetrySnapshot.savedWorks, "workId", "updatedAt");
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
@@ -14551,6 +14577,7 @@
         } catch (error) {
           state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 draft 저장 실패";
           console.warn("Failed to mirror student retry work to Firebase", error);
+          throw error;
         }
       }
       state.examBuilder.loadedWorkId = workId;
@@ -14724,6 +14751,7 @@
         } catch (error) {
           state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 draft 삭제 실패";
           console.warn("Failed to delete student retry work from Firebase", error);
+          throw error;
         }
       }
       if (state.loadedRepackWorkId === workId) {
@@ -15513,6 +15541,7 @@
         } catch (error) {
           state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력 저장 실패";
           console.warn("Failed to mirror student retry exam history to Firebase", error);
+          throw error;
         }
       }
       await refreshLibrarySummary();
@@ -15540,6 +15569,7 @@
         } catch (error) {
           state.firebaseSchoolBridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력 삭제 실패";
           console.warn("Failed to delete student retry exam history from Firebase", error);
+          throw error;
         }
       }
       await refreshLibrarySummary();
