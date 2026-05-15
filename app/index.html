@@ -16909,6 +16909,35 @@
       return segments;
     }
 
+    function isSubjectiveSourceFile(fileName = "", worksheetFamilyOverride = "") {
+      const searchable = normalizeProblemTypeToken(`${fileName || ""} ${worksheetFamilyOverride || ""}`);
+      return searchable.includes(normalizeProblemTypeToken("주관식")) ||
+        searchable.includes(normalizeProblemTypeToken("서술형"));
+    }
+
+    function filterSubjectiveQuestionEvents(questionEvents) {
+      const orderedEvents = Array.isArray(questionEvents) ? questionEvents : [];
+      const filteredEvents = [];
+      let highestAcceptedNumber = 0;
+
+      orderedEvents.forEach((event) => {
+        const number = Number(event?.number) || 0;
+        if (!number) {
+          return;
+        }
+        if (highestAcceptedNumber && number <= highestAcceptedNumber) {
+          return;
+        }
+        if (highestAcceptedNumber && number > highestAcceptedNumber + 25) {
+          return;
+        }
+        filteredEvents.push(event);
+        highestAcceptedNumber = Math.max(highestAcceptedNumber, number);
+      });
+
+      return filteredEvents;
+    }
+
     function buildProblemsFromPages(pages, fileName = "", worksheetFamilyOverride = "") {
       const orderedColumns = pages
         .filter((page) => !page.isAnswerPage)
@@ -16952,13 +16981,19 @@
       });
 
       questionEvents.sort((a, b) => (a.orderIndex - b.orderIndex) || (a.item.y0 - b.item.y0));
+      const safeQuestionEvents = isSubjectiveSourceFile(fileName, worksheetFamilyOverride)
+        ? filterSubjectiveQuestionEvents(questionEvents)
+        : questionEvents;
       if (!questionEvents.length) {
         throw new Error("문항 시작 번호를 찾지 못했습니다. 현재는 `4.` 같은 번호 형식에 맞춰져 있어요.");
+      }
+      if (!safeQuestionEvents.length) {
+        throw new Error("주관식 문항 시작 번호를 정리하는 과정에서 사용할 수 있는 문항을 찾지 못했습니다.");
       }
 
       const validSharedEvents = sharedEvents
         .map((sharedEvent) => {
-          const targetQuestion = questionEvents.find((questionEvent) =>
+          const targetQuestion = safeQuestionEvents.find((questionEvent) =>
             questionEvent.number === sharedEvent.startNumber && isAfterEvent(questionEvent, sharedEvent)
           );
           return targetQuestion ? { ...sharedEvent, targetQuestion } : null;
@@ -16972,7 +17007,7 @@
         }
       });
 
-      const orderedEvents = [...questionEvents, ...validSharedEvents].sort(
+      const orderedEvents = [...safeQuestionEvents, ...validSharedEvents].sort(
         (a, b) => (a.orderIndex - b.orderIndex) || (a.item.y0 - b.item.y0)
       );
 
