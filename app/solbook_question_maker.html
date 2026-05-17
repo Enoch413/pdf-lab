@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쏠북용 문제제작</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
+  <style>
+    :root {
+      --ink: #0f3b3c;
+      --muted: #647270;
+      --line: rgba(15, 59, 60, 0.14);
+      --paper: #fffdf8;
+      --panel: rgba(255, 255, 255, 0.86);
+      --accent: #186b63;
+      --accent-soft: rgba(24, 107, 99, 0.12);
+      --wash: #eee8dc;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Noto Sans KR", "Plus Jakarta Sans", sans-serif;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(208, 218, 202, 0.74), transparent 28rem),
+        radial-gradient(circle at 86% 8%, rgba(236, 219, 190, 0.76), transparent 30rem),
+        linear-gradient(135deg, #eef1e9 0%, #f6efe3 100%);
+    }
+
+    .general2-shell {
+      width: min(1360px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 18px 0 56px;
+    }
+
+    .general2-layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      margin-top: 32px;
+    }
+
+    .general2-panel,
+    .general2-preview {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 20px 50px rgba(31, 48, 41, 0.08);
+    }
+
+    .general2-panel {
+      position: sticky;
+      top: 20px;
+      padding: 22px;
+    }
+
+    .general2-preview {
+      padding: 28px;
+      min-height: 70vh;
+    }
+
+    .general2-title-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .general2-title-row h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .general2-count {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .json-picker {
+      border: 1px dashed rgba(24, 107, 99, 0.32);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(24, 107, 99, 0.06);
+      display: grid;
+      gap: 10px;
+    }
+
+    .json-picker strong {
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .json-picker small {
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.55;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field span,
+    .check-row span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .input,
+    .select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(15, 59, 60, 0.16);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 13px;
+      outline: none;
+    }
+
+    .input:focus,
+    .select:focus {
+      border-color: rgba(24, 107, 99, 0.52);
+      box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.1);
+    }
+
+    .check-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(15, 59, 60, 0.12);
+      border-radius: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .check-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .action-button {
+      border: 0;
+      border-radius: 16px;
+      padding: 13px 14px;
+      color: white;
+      background: var(--accent);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 14px 25px rgba(24, 107, 99, 0.18);
+    }
+
+    .action-button.secondary {
+      color: var(--ink);
+      background: white;
+      border: 1px solid rgba(15, 59, 60, 0.14);
+      box-shadow: none;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .exam-document {
+      background: white;
+      border: 1px solid rgba(15, 59, 60, 0.12);
+      border-radius: 18px;
+      padding: 32px;
+    }
+
+    .exam-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 16px;
+      margin-bottom: 22px;
+    }
+
+    .exam-head h1 {
+      margin: 0;
+      font-size: 27px;
+      letter-spacing: -0.05em;
+    }
+
+    .exam-head p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .question-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    .question-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border: 1px solid rgba(15, 59, 60, 0.13);
+      border-radius: 15px;
+      padding: 15px;
+      background: var(--paper);
+    }
+
+    .question-kicker {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 9px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .question-stem {
+      margin: 0 0 10px;
+      font-weight: 900;
+      line-height: 1.45;
+    }
+
+    .question-body {
+      margin: 0 0 12px;
+      color: #183f40;
+      font-size: 13px;
+      line-height: 1.62;
+      text-align: justify;
+      white-space: pre-wrap;
+    }
+
+    .question-body u {
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1.5px;
+      font-weight: 800;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: #193d3f;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .choice-list li {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 5px;
+    }
+
+    .answer-section {
+      break-before: page;
+      page-break-before: always;
+      margin-top: 36px;
+      border-top: 2px solid var(--ink);
+      padding-top: 18px;
+    }
+
+    .answer-section h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+      letter-spacing: -0.04em;
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .answer-card {
+      border: 1px solid rgba(15, 59, 60, 0.13);
+      border-radius: 13px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      background: #fbfaf4;
+    }
+
+    .answer-card strong {
+      color: var(--accent);
+    }
+
+    .empty-state {
+      border: 1px dashed rgba(15, 59, 60, 0.18);
+      border-radius: 18px;
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .general2-shell {
+        width: min(100% - 24px, 760px);
+      }
+
+      .general2-layout,
+      .question-grid,
+      .answer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .general2-panel {
+        position: static;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .app-topbar,
+      .app-tab-shell,
+      .general2-panel {
+        display: none !important;
+      }
+
+      .general2-shell {
+        width: auto;
+        padding: 0;
+      }
+
+      .general2-layout {
+        display: block;
+        margin: 0;
+      }
+
+      .general2-preview {
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .exam-document {
+        border: 0;
+        padding: 0;
+      }
+
+      .question-card {
+        border-color: #cdd6d3;
+      }
+
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-page-shell">
+    <div class="general2-shell">
+      <header class="app-topbar">
+        <div class="app-topbar-copy">
+          <h1 class="app-topbar-title">쏠북용 문제제작</h1>
+        </div>
+        <div class="app-topbar-badge">WORKSPACE</div>
+        <nav class="app-topbar-actions" aria-label="Workspace navigation">
+          <a class="app-topbar-link app-topbar-tab" href="./index.html?workspace=exam">PDF LAB</a>
+          <a class="app-topbar-link app-topbar-tab" href="./final_test.html">파이널테스트</a>
+          <a class="app-topbar-link app-topbar-tab" href="./index.html?workspace=library">문제 라이브러리</a>
+        </nav>
+      </header>
+
+      <div class="app-tab-shell">
+        <div class="app-tab-row" role="tablist" aria-label="작업 영역">
+          <a class="app-tab-button app-tab-link" href="./index.html?workspace=exam">PDF LAB</a>
+          <button class="app-tab-button is-active" type="button" aria-selected="true">쏠북용 문제제작</button>
+        </div>
+      </div>
+
+      <main class="general2-layout">
+        <aside class="general2-panel">
+          <div class="general2-title-row">
+            <h2>쏠북 JSON 출제</h2>
+            <span class="general2-count" id="loadedCount">0문항</span>
+          </div>
+          <div class="control-stack">
+            <label class="json-picker">
+              <strong>JSON 파일 선택</strong>
+              <small>`stem`, `body`, `choices`, `answer`, `explanation` 구조의 JSON 배열을 바로 문제지로 만듭니다.</small>
+              <input class="input" id="jsonFileInput" type="file" accept=".json,application/json">
+              <small id="jsonFileName">선택된 JSON 없음</small>
+            </label>
+            <label class="field">
+              <span>시험지 제목</span>
+              <input class="input" id="examTitleInput" type="text" value="쏠북 문제지">
+            </label>
+            <label class="field">
+              <span>문항 범위</span>
+              <input class="input" id="rangeInput" type="text" placeholder="예: 1-20, 35, 40-45">
+            </label>
+            <label class="field">
+              <span>문제 유형</span>
+              <select class="select" id="typeSelect">
+                <option value="">전체 유형</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>난이도</span>
+              <select class="select" id="difficultySelect">
+                <option value="">전체 난이도</option>
+              </select>
+            </label>
+            <label class="check-row">
+              <input id="includeAnswerInput" type="checkbox">
+              <span>정답/해설 페이지 포함</span>
+            </label>
+            <div class="button-row">
+              <button class="action-button secondary" id="resetButton" type="button">전체 보기</button>
+              <button class="action-button" id="printButton" type="button">PDF 출력/인쇄</button>
+            </div>
+            <p class="hint">기본값은 90문항 전체입니다. 범위를 비워두면 선택한 유형/난이도 안의 모든 문제가 출력됩니다.</p>
+          </div>
+        </aside>
+
+        <section class="general2-preview">
+          <div id="examRoot" class="empty-state">JSON 문제를 불러오는 중입니다...</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const CHOICE_MARKERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"];
+    const TYPE_LABELS = {
+      topic: "주제",
+      title: "제목",
+      implication: "함축의미",
+      blank: "빈칸",
+      summary: "요약",
+      vocab_underline: "밑줄어휘",
+      vocab_box: "어휘박스",
+      factual: "내용일치",
+      unfactual: "내용불일치",
+      gist: "요지",
+      claim: "주장",
+      grammar_underline: "밑줄어법",
+      grammar_box: "어법박스",
+      order: "순서",
+      insertion: "삽입",
+      irrelevant: "무관문"
+    };
+    const DIFFICULTY_LABELS = {
+      easy: "쉬움",
+      medium: "중간",
+      hard: "어려움",
+      none: "기본"
+    };
+
+    const state = {
+      questions: [],
+      filtered: [],
+      sourceName: ""
+    };
+
+    const elements = {
+      loadedCount: document.getElementById("loadedCount"),
+      jsonFileInput: document.getElementById("jsonFileInput"),
+      jsonFileName: document.getElementById("jsonFileName"),
+      examTitleInput: document.getElementById("examTitleInput"),
+      rangeInput: document.getElementById("rangeInput"),
+      typeSelect: document.getElementById("typeSelect"),
+      difficultySelect: document.getElementById("difficultySelect"),
+      includeAnswerInput: document.getElementById("includeAnswerInput"),
+      resetButton: document.getElementById("resetButton"),
+      printButton: document.getElementById("printButton"),
+      examRoot: document.getElementById("examRoot")
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function renderInlineText(value) {
+      const safe = escapeHtml(value);
+      return safe.replace(/\[\[u:([\s\S]*?)\]\]/g, "<u>$1</u>");
+    }
+
+    function normalizeDifficulty(value) {
+      return value || "none";
+    }
+
+    function getTypeLabel(type) {
+      return TYPE_LABELS[type] || type || "기타";
+    }
+
+    function getDifficultyLabel(value) {
+      return DIFFICULTY_LABELS[normalizeDifficulty(value)] || value || "기본";
+    }
+
+    function parseRange(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return null;
+      }
+      const selected = new Set();
+      raw.split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach((part) => {
+          const rangeMatch = part.match(/^(\d+)\s*[-~]\s*(\d+)$/);
+          if (rangeMatch) {
+            const start = Number(rangeMatch[1]);
+            const end = Number(rangeMatch[2]);
+            for (let number = Math.min(start, end); number <= Math.max(start, end); number += 1) {
+              selected.add(number);
+            }
+            return;
+          }
+          if (/^\d+$/.test(part)) {
+            selected.add(Number(part));
+          }
+        });
+      return selected.size ? selected : null;
+    }
+
+    function populateFilters() {
+      const types = Array.from(new Set(state.questions.map((question) => question.type || "").filter(Boolean)))
+        .sort((left, right) => getTypeLabel(left).localeCompare(getTypeLabel(right), "ko"));
+      elements.typeSelect.innerHTML = [
+        '<option value="">전체 유형</option>',
+        ...types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(getTypeLabel(type))}</option>`)
+      ].join("");
+
+      const difficulties = Array.from(new Set(state.questions.map((question) => normalizeDifficulty(question.difficulty))));
+      elements.difficultySelect.innerHTML = [
+        '<option value="">전체 난이도</option>',
+        ...difficulties.map((difficulty) => `<option value="${escapeHtml(difficulty)}">${escapeHtml(getDifficultyLabel(difficulty))}</option>`)
+      ].join("");
+    }
+
+    function getFilteredQuestions() {
+      const range = parseRange(elements.rangeInput.value);
+      const type = elements.typeSelect.value;
+      const difficulty = elements.difficultySelect.value;
+      return state.questions.filter((question, index) => {
+        const number = index + 1;
+        if (range && !range.has(number)) {
+          return false;
+        }
+        if (type && question.type !== type) {
+          return false;
+        }
+        if (difficulty && normalizeDifficulty(question.difficulty) !== difficulty) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function renderChoices(question) {
+      const choices = Array.isArray(question.choices) ? question.choices : [];
+      if (!choices.length) {
+        return "";
+      }
+      return `
+        <ol class="choice-list">
+          ${choices.map((choice, index) => `
+            <li>
+              <strong>${CHOICE_MARKERS[index] || `${index + 1}.`}</strong>
+              <span>${renderInlineText(choice)}</span>
+            </li>
+          `).join("")}
+        </ol>
+      `;
+    }
+
+    function renderQuestionCard(question, outputNumber) {
+      return `
+        <article class="question-card">
+          <div class="question-kicker">
+            <span>${outputNumber}번 · ${escapeHtml(getTypeLabel(question.type))}</span>
+            <span>${escapeHtml(getDifficultyLabel(question.difficulty))}</span>
+          </div>
+          <p class="question-stem">${renderInlineText(question.stem || "다음 글을 읽고 물음에 답하시오.")}</p>
+          <p class="question-body">${renderInlineText(question.body || "")}</p>
+          ${renderChoices(question)}
+        </article>
+      `;
+    }
+
+    function renderAnswerSection(questions) {
+      if (!elements.includeAnswerInput.checked) {
+        return "";
+      }
+      return `
+        <section class="answer-section">
+          <h2>정답 및 해설</h2>
+          <div class="answer-grid">
+            ${questions.map((question, index) => `
+              <article class="answer-card">
+                <strong>${index + 1}번 ${escapeHtml(question.answer || "-")}</strong>
+                <div>${escapeHtml(getTypeLabel(question.type))}</div>
+                <p>${renderInlineText(question.explanation || "")}</p>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderExam() {
+      const questions = getFilteredQuestions();
+      state.filtered = questions;
+      elements.loadedCount.textContent = `${questions.length}/${state.questions.length}문항`;
+      if (!state.questions.length) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = "쏠북 형식 JSON 파일을 선택하면 바로 문제지가 생성됩니다.";
+        return;
+      }
+      if (!questions.length) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = "조건에 맞는 문제가 없습니다.";
+        return;
+      }
+      elements.examRoot.className = "exam-document";
+      const title = elements.examTitleInput.value.trim() || "쏠북 문제지";
+      elements.examRoot.innerHTML = `
+        <header class="exam-head">
+          <div>
+            <h1>${escapeHtml(title)}</h1>
+            <p>${escapeHtml(state.sourceName || "선택한 JSON")} · ${questions.length}문항</p>
+          </div>
+          <p>쏠북용 문제제작</p>
+        </header>
+        <section class="question-grid">
+          ${questions.map((question, index) => renderQuestionCard(question, index + 1)).join("")}
+        </section>
+        ${renderAnswerSection(questions)}
+      `;
+    }
+
+    function normalizeQuestionRows(payload) {
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+      if (payload && typeof payload === "object") {
+        const listKey = Object.keys(payload).find((key) => Array.isArray(payload[key]));
+        if (listKey) {
+          return payload[listKey];
+        }
+      }
+      throw new Error("JSON 최상위 구조가 배열이 아니거나, 배열 필드를 찾지 못했습니다.");
+    }
+
+    function loadQuestionsFromPayload(payload, sourceName = "선택한 JSON") {
+      const rows = normalizeQuestionRows(payload)
+        .filter((row) => row && typeof row === "object")
+        .map((row) => ({
+          type: row.type || "",
+          difficulty: row.difficulty ?? null,
+          stem: row.stem || row.question || row.prompt || "",
+          body: row.body || row.passage || row.text || "",
+          choices: Array.isArray(row.choices) ? row.choices : [],
+          answer: row.answer || "",
+          explanation: row.explanation || row.commentary || ""
+        }));
+      if (!rows.length) {
+        throw new Error("출제할 문항이 없습니다.");
+      }
+      state.questions = rows;
+      state.sourceName = sourceName;
+      elements.jsonFileName.textContent = sourceName;
+      if (!elements.examTitleInput.value.trim() || elements.examTitleInput.value.trim() === "쏠북 문제지") {
+        elements.examTitleInput.value = sourceName.replace(/\.json$/i, "") || "JSON 문제지";
+      }
+      populateFilters();
+      renderExam();
+    }
+
+    async function loadQuestionsFromFile(file) {
+      try {
+        if (!file) {
+          renderExam();
+          return;
+        }
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        loadQuestionsFromPayload(payload, file.name);
+      } catch (error) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = error?.message || "JSON 문제를 읽지 못했습니다.";
+      }
+    }
+
+    [elements.examTitleInput, elements.rangeInput, elements.typeSelect, elements.difficultySelect, elements.includeAnswerInput]
+      .forEach((element) => element.addEventListener("input", renderExam));
+    elements.typeSelect.addEventListener("change", renderExam);
+    elements.difficultySelect.addEventListener("change", renderExam);
+    elements.resetButton.addEventListener("click", () => {
+      elements.rangeInput.value = "";
+      elements.typeSelect.value = "";
+      elements.difficultySelect.value = "";
+      renderExam();
+    });
+    elements.printButton.addEventListener("click", () => {
+      renderExam();
+      window.print();
+    });
+    elements.jsonFileInput.addEventListener("change", () => {
+      loadQuestionsFromFile(elements.jsonFileInput.files?.[0] || null);
+    });
+
+    renderExam();
+  </script>
+</body>
+</html>
