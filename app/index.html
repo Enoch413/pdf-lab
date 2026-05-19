@@ -2285,12 +2285,31 @@
       };
     }
 
+    function buildLibraryTextEditorImageEntryFromUrl(record, url, index, options = {}) {
+      if (!isUsableLibraryImageUrl(url)) {
+        return null;
+      }
+      const segments = Array.isArray(options.segments) ? options.segments : (record?.segmentMeta || record?.segments || []);
+      const segment = segments[index] || {};
+      const bucket = options.bucket || "problem";
+      const bucketLabel = options.bucketLabel || "문제 원문";
+      return {
+        id: `${record.recordId || record.id || "problem"}-${bucket}-firebase-${index + 1}`,
+        url,
+        bucket,
+        bucketLabel,
+        alt: `${bucketLabel} ${index + 1}`,
+        width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || Number(segment.width) || 1),
+        height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || Number(segment.height) || 1)
+      };
+    }
+
     function buildLibraryTextEditorImagesFromProblem(problem, options = {}) {
       const problemBucket = options.problemBucket || "problem";
       const problemBucketLabel = options.problemBucketLabel || "문제 원문";
       const includeAnswer = options.includeAnswer !== false;
       const images = [];
-      if (Array.isArray(problem?.segmentBlobs) && problem.segmentBlobs.length) {
+      if (hasUsableLibraryBlobs(problem?.segmentBlobs)) {
         images.push(
           ...problem.segmentBlobs
             .map((blob, index) => buildLibraryTextEditorImageEntryFromBlob(problem, blob, index, {
@@ -2309,8 +2328,18 @@
             }))
             .filter(Boolean)
         );
+      } else if (Array.isArray(problem?.segmentImageUrls) && problem.segmentImageUrls.length) {
+        images.push(
+          ...problem.segmentImageUrls
+            .map((url, index) => buildLibraryTextEditorImageEntryFromUrl(problem, url, index, {
+              segments: problem.segmentMeta || problem.segments,
+              bucket: problemBucket,
+              bucketLabel: problemBucketLabel
+            }))
+            .filter(Boolean)
+        );
       }
-      if (includeAnswer && Array.isArray(problem?.answerSegmentBlobs) && problem.answerSegmentBlobs.length) {
+      if (includeAnswer && hasUsableLibraryBlobs(problem?.answerSegmentBlobs)) {
         images.push(
           ...problem.answerSegmentBlobs
             .map((blob, index) => buildLibraryTextEditorImageEntryFromBlob(problem, blob, index, {
@@ -2324,6 +2353,16 @@
         images.push(
           ...problem.answerSegmentImages
             .map((image, index) => buildLibraryTextEditorImageEntryFromRuntimeImage(problem, image, index, {
+              bucket: "answer",
+              bucketLabel: "답안 이미지"
+            }))
+            .filter(Boolean)
+        );
+      } else if (includeAnswer && Array.isArray(problem?.answerSegmentImageUrls) && problem.answerSegmentImageUrls.length) {
+        images.push(
+          ...problem.answerSegmentImageUrls
+            .map((url, index) => buildLibraryTextEditorImageEntryFromUrl(problem, url, index, {
+              segments: problem.answerSegmentMeta || problem.answerSegments,
               bucket: "answer",
               bucketLabel: "답안 이미지"
             }))
@@ -6721,7 +6760,7 @@
       }
     }
 
-    async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
+    async function getDownloadUrlFromSharedLibraryStoragePath(storagePath) {
       const normalizedPath = normalizeProblemText(storagePath);
       if (!normalizedPath) {
         return null;
@@ -6730,12 +6769,36 @@
       if (!storage) {
         throw new Error("Firebase Storage가 준비되지 않았습니다.");
       }
-      const downloadUrl = await storage.ref(normalizedPath).getDownloadURL();
+      return await storage.ref(normalizedPath).getDownloadURL();
+    }
+
+    async function fetchBlobFromSharedLibraryStoragePath(storagePath) {
+      const downloadUrl = await getDownloadUrlFromSharedLibraryStoragePath(storagePath);
+      if (!downloadUrl) {
+        return null;
+      }
       const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error(`공용 라이브러리 이미지를 불러오지 못했습니다. (${response.status})`);
       }
       return await response.blob();
+    }
+
+    async function loadSharedLibraryAssetFromStoragePath(storagePath) {
+      const downloadUrl = await getDownloadUrlFromSharedLibraryStoragePath(storagePath);
+      if (!downloadUrl) {
+        return { blob: null, url: "", error: "Firebase Storage 경로가 비어 있습니다." };
+      }
+      try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          throw new Error(`공용 라이브러리 이미지를 불러오지 못했습니다. (${response.status})`);
+        }
+        return { blob: await response.blob(), url: downloadUrl, error: "" };
+      } catch (error) {
+        // Some browsers can display Firebase download URLs in <img> even when fetch-to-blob is blocked.
+        return { blob: null, url: downloadUrl, error: getSharedLibraryAssetLoadErrorMessage(error) };
+      }
     }
 
     function isUsableLibraryBlob(value) {
@@ -6744,6 +6807,18 @@
 
     function hasUsableLibraryBlobs(values) {
       return Array.isArray(values) && values.some((value) => isUsableLibraryBlob(value));
+    }
+
+    function isUsableLibraryImageUrl(value) {
+      return typeof value === "string" && /^https?:\/\//i.test(value.trim());
+    }
+
+    function hasUsableLibraryImageUrls(values) {
+      return Array.isArray(values) && values.some((value) => isUsableLibraryImageUrl(value));
+    }
+
+    function hasUsableLibraryImageAsset(values, fallbackUrls = []) {
+      return hasUsableLibraryBlobs(values) || hasUsableLibraryImageUrls(fallbackUrls);
     }
 
     function hasSharedStoragePaths(record, key) {
@@ -6755,9 +6830,9 @@
         return false;
       }
       const needsSegments = hasSharedStoragePaths(record, "segmentStoragePaths") &&
-        !hasUsableLibraryBlobs(assetRecord.segmentBlobs);
+        !hasUsableLibraryImageAsset(assetRecord.segmentBlobs, assetRecord.segmentImageUrls);
       const needsAnswers = hasSharedStoragePaths(record, "answerSegmentStoragePaths") &&
-        !hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs);
+        !hasUsableLibraryImageAsset(assetRecord.answerSegmentBlobs, assetRecord.answerSegmentImageUrls);
       return needsSegments || needsAnswers;
     }
 
@@ -9371,32 +9446,44 @@
             const answerSegmentStoragePaths = (Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
               .map((path) => normalizeProblemText(path))
               .filter(Boolean);
-            const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
-              Promise.all(segmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
-              Promise.all(answerSegmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+            const [segmentAssets, answerSegmentAssets] = await Promise.all([
+              Promise.all(segmentStoragePaths.map((path) => loadSharedLibraryAssetFromStoragePath(path))),
+              Promise.all(answerSegmentStoragePaths.map((path) => loadSharedLibraryAssetFromStoragePath(path)))
             ]);
             const assetRecord = {
               recordId: record.recordId,
-              segmentBlobs: segmentBlobs.filter((blob) => isUsableLibraryBlob(blob)),
-              answerSegmentBlobs: answerSegmentBlobs.filter((blob) => isUsableLibraryBlob(blob)),
+              segmentBlobs: segmentAssets.map((asset) => asset?.blob || null),
+              answerSegmentBlobs: answerSegmentAssets.map((asset) => asset?.blob || null),
+              segmentImageUrls: segmentAssets.map((asset) => asset?.url || ""),
+              answerSegmentImageUrls: answerSegmentAssets.map((asset) => asset?.url || ""),
               updatedAt: Date.now(),
               source: "firebase-storage-cache"
             };
-            if (!hasUsableLibraryBlobs(assetRecord.segmentBlobs) && !hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs)) {
-              throw new Error("다운로드된 이미지 blob이 비어 있습니다.");
+            if (
+              !hasUsableLibraryImageAsset(assetRecord.segmentBlobs, assetRecord.segmentImageUrls) &&
+              !hasUsableLibraryImageAsset(assetRecord.answerSegmentBlobs, assetRecord.answerSegmentImageUrls)
+            ) {
+              const assetError = [...segmentAssets, ...answerSegmentAssets].map((asset) => asset?.error).filter(Boolean)[0] || "";
+              throw new Error(assetError || "다운로드된 이미지 blob/URL이 비어 있습니다.");
             }
             const assetTransaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readwrite");
             assetTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE).put(assetRecord);
             await idbTransactionDone(assetTransaction);
             state.libraryCache.problemAssetCache[record.recordId] = assetRecord;
             downloadedRecords += 1;
-            downloadedBlobs += assetRecord.segmentBlobs.length + assetRecord.answerSegmentBlobs.length;
+            downloadedBlobs +=
+              assetRecord.segmentBlobs.filter((blob) => isUsableLibraryBlob(blob)).length +
+              assetRecord.answerSegmentBlobs.filter((blob) => isUsableLibraryBlob(blob)).length +
+              assetRecord.segmentImageUrls.filter((url) => isUsableLibraryImageUrl(url)).length +
+              assetRecord.answerSegmentImageUrls.filter((url) => isUsableLibraryImageUrl(url)).length;
           } catch (error) {
             failedRecords += 1;
             state.libraryCache.problemAssetCache[record.recordId] = {
               recordId: record.recordId,
               segmentBlobs: [],
               answerSegmentBlobs: [],
+              segmentImageUrls: [],
+              answerSegmentImageUrls: [],
               sharedAssetError: getSharedLibraryAssetLoadErrorMessage(error),
               updatedAt: Date.now()
             };
@@ -9609,14 +9696,20 @@
               };
             }
             try {
-              const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
-                Promise.all(segmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
-                Promise.all(answerSegmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+              const [segmentAssets, answerSegmentAssets] = await Promise.all([
+                Promise.all(segmentStoragePaths.map((path) => loadSharedLibraryAssetFromStoragePath(path))),
+                Promise.all(answerSegmentStoragePaths.map((path) => loadSharedLibraryAssetFromStoragePath(path)))
               ]);
+              const assetErrors = [...segmentAssets, ...answerSegmentAssets]
+                .map((asset) => normalizeProblemText(asset?.error || ""))
+                .filter(Boolean);
               return {
                 recordId,
-                segmentBlobs,
-                answerSegmentBlobs,
+                segmentBlobs: segmentAssets.map((asset) => asset?.blob || null),
+                answerSegmentBlobs: answerSegmentAssets.map((asset) => asset?.blob || null),
+                segmentImageUrls: segmentAssets.map((asset) => asset?.url || ""),
+                answerSegmentImageUrls: answerSegmentAssets.map((asset) => asset?.url || ""),
+                sharedAssetError: assetErrors[0] || "",
                 updatedAt: Date.now()
               };
             } catch (error) {
@@ -9625,6 +9718,8 @@
                 recordId,
                 segmentBlobs: [],
                 answerSegmentBlobs: [],
+                segmentImageUrls: [],
+                answerSegmentImageUrls: [],
                 sharedAssetError: getSharedLibraryAssetLoadErrorMessage(error),
                 segmentStoragePaths,
                 answerSegmentStoragePaths,
@@ -9636,7 +9731,10 @@
           const writeStore = writeTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
           remoteAssetRecords.forEach((assetRecord) => {
             cache[assetRecord.recordId] = assetRecord;
-            if (hasUsableLibraryBlobs(assetRecord.segmentBlobs) || hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs)) {
+            if (
+              hasUsableLibraryImageAsset(assetRecord.segmentBlobs, assetRecord.segmentImageUrls) ||
+              hasUsableLibraryImageAsset(assetRecord.answerSegmentBlobs, assetRecord.answerSegmentImageUrls)
+            ) {
               writeStore.put(assetRecord);
             }
           });
@@ -9648,7 +9746,7 @@
             const reason = hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths")
               ? (getSharedFirebaseLibraryAccessState().reason || "Firebase Storage 이미지 다운로드 권한을 확인하지 못했습니다.")
               : "Firebase 문제 문서에 이미지 Storage 경로가 없습니다.";
-            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [], sharedAssetError: reason };
+            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [], segmentImageUrls: [], answerSegmentImageUrls: [], sharedAssetError: reason };
           }
         });
         state.libraryCache.problemAssetCache = cache;
@@ -9669,10 +9767,16 @@
         const localSegmentBlobs = Array.isArray(record.segmentBlobs) ? record.segmentBlobs : [];
         const assetAnswerSegmentBlobs = Array.isArray(assetRecord.answerSegmentBlobs) ? assetRecord.answerSegmentBlobs : [];
         const localAnswerSegmentBlobs = Array.isArray(record.answerSegmentBlobs) ? record.answerSegmentBlobs : [];
+        const assetSegmentImageUrls = Array.isArray(assetRecord.segmentImageUrls) ? assetRecord.segmentImageUrls : [];
+        const localSegmentImageUrls = Array.isArray(record.segmentImageUrls) ? record.segmentImageUrls : [];
+        const assetAnswerSegmentImageUrls = Array.isArray(assetRecord.answerSegmentImageUrls) ? assetRecord.answerSegmentImageUrls : [];
+        const localAnswerSegmentImageUrls = Array.isArray(record.answerSegmentImageUrls) ? record.answerSegmentImageUrls : [];
         return {
           ...record,
           segmentBlobs: hasUsableLibraryBlobs(assetSegmentBlobs) ? assetSegmentBlobs : localSegmentBlobs,
+          segmentImageUrls: hasUsableLibraryImageUrls(assetSegmentImageUrls) ? assetSegmentImageUrls : localSegmentImageUrls,
           answerSegmentBlobs: hasUsableLibraryBlobs(assetAnswerSegmentBlobs) ? assetAnswerSegmentBlobs : localAnswerSegmentBlobs,
+          answerSegmentImageUrls: hasUsableLibraryImageUrls(assetAnswerSegmentImageUrls) ? assetAnswerSegmentImageUrls : localAnswerSegmentImageUrls,
           sharedAssetError: normalizeProblemText(assetRecord.sharedAssetError || assetRecord.loadError || record.sharedAssetError || "")
         };
       });
@@ -13109,14 +13213,33 @@
       };
     }
 
+    function buildAnswerEditorImageFromUrl(record, url, index) {
+      if (!isUsableLibraryImageUrl(url)) {
+        return null;
+      }
+      const segment = record.answerSegmentMeta?.[index] || record.answerSegments?.[index] || {};
+      return {
+        id: `${record.recordId || record.id || "answer"}-editor-answer-url-${index + 1}`,
+        width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || Number(segment.width) || 1),
+        height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || Number(segment.height) || 1),
+        url
+      };
+    }
+
     function createExamAnswerEditorImageRecords(records = []) {
       cleanupExamAnswerEditUrls();
       return (Array.isArray(records) ? records : []).map((record) => {
-        const answerSegmentImages = Array.isArray(record.answerSegmentBlobs) && record.answerSegmentBlobs.length
+        const answerSegmentImages = hasUsableLibraryBlobs(record.answerSegmentBlobs)
           ? record.answerSegmentBlobs
               .map((blob, index) => buildAnswerEditorImageFromBlob(record, blob, index))
               .filter(Boolean)
-          : (Array.isArray(record.answerSegmentImages) ? record.answerSegmentImages.filter((image) => image?.url) : []);
+          : (
+              hasUsableLibraryImageUrls(record.answerSegmentImageUrls)
+                ? record.answerSegmentImageUrls
+                    .map((url, index) => buildAnswerEditorImageFromUrl(record, url, index))
+                    .filter(Boolean)
+                : (Array.isArray(record.answerSegmentImages) ? record.answerSegmentImages.filter((image) => image?.url) : [])
+            );
         const cloned = {
           ...record,
           answerSegmentImages
@@ -15263,20 +15386,30 @@
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
         : (() => {
-            if (!Array.isArray(record.segmentBlobs) || !hasUsableLibraryBlobs(record.segmentBlobs)) {
+            const segmentImageUrls = Array.isArray(record.segmentImageUrls) ? record.segmentImageUrls : [];
+            if (!hasUsableLibraryBlobs(record.segmentBlobs) && !hasUsableLibraryImageUrls(segmentImageUrls)) {
               const hasRemoteImagePaths = hasSharedStoragePaths(record, "segmentStoragePaths");
               const remoteError = normalizeProblemText(record.sharedAssetError || "");
               if (hasRemoteImagePaths) {
-                throw new Error(`문항 ${record.number || "-"} Firebase Storage 이미지 경로는 있지만 다운로드하지 못했습니다.${remoteError ? ` ${remoteError}` : ""} 다른 컴퓨터에서 보려면 관리자 로그인 상태와 Storage rules를 확인해주세요.`);
+                throw new Error(`문항 ${record.number || "-"} Firebase Storage 이미지 경로는 있지만 이미지 URL/blob을 준비하지 못했습니다.${remoteError ? ` ${remoteError}` : ""} 다른 컴퓨터에서 보려면 관리자 로그인 상태와 Storage rules를 확인해주세요.`);
               }
               throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
-            return record.segmentBlobs.map((blob, index) => {
-              if (!isUsableLibraryBlob(blob)) {
+            const imageSources = hasUsableLibraryBlobs(record.segmentBlobs)
+              ? record.segmentBlobs.map((blob) => ({ type: "blob", value: blob }))
+              : segmentImageUrls.map((url) => ({ type: "url", value: url }));
+            return imageSources.map((source, index) => {
+              const isBlobSource = source.type === "blob";
+              if (isBlobSource && !isUsableLibraryBlob(source.value)) {
                 throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
               }
-              const url = URL.createObjectURL(blob);
-              state.examBuilder[urlBucket].push(url);
+              if (!isBlobSource && !isUsableLibraryImageUrl(source.value)) {
+                throw new Error(`문항 ${record.number || "-"} Firebase 이미지 URL이 비어 있습니다. Firebase 이미지 로컬 다운로드를 다시 실행해주세요.`);
+              }
+              const url = isBlobSource ? URL.createObjectURL(source.value) : source.value;
+              if (isBlobSource) {
+                state.examBuilder[urlBucket].push(url);
+              }
               const segment = record.segmentMeta?.[index] || {};
               return {
                 id: `${record.recordId}-segment-${index + 1}`,
