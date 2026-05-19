@@ -108,7 +108,7 @@
           </div>
           <div class="field-row">
             <span class="field-label">저장 위치</span>
-            <div class="action-row compact-action-row">
+            <div class="action-row compact-action-row library-sync-action-row">
               <button class="ghost-button" type="button" id="chooseLibraryFolderButton">폴더 선택</button>
               <button class="ghost-button" type="button" id="clearLibraryFolderButton">연결 해제</button>
               <button class="ghost-button" type="button" id="syncLocalLibraryToFirebaseButton">로컬 캐시 Firebase 업로드</button>
@@ -3163,6 +3163,9 @@
             : [storedRecord, findStoredSharedPassageForTailProblem(storedRecord)].filter(Boolean);
           const hydrated = hydrateTargets.length ? await hydrateProblemRecordsWithAssets(hydrateTargets) : [];
           const hydratedMap = new Map(hydrated.map((record) => [record.recordId, record]));
+          const hydratedImageErrors = hydrated
+            .map((record) => normalizeProblemText(record.sharedAssetError || ""))
+            .filter(Boolean);
           if (tailSetContext) {
             images = buildLibraryTextEditorImagesForTailSet({
               ...tailSetContext,
@@ -3176,6 +3179,14 @@
             const hydratedProblem = storedRecord ? (hydratedMap.get(storedRecord.recordId) || storedRecord) : null;
             const hydratedSharedPassage = sharedRecord ? (hydratedMap.get(sharedRecord.recordId) || sharedRecord) : null;
             images = hydratedProblem ? buildLibraryTextEditorImagesWithTailPassage(hydratedProblem, hydratedSharedPassage) : [];
+          }
+          if (!images.length && hydratedImageErrors.length) {
+            throw new Error(hydratedImageErrors[0]);
+          }
+          if (!images.length && hydrated.some((record) =>
+            hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths")
+          )) {
+            throw new Error("Firebase Storage 이미지 경로는 있지만 이미지 blob을 만들지 못했습니다. Firebase 이미지 로컬 다운로드를 다시 실행하거나 Storage 권한을 확인해주세요.");
           }
         }
         if (state.libraryReview.editorScope !== normalizedScope || state.libraryReview.editorTargetId !== normalizedTargetId) {
@@ -9527,8 +9538,17 @@
       };
     }
 
-    async function loadProblemAssetRecords(recordIds) {
-      const uniqueIds = [...new Set((Array.isArray(recordIds) ? recordIds : []).filter(Boolean))];
+    async function loadProblemAssetRecords(recordsOrIds) {
+      const inputs = Array.isArray(recordsOrIds) ? recordsOrIds : [];
+      const inputRecordMap = new Map(
+        inputs
+          .filter((entry) => entry && typeof entry === "object" && entry.recordId)
+          .map((record) => [record.recordId, record])
+      );
+      const uniqueIds = [...new Set(inputs
+        .map((entry) => typeof entry === "string" ? entry : entry?.recordId)
+        .filter(Boolean)
+      )];
       if (!uniqueIds.length) {
         return [];
       }
@@ -9537,6 +9557,12 @@
         (Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : [])
           .map((record) => [record.recordId, record])
       );
+      inputRecordMap.forEach((record, recordId) => {
+        recordMap.set(recordId, {
+          ...(recordMap.get(recordId) || {}),
+          ...record
+        });
+      });
       const shouldRefreshAsset = (recordId, assetRecord) =>
         shouldRefreshProblemAssetFromSharedLibrary(recordMap.get(recordId), assetRecord || {});
       const missingIds = uniqueIds.filter((recordId) =>
@@ -9635,7 +9661,7 @@
       if (!normalizedRecords.length) {
         return [];
       }
-      const assetRecords = await loadProblemAssetRecords(normalizedRecords.map((record) => record.recordId));
+      const assetRecords = await loadProblemAssetRecords(normalizedRecords);
       const assetMap = new Map(assetRecords.map((assetRecord) => [assetRecord.recordId, assetRecord]));
       return normalizedRecords.map((record) => {
         const assetRecord = assetMap.get(record.recordId) || {};
