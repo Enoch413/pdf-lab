@@ -112,6 +112,7 @@
               <button class="ghost-button" type="button" id="chooseLibraryFolderButton">폴더 선택</button>
               <button class="ghost-button" type="button" id="clearLibraryFolderButton">연결 해제</button>
               <button class="ghost-button" type="button" id="syncLocalLibraryToFirebaseButton">로컬 캐시 Firebase 업로드</button>
+              <button class="ghost-button" type="button" id="downloadFirebaseLibraryToLocalButton">Firebase 이미지 로컬 다운로드</button>
             </div>
             <p class="file-name storage-path-note" id="libraryFolderSummary">브라우저 내부 저장소 사용 중입니다. 폴더를 선택하면 라이브러리와 작업 이력을 그 위치에 함께 저장합니다.</p>
             <p class="small-note" id="librarySyncSummary">아직 폴더 동기화를 사용하지 않고 있습니다.</p>
@@ -1531,6 +1532,7 @@
       chooseLibraryFolderButton: document.getElementById("chooseLibraryFolderButton"),
       clearLibraryFolderButton: document.getElementById("clearLibraryFolderButton"),
       syncLocalLibraryToFirebaseButton: document.getElementById("syncLocalLibraryToFirebaseButton"),
+      downloadFirebaseLibraryToLocalButton: document.getElementById("downloadFirebaseLibraryToLocalButton"),
       libraryFolderSummary: document.getElementById("libraryFolderSummary"),
       librarySyncSummary: document.getElementById("librarySyncSummary"),
       libraryWorkspaceTextbookCount: document.getElementById("libraryWorkspaceTextbookCount"),
@@ -8479,6 +8481,9 @@
       if (elements.syncLocalLibraryToFirebaseButton) {
         elements.syncLocalLibraryToFirebaseButton.disabled = Boolean(state.isBusy) || !firebaseAccess.enabled;
       }
+      if (elements.downloadFirebaseLibraryToLocalButton) {
+        elements.downloadFirebaseLibraryToLocalButton.disabled = Boolean(state.isBusy) || !firebaseAccess.enabled;
+      }
       if (!elements.libraryFolderSummary || !elements.chooseLibraryFolderButton || !elements.clearLibraryFolderButton) {
         refreshDashboard();
         return;
@@ -9288,6 +9293,118 @@
           `로컬 캐시 교재 ${uploadedSources}개, 문항 ${uploadedProblems}개를 Firebase 공용 라이브러리에 업로드했습니다.${skippedSources.length ? ` 이미지가 없는 교재 ${skippedSources.length}개는 건너뛰었습니다.` : ""}`,
           "idle",
           "Firebase"
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function downloadSharedFirebaseLibraryToLocalCache() {
+      const access = getSharedFirebaseLibraryAccessState();
+      if (!access.enabled) {
+        throw new Error(access.reason || "Firebase 공용 문제 라이브러리를 사용할 수 없습니다.");
+      }
+
+      setBusy(true);
+      try {
+        setStatus("Firebase 공용 문제 라이브러리 목록을 불러오는 중입니다...", "working", "Firebase");
+        const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
+        const imports = Array.isArray(sharedSnapshot?.imports) ? sharedSnapshot.imports : [];
+        const problemRecords = Array.isArray(sharedSnapshot?.problemRecords) ? sharedSnapshot.problemRecords : [];
+        if (!imports.length && !problemRecords.length) {
+          throw new Error("Firebase 공용 문제 라이브러리에 내려받을 데이터가 없습니다.");
+        }
+
+        const db = await openLibraryDb();
+        const metadataTransaction = db.transaction([LIBRARY_IMPORT_STORE, LIBRARY_PROBLEM_STORE], "readwrite");
+        const importStore = metadataTransaction.objectStore(LIBRARY_IMPORT_STORE);
+        const problemStore = metadataTransaction.objectStore(LIBRARY_PROBLEM_STORE);
+        imports.forEach((record) => {
+          if (record?.sourceId) {
+            importStore.put({ ...record });
+          }
+        });
+        problemRecords.forEach((record) => {
+          if (record?.recordId) {
+            problemStore.put({ ...record });
+          }
+        });
+        await idbTransactionDone(metadataTransaction);
+
+        const downloadableRecords = problemRecords.filter((record) =>
+          record?.recordId &&
+          record.kind !== "shared" &&
+          (hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths"))
+        );
+        if (!downloadableRecords.length) {
+          await refreshLibrarySummary();
+          throw new Error("Firebase 문제 문서에 이미지 Storage 경로가 없습니다. 이미지가 보이는 원래 PC에서 로컬 캐시 Firebase 업로드를 다시 실행해주세요.");
+        }
+
+        let downloadedRecords = 0;
+        let failedRecords = 0;
+        let downloadedBlobs = 0;
+        state.libraryCache.problemAssetCache = state.libraryCache.problemAssetCache || {};
+
+        for (const [index, record] of downloadableRecords.entries()) {
+          const label = `${record.textbookName || record.worksheetFamily || "교재"} ${record.number || record.problemId || index + 1}번`;
+          setStatus(
+            `${index + 1}/${downloadableRecords.length} ${label} 이미지를 Firebase에서 로컬 캐시로 내려받는 중입니다...`,
+            "working",
+            "Firebase"
+          );
+          try {
+            const segmentStoragePaths = (Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : [])
+              .map((path) => normalizeProblemText(path))
+              .filter(Boolean);
+            const answerSegmentStoragePaths = (Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
+              .map((path) => normalizeProblemText(path))
+              .filter(Boolean);
+            const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
+              Promise.all(segmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
+              Promise.all(answerSegmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+            ]);
+            const assetRecord = {
+              recordId: record.recordId,
+              segmentBlobs: segmentBlobs.filter((blob) => isUsableLibraryBlob(blob)),
+              answerSegmentBlobs: answerSegmentBlobs.filter((blob) => isUsableLibraryBlob(blob)),
+              updatedAt: Date.now(),
+              source: "firebase-storage-cache"
+            };
+            if (!hasUsableLibraryBlobs(assetRecord.segmentBlobs) && !hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs)) {
+              throw new Error("다운로드된 이미지 blob이 비어 있습니다.");
+            }
+            const assetTransaction = db.transaction(LIBRARY_PROBLEM_ASSET_STORE, "readwrite");
+            assetTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE).put(assetRecord);
+            await idbTransactionDone(assetTransaction);
+            state.libraryCache.problemAssetCache[record.recordId] = assetRecord;
+            downloadedRecords += 1;
+            downloadedBlobs += assetRecord.segmentBlobs.length + assetRecord.answerSegmentBlobs.length;
+          } catch (error) {
+            failedRecords += 1;
+            state.libraryCache.problemAssetCache[record.recordId] = {
+              recordId: record.recordId,
+              segmentBlobs: [],
+              answerSegmentBlobs: [],
+              sharedAssetError: getSharedLibraryAssetLoadErrorMessage(error),
+              updatedAt: Date.now()
+            };
+            console.warn("Failed to download shared library asset to local cache", record.recordId, error);
+          }
+          if ((index + 1) % 5 === 0) {
+            await yieldToBrowser();
+          }
+        }
+
+        await refreshLibrarySummary();
+        setStatus(
+          `Firebase 이미지 ${downloadedRecords}문항/${downloadedBlobs}개 조각을 이 PC 로컬 캐시에 저장했습니다.${failedRecords ? ` 실패 ${failedRecords}문항은 콘솔/권한을 확인해주세요.` : ""}`,
+          failedRecords ? "working" : "idle",
+          "Firebase"
+        );
+        setOptionalText(
+          elements.librarySyncSummary,
+          `Firebase 공용 라이브러리 메타데이터 ${imports.length}개 · 문항 ${problemRecords.length}개 · 이미지 캐시 ${downloadedRecords}문항 다운로드 완료${failedRecords ? ` · 실패 ${failedRecords}문항` : ""}`
         );
       } finally {
         setBusy(false);
@@ -16656,6 +16773,9 @@
       if (elements.syncLocalLibraryToFirebaseButton) {
         elements.syncLocalLibraryToFirebaseButton.disabled = isBusy || !getSharedFirebaseLibraryAccessState().enabled;
       }
+      if (elements.downloadFirebaseLibraryToLocalButton) {
+        elements.downloadFirebaseLibraryToLocalButton.disabled = isBusy || !getSharedFirebaseLibraryAccessState().enabled;
+      }
       if (elements.libraryExtractionModeSelect) {
         elements.libraryExtractionModeSelect.disabled = isBusy;
       }
@@ -18656,6 +18776,11 @@
       if (elements.syncLocalLibraryToFirebaseButton) {
         elements.syncLocalLibraryToFirebaseButton.addEventListener("click", () => {
           syncLocalLibraryCacheToFirebase().catch(handleError);
+        });
+      }
+      if (elements.downloadFirebaseLibraryToLocalButton) {
+        elements.downloadFirebaseLibraryToLocalButton.addEventListener("click", () => {
+          downloadSharedFirebaseLibraryToLocalCache().catch(handleError);
         });
       }
       if (elements.librarySaveModeSelect) {
