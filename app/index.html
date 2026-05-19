@@ -6738,7 +6738,7 @@
     }
 
     function shouldRefreshProblemAssetFromSharedLibrary(record, assetRecord = {}) {
-      if (!isSharedFirebaseLibraryActive() || !record) {
+      if (!record) {
         return false;
       }
       const needsSegments = hasSharedStoragePaths(record, "segmentStoragePaths") &&
@@ -6746,6 +6746,14 @@
       const needsAnswers = hasSharedStoragePaths(record, "answerSegmentStoragePaths") &&
         !hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs);
       return needsSegments || needsAnswers;
+    }
+
+    function canFetchSharedLibraryAssetsFromFirebase() {
+      return Boolean(getSharedFirebaseLibraryAccessState().enabled);
+    }
+
+    function getSharedLibraryAssetLoadErrorMessage(error, fallback = "Firebase Storage 이미지를 다운로드하지 못했습니다.") {
+      return normalizeProblemText(getFriendlyFirebaseAuthMessage(error) || error?.message || fallback);
     }
 
     async function deleteSharedLibraryAssetPaths(paths = []) {
@@ -9432,16 +9440,35 @@
           }
         }));
         await idbTransactionDone(transaction);
-        if (unresolvedIds.length && isSharedFirebaseLibraryActive()) {
+        if (unresolvedIds.length && canFetchSharedLibraryAssetsFromFirebase()) {
           const remoteAssetRecords = await Promise.all(unresolvedIds.map(async (recordId) => {
             const record = recordMap.get(recordId);
             if (!record) {
-              return { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+              return {
+                recordId,
+                segmentBlobs: [],
+                answerSegmentBlobs: [],
+                sharedAssetError: "문항 메타데이터를 찾지 못해 Firebase Storage 이미지를 불러오지 못했습니다."
+              };
+            }
+            const segmentStoragePaths = (Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : [])
+              .map((path) => normalizeProblemText(path))
+              .filter(Boolean);
+            const answerSegmentStoragePaths = (Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
+              .map((path) => normalizeProblemText(path))
+              .filter(Boolean);
+            if (!segmentStoragePaths.length && !answerSegmentStoragePaths.length) {
+              return {
+                recordId,
+                segmentBlobs: [],
+                answerSegmentBlobs: [],
+                sharedAssetError: "Firebase 문제 문서에 이미지 Storage 경로가 없습니다."
+              };
             }
             try {
               const [segmentBlobs, answerSegmentBlobs] = await Promise.all([
-                Promise.all((Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
-                Promise.all((Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : []).map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
+                Promise.all(segmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path))),
+                Promise.all(answerSegmentStoragePaths.map((path) => fetchBlobFromSharedLibraryStoragePath(path)))
               ]);
               return {
                 recordId,
@@ -9455,6 +9482,9 @@
                 recordId,
                 segmentBlobs: [],
                 answerSegmentBlobs: [],
+                sharedAssetError: getSharedLibraryAssetLoadErrorMessage(error),
+                segmentStoragePaths,
+                answerSegmentStoragePaths,
                 updatedAt: Date.now()
               };
             }
@@ -9463,13 +9493,19 @@
           const writeStore = writeTransaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
           remoteAssetRecords.forEach((assetRecord) => {
             cache[assetRecord.recordId] = assetRecord;
-            writeStore.put(assetRecord);
+            if (hasUsableLibraryBlobs(assetRecord.segmentBlobs) || hasUsableLibraryBlobs(assetRecord.answerSegmentBlobs)) {
+              writeStore.put(assetRecord);
+            }
           });
           await idbTransactionDone(writeTransaction);
         }
         unresolvedIds.forEach((recordId) => {
           if (!Object.prototype.hasOwnProperty.call(cache, recordId)) {
-            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [] };
+            const record = recordMap.get(recordId);
+            const reason = hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths")
+              ? (getSharedFirebaseLibraryAccessState().reason || "Firebase Storage 이미지 다운로드 권한을 확인하지 못했습니다.")
+              : "Firebase 문제 문서에 이미지 Storage 경로가 없습니다.";
+            cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [], sharedAssetError: reason };
           }
         });
         state.libraryCache.problemAssetCache = cache;
@@ -9493,7 +9529,8 @@
         return {
           ...record,
           segmentBlobs: hasUsableLibraryBlobs(assetSegmentBlobs) ? assetSegmentBlobs : localSegmentBlobs,
-          answerSegmentBlobs: hasUsableLibraryBlobs(assetAnswerSegmentBlobs) ? assetAnswerSegmentBlobs : localAnswerSegmentBlobs
+          answerSegmentBlobs: hasUsableLibraryBlobs(assetAnswerSegmentBlobs) ? assetAnswerSegmentBlobs : localAnswerSegmentBlobs,
+          sharedAssetError: normalizeProblemText(assetRecord.sharedAssetError || assetRecord.loadError || record.sharedAssetError || "")
         };
       });
     }
@@ -15084,6 +15121,11 @@
         ? []
         : (() => {
             if (!Array.isArray(record.segmentBlobs) || !hasUsableLibraryBlobs(record.segmentBlobs)) {
+              const hasRemoteImagePaths = hasSharedStoragePaths(record, "segmentStoragePaths");
+              const remoteError = normalizeProblemText(record.sharedAssetError || "");
+              if (hasRemoteImagePaths) {
+                throw new Error(`문항 ${record.number || "-"} Firebase Storage 이미지 경로는 있지만 다운로드하지 못했습니다.${remoteError ? ` ${remoteError}` : ""} 다른 컴퓨터에서 보려면 관리자 로그인 상태와 Storage rules를 확인해주세요.`);
+              }
               throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
             return record.segmentBlobs.map((blob, index) => {
