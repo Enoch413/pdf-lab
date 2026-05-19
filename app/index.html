@@ -107,7 +107,10 @@
             <p class="small-note" id="librarySaveModeSummary">Firebase 저장이 성공해야 공용 라이브러리로 사용할 수 있고, 브라우저 내부 캐시는 백업으로만 갱신됩니다.</p>
           </div>
           <div class="field-row">
-            <span class="field-label">저장 위치</span>
+            <label class="field-label" for="librarySyncSourceSelect">저장 위치 / 이미지 동기화 대상</label>
+            <select class="select-input" id="librarySyncSourceSelect">
+              <option value="">전체 교재</option>
+            </select>
             <div class="action-row compact-action-row library-sync-action-row">
               <button class="ghost-button" type="button" id="chooseLibraryFolderButton">폴더 선택</button>
               <button class="ghost-button" type="button" id="clearLibraryFolderButton">연결 해제</button>
@@ -1379,7 +1382,9 @@
       },
       libraryCache: {
         imports: [],
+        localImports: [],
         problemRecords: [],
+        localProblemRecords: [],
         problemAssetCache: {},
         examSets: [],
         examItems: [],
@@ -1529,6 +1534,7 @@
       librarySaveSummary: document.getElementById("librarySaveSummary"),
       librarySaveModeSelect: document.getElementById("librarySaveModeSelect"),
       librarySaveModeSummary: document.getElementById("librarySaveModeSummary"),
+      librarySyncSourceSelect: document.getElementById("librarySyncSourceSelect"),
       chooseLibraryFolderButton: document.getElementById("chooseLibraryFolderButton"),
       clearLibraryFolderButton: document.getElementById("clearLibraryFolderButton"),
       syncLocalLibraryToFirebaseButton: document.getElementById("syncLocalLibraryToFirebaseButton"),
@@ -8145,6 +8151,105 @@
       updateDeleteTextbookUi();
     }
 
+    function getLibrarySyncSourceOptions() {
+      const imports = [
+        ...(Array.isArray(state.libraryCache.imports) ? state.libraryCache.imports : []),
+        ...(Array.isArray(state.libraryCache.localImports) ? state.libraryCache.localImports : [])
+      ];
+      const problemRecords = [
+        ...(Array.isArray(state.libraryCache.problemRecords) ? state.libraryCache.problemRecords : []),
+        ...(Array.isArray(state.libraryCache.localProblemRecords) ? state.libraryCache.localProblemRecords : [])
+      ];
+      const problemStatsBySourceId = problemRecords.reduce((map, record) => {
+        const sourceId = normalizeProblemText(record?.sourceId || "");
+        if (!sourceId) {
+          return map;
+        }
+        const stats = map.get(sourceId) || { problemCount: 0, problemKeys: new Set(), hasStoragePaths: false };
+        if (record?.kind === "problem") {
+          const problemKey = normalizeProblemText(record.recordId || record.problemId || `${record.sourceId}-${record.number || ""}`);
+          if (!stats.problemKeys.has(problemKey)) {
+            stats.problemKeys.add(problemKey);
+            stats.problemCount += 1;
+          }
+        }
+        if (hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths")) {
+          stats.hasStoragePaths = true;
+        }
+        map.set(sourceId, stats);
+        return map;
+      }, new Map());
+      const optionMap = new Map();
+      imports.forEach((record) => {
+        const sourceId = normalizeProblemText(record?.sourceId || "");
+        if (!sourceId) {
+          return;
+        }
+        const stats = problemStatsBySourceId.get(sourceId) || {};
+        optionMap.set(sourceId, {
+          sourceId,
+          label: [
+            getRecordSourceLabel(record),
+            normalizeTextbookName(record.textbookName || "") || "교재명 없음",
+            normalizeProblemText(record.fileName || record.sourceName || "") || sourceId
+          ].filter(Boolean).join(" · "),
+          problemCount: Number(record.problemCount || stats.problemCount || 0) || 0,
+          hasStoragePaths: Boolean(stats.hasStoragePaths)
+        });
+      });
+      problemRecords.forEach((record) => {
+        const sourceId = normalizeProblemText(record?.sourceId || "");
+        if (!sourceId || optionMap.has(sourceId)) {
+          return;
+        }
+        const stats = problemStatsBySourceId.get(sourceId) || {};
+        optionMap.set(sourceId, {
+          sourceId,
+          label: [
+            getRecordSourceLabel(record),
+            normalizeTextbookName(record.textbookName || record.worksheetFamily || "") || "교재명 없음",
+            normalizeProblemText(record.sourceName || "") || sourceId
+          ].filter(Boolean).join(" · "),
+          problemCount: Number(stats.problemCount || 0) || 0,
+          hasStoragePaths: Boolean(stats.hasStoragePaths)
+        });
+      });
+      return Array.from(optionMap.values())
+        .sort((left, right) => left.label.localeCompare(right.label, "ko-KR"));
+    }
+
+    function populateLibrarySyncSourceOptions() {
+      if (!elements.librarySyncSourceSelect) {
+        return;
+      }
+      const previousValue = normalizeProblemText(elements.librarySyncSourceSelect.value || "");
+      const options = getLibrarySyncSourceOptions();
+      elements.librarySyncSourceSelect.innerHTML = [
+        '<option value="">전체 교재</option>',
+        ...options.map((option) => {
+          const countLabel = option.problemCount ? ` · ${option.problemCount}문항` : "";
+          const storageLabel = option.hasStoragePaths ? " · 이미지경로 있음" : "";
+          return `<option value="${escapeHtml(option.sourceId)}">${escapeHtml(option.label + countLabel + storageLabel)}</option>`;
+        })
+      ].join("");
+      if (previousValue && options.some((option) => option.sourceId === previousValue)) {
+        elements.librarySyncSourceSelect.value = previousValue;
+      }
+    }
+
+    function getSelectedLibrarySyncSourceId() {
+      return normalizeProblemText(elements.librarySyncSourceSelect?.value || "");
+    }
+
+    function getLibrarySyncSourceLabel(sourceId = "") {
+      const normalizedSourceId = normalizeProblemText(sourceId || "");
+      if (!normalizedSourceId) {
+        return "전체 교재";
+      }
+      const matchingOption = getLibrarySyncSourceOptions().find((option) => option.sourceId === normalizedSourceId);
+      return matchingOption?.label || normalizedSourceId;
+    }
+
     function getSelectedTextbookName() {
       const rawValue = elements.textbookModeExisting.checked
         ? elements.existingTextbookSelect.value
@@ -8553,6 +8658,9 @@
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.value = saveMode;
         elements.librarySaveModeSelect.disabled = Boolean(state.isBusy);
+      }
+      if (elements.librarySyncSourceSelect) {
+        elements.librarySyncSourceSelect.disabled = Boolean(state.isBusy);
       }
       if (elements.librarySaveModeSummary) {
         const saveModeSummary = saveMode === LIBRARY_SAVE_MODE_AUTO
@@ -9306,15 +9414,26 @@
 
       setBusy(true);
       try {
-        setStatus("이 PC에 남아 있는 로컬 문제 이미지 캐시를 Firebase에 업로드하는 중입니다...", "working", "Firebase");
+        const selectedSourceId = getSelectedLibrarySyncSourceId();
+        const selectedSourceLabel = getLibrarySyncSourceLabel(selectedSourceId);
+        setStatus(
+          selectedSourceId
+            ? `${selectedSourceLabel} 로컬 문제 이미지 캐시를 Firebase에 업로드하는 중입니다...`
+            : "이 PC에 남아 있는 로컬 문제 이미지 캐시를 Firebase에 업로드하는 중입니다...",
+          "working",
+          "Firebase"
+        );
         const [localImports, localProblemRecords] = await Promise.all([
           loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
           loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE)
         ]);
         const rows = (Array.isArray(localProblemRecords) ? localProblemRecords : [])
-          .filter((record) => record?.recordId && record?.sourceId);
+          .filter((record) => record?.recordId && record?.sourceId)
+          .filter((record) => !selectedSourceId || normalizeProblemText(record.sourceId || "") === selectedSourceId);
         if (!rows.length) {
-          throw new Error("이 PC의 브라우저 캐시에 업로드할 문제 라이브러리가 없습니다.");
+          throw new Error(selectedSourceId
+            ? `${selectedSourceLabel} 로컬 문제 라이브러리가 이 PC 브라우저 캐시에 없습니다.`
+            : "이 PC의 브라우저 캐시에 업로드할 문제 라이브러리가 없습니다.");
         }
 
         const importMap = new Map((Array.isArray(localImports) ? localImports : [])
@@ -9369,14 +9488,14 @@
         if (!uploadedSources) {
           throw new Error(
             skippedSources.length
-              ? "Firebase에 업로드할 수 있는 로컬 이미지 캐시가 없습니다. 이 PC에도 이미지 blob이 남아 있지 않은 교재는 원본 PDF로 다시 저장해야 합니다."
-              : "Firebase에 업로드할 로컬 문제 라이브러리를 찾지 못했습니다."
+              ? `${selectedSourceId ? `${selectedSourceLabel}에서 ` : ""}Firebase에 업로드할 수 있는 로컬 이미지 캐시가 없습니다. 이 PC에도 이미지 blob이 남아 있지 않은 교재는 원본 PDF로 다시 저장해야 합니다.`
+              : (selectedSourceId ? `${selectedSourceLabel}에서 Firebase에 업로드할 로컬 문제 라이브러리를 찾지 못했습니다.` : "Firebase에 업로드할 로컬 문제 라이브러리를 찾지 못했습니다.")
           );
         }
 
         await refreshLibrarySummary();
         setStatus(
-          `로컬 캐시 교재 ${uploadedSources}개, 문항 ${uploadedProblems}개를 Firebase 공용 라이브러리에 업로드했습니다.${skippedSources.length ? ` 이미지가 없는 교재 ${skippedSources.length}개는 건너뛰었습니다.` : ""}`,
+          `${selectedSourceId ? `${selectedSourceLabel} ` : ""}로컬 캐시 교재 ${uploadedSources}개, 문항 ${uploadedProblems}개를 Firebase 공용 라이브러리에 업로드했습니다.${skippedSources.length ? ` 이미지가 없는 교재 ${skippedSources.length}개는 건너뛰었습니다.` : ""}`,
           "idle",
           "Firebase"
         );
@@ -9393,12 +9512,28 @@
 
       setBusy(true);
       try {
-        setStatus("Firebase 공용 문제 라이브러리 목록을 불러오는 중입니다...", "working", "Firebase");
+        const selectedSourceId = getSelectedLibrarySyncSourceId();
+        const selectedSourceLabel = getLibrarySyncSourceLabel(selectedSourceId);
+        setStatus(
+          selectedSourceId
+            ? `${selectedSourceLabel} Firebase 공용 문제 라이브러리 목록을 불러오는 중입니다...`
+            : "Firebase 공용 문제 라이브러리 목록을 불러오는 중입니다...",
+          "working",
+          "Firebase"
+        );
         const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
-        const imports = Array.isArray(sharedSnapshot?.imports) ? sharedSnapshot.imports : [];
-        const problemRecords = Array.isArray(sharedSnapshot?.problemRecords) ? sharedSnapshot.problemRecords : [];
+        const allImports = Array.isArray(sharedSnapshot?.imports) ? sharedSnapshot.imports : [];
+        const allProblemRecords = Array.isArray(sharedSnapshot?.problemRecords) ? sharedSnapshot.problemRecords : [];
+        const imports = selectedSourceId
+          ? allImports.filter((record) => normalizeProblemText(record?.sourceId || "") === selectedSourceId)
+          : allImports;
+        const problemRecords = selectedSourceId
+          ? allProblemRecords.filter((record) => normalizeProblemText(record?.sourceId || "") === selectedSourceId)
+          : allProblemRecords;
         if (!imports.length && !problemRecords.length) {
-          throw new Error("Firebase 공용 문제 라이브러리에 내려받을 데이터가 없습니다.");
+          throw new Error(selectedSourceId
+            ? `${selectedSourceLabel}에 해당하는 Firebase 공용 문제 라이브러리 데이터가 없습니다.`
+            : "Firebase 공용 문제 라이브러리에 내려받을 데이터가 없습니다.");
         }
 
         const db = await openLibraryDb();
@@ -9424,7 +9559,9 @@
         );
         if (!downloadableRecords.length) {
           await refreshLibrarySummary();
-          throw new Error("Firebase 문제 문서에 이미지 Storage 경로가 없습니다. 이미지가 보이는 원래 PC에서 로컬 캐시 Firebase 업로드를 다시 실행해주세요.");
+          throw new Error(selectedSourceId
+            ? `${selectedSourceLabel} Firebase 문제 문서에 이미지 Storage 경로가 없습니다. 이미지가 보이는 원래 PC에서 이 교재를 선택한 뒤 로컬 캐시 Firebase 업로드를 다시 실행해주세요.`
+            : "Firebase 문제 문서에 이미지 Storage 경로가 없습니다. 이미지가 보이는 원래 PC에서 로컬 캐시 Firebase 업로드를 다시 실행해주세요.");
         }
 
         let downloadedRecords = 0;
@@ -9496,13 +9633,13 @@
 
         await refreshLibrarySummary();
         setStatus(
-          `Firebase 이미지 ${downloadedRecords}문항/${downloadedBlobs}개 조각을 이 PC 로컬 캐시에 저장했습니다.${failedRecords ? ` 실패 ${failedRecords}문항은 콘솔/권한을 확인해주세요.` : ""}`,
+          `${selectedSourceId ? `${selectedSourceLabel} ` : ""}Firebase 이미지 ${downloadedRecords}문항/${downloadedBlobs}개 조각을 이 PC 로컬 캐시에 저장했습니다.${failedRecords ? ` 실패 ${failedRecords}문항은 콘솔/권한을 확인해주세요.` : ""}`,
           failedRecords ? "working" : "idle",
           "Firebase"
         );
         setOptionalText(
           elements.librarySyncSummary,
-          `Firebase 공용 라이브러리 메타데이터 ${imports.length}개 · 문항 ${problemRecords.length}개 · 이미지 캐시 ${downloadedRecords}문항 다운로드 완료${failedRecords ? ` · 실패 ${failedRecords}문항` : ""}`
+          `${selectedSourceId ? `${selectedSourceLabel} · ` : ""}Firebase 공용 라이브러리 메타데이터 ${imports.length}개 · 문항 ${problemRecords.length}개 · 이미지 캐시 ${downloadedRecords}문항 다운로드 완료${failedRecords ? ` · 실패 ${failedRecords}문항` : ""}`
         );
       } finally {
         setBusy(false);
@@ -13871,7 +14008,9 @@
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
+        localImports,
         problemRecords: repairedProblemRecords,
+        localProblemRecords,
         problemAssetCache: state.libraryCache.problemAssetCache || {},
         examSets: mergedExamSets.sort((left, right) => (Number(right.createdAt) || 0) - (Number(left.createdAt) || 0)),
         examItems: mergedExamItems,
@@ -13907,6 +14046,7 @@
       setOptionalText(elements.librarySummaryNote, summaryNote);
       setOptionalText(elements.libraryWorkspaceSummaryNote, summaryNote);
       populateStoredTextbookOptions();
+      populateLibrarySyncSourceOptions();
       updateTextbookSummary();
       updateLibraryStorageUi();
       updateDeleteTextbookUi();
@@ -16928,6 +17068,9 @@
       }
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.disabled = isBusy;
+      }
+      if (elements.librarySyncSourceSelect) {
+        elements.librarySyncSourceSelect.disabled = isBusy;
       }
       if (elements.syncLocalLibraryToFirebaseButton) {
         elements.syncLocalLibraryToFirebaseButton.disabled = isBusy || !getSharedFirebaseLibraryAccessState().enabled;
