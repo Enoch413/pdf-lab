@@ -1894,18 +1894,43 @@
       return hasUsableLibraryBlobs(values) || hasUsableLibraryImageUrls(fallbackUrls);
     }
 
+    function buildLibraryImageSources(blobs = [], urls = []) {
+      const blobList = Array.isArray(blobs) ? blobs : [];
+      const urlList = Array.isArray(urls) ? urls : [];
+      const sourceCount = Math.max(blobList.length, urlList.length);
+      const sources = [];
+      for (let index = 0; index < sourceCount; index += 1) {
+        const blob = blobList[index];
+        const url = urlList[index];
+        if (isUsableLibraryBlob(blob)) {
+          sources.push({ type: "blob", value: blob, index });
+        } else if (isUsableLibraryImageUrl(url)) {
+          sources.push({ type: "url", value: url, index });
+        }
+      }
+      return sources;
+    }
+
     function hasSharedStoragePaths(record, key) {
       return Array.isArray(record?.[key]) && record[key].some((value) => normalizeProblemText(value));
+    }
+
+    function getSharedStoragePathCount(record, key) {
+      return Array.isArray(record?.[key])
+        ? record[key].filter((value) => normalizeProblemText(value)).length
+        : 0;
     }
 
     function shouldRefreshProblemAssetFromSharedLibrary(record, assetRecord = {}) {
       if (!record) {
         return false;
       }
-      const needsSegments = hasSharedStoragePaths(record, "segmentStoragePaths") &&
-        !hasUsableLibraryImageAsset(assetRecord.segmentBlobs, assetRecord.segmentImageUrls);
-      const needsAnswers = hasSharedStoragePaths(record, "answerSegmentStoragePaths") &&
-        !hasUsableLibraryImageAsset(assetRecord.answerSegmentBlobs, assetRecord.answerSegmentImageUrls);
+      const segmentPathCount = getSharedStoragePathCount(record, "segmentStoragePaths");
+      const answerPathCount = getSharedStoragePathCount(record, "answerSegmentStoragePaths");
+      const usableSegmentCount = buildLibraryImageSources(assetRecord.segmentBlobs, assetRecord.segmentImageUrls).length;
+      const usableAnswerCount = buildLibraryImageSources(assetRecord.answerSegmentBlobs, assetRecord.answerSegmentImageUrls).length;
+      const needsSegments = segmentPathCount > 0 && usableSegmentCount < segmentPathCount;
+      const needsAnswers = answerPathCount > 0 && usableAnswerCount < answerPathCount;
       return needsSegments || needsAnswers;
     }
 
@@ -7671,7 +7696,8 @@
         ? []
         : (() => {
             const segmentImageUrls = Array.isArray(record.segmentImageUrls) ? record.segmentImageUrls : [];
-            if (!hasUsableLibraryBlobs(record.segmentBlobs) && !hasUsableLibraryImageUrls(segmentImageUrls)) {
+            const imageSources = buildLibraryImageSources(record.segmentBlobs, segmentImageUrls);
+            if (!imageSources.length) {
               const hasRemoteImagePaths = hasSharedStoragePaths(record, "segmentStoragePaths");
               const remoteError = normalizeProblemText(record.sharedAssetError || "");
               if (hasRemoteImagePaths) {
@@ -7679,10 +7705,8 @@
               }
               throw new Error(`이미지 출제 선택 상태인데 문항 ${record.number || "-"} 이미지 조각을 불러오지 못했습니다. 공용 라이브러리 로그인/동기화 상태를 확인하거나 문제 라이브러리에서 해당 교재를 다시 저장해주세요.`);
             }
-            const imageSources = hasUsableLibraryBlobs(record.segmentBlobs)
-              ? record.segmentBlobs.map((blob) => ({ type: "blob", value: blob }))
-              : segmentImageUrls.map((url) => ({ type: "url", value: url }));
-            return imageSources.map((source, index) => {
+            return imageSources.map((source, renderIndex) => {
+              const segmentIndex = Number.isFinite(Number(source.index)) ? Number(source.index) : renderIndex;
               const isBlobSource = source.type === "blob";
               if (isBlobSource && !isUsableLibraryBlob(source.value)) {
                 throw new Error(`문항 ${record.number || "-"} 이미지 조각이 비어 있습니다. 교재를 다시 라이브러리에 저장해주세요.`);
@@ -7694,11 +7718,11 @@
               if (isBlobSource) {
                 state.examBuilder[urlBucket].push(url);
               }
-              const segment = record.segmentMeta?.[index] || {};
+              const segment = record.segmentMeta?.[segmentIndex] || record.segments?.[segmentIndex] || {};
               return {
-                id: `${record.recordId}-segment-${index + 1}`,
-                width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || 1),
-                height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || 1),
+                id: `${record.recordId}-segment-${segmentIndex + 1}`,
+                width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || Number(segment.width) || 1),
+                height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || Number(segment.height) || 1),
                 url
               };
             });
