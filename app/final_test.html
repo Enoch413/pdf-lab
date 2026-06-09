@@ -5419,29 +5419,51 @@
     }
 
     function chooseExactTailSubset(candidates, extraNeeded, packCountTarget, startIndex = 0, chosen = []) {
-      if (extraNeeded === 0 && chosen.length === packCountTarget) {
-        return chosen.slice();
+      const baseChosen = Array.isArray(chosen) ? chosen : [];
+      const remainingExtraNeeded = Math.max(0, Number.parseInt(extraNeeded, 10) || 0);
+      const remainingPackCount = Math.max(0, Number.parseInt(packCountTarget, 10) || 0) - baseChosen.length;
+      if (remainingExtraNeeded === 0 && remainingPackCount === 0) {
+        return baseChosen.slice();
       }
-      if (extraNeeded < 0 || chosen.length >= packCountTarget || startIndex >= candidates.length) {
+      if (remainingExtraNeeded < 0 || remainingPackCount < 0) {
         return null;
       }
-      const remainingSlots = packCountTarget - chosen.length;
-      if ((candidates.length - startIndex) < remainingSlots) {
+      const sourceCandidates = (Array.isArray(candidates) ? candidates : [])
+        .slice(Math.max(0, Number.parseInt(startIndex, 10) || 0))
+        .filter((candidate) => candidate && Number(candidate.extraCount) > 0 && Number(candidate.extraCount) <= remainingExtraNeeded);
+      if (!sourceCandidates.length || sourceCandidates.length < remainingPackCount) {
         return null;
       }
-      for (let index = startIndex; index < candidates.length; index += 1) {
-        const candidate = candidates[index];
-        if (!candidate || candidate.extraCount > extraNeeded) {
+      if (remainingPackCount === 0) {
+        return remainingExtraNeeded === 0 ? baseChosen.slice() : null;
+      }
+
+      const stateKey = (count, extra) => `${count}:${extra}`;
+      const states = new Map([[stateKey(0, 0), []]]);
+      for (const candidate of sourceCandidates) {
+        const candidateExtra = Math.max(0, Number.parseInt(candidate.extraCount, 10) || 0);
+        if (!candidateExtra || candidateExtra > remainingExtraNeeded) {
           continue;
         }
-        chosen.push(candidate);
-        const found = chooseExactTailSubset(candidates, extraNeeded - candidate.extraCount, packCountTarget, index + 1, chosen);
-        if (found) {
-          return found;
+        const snapshot = Array.from(states.entries());
+        for (const [key, subset] of snapshot) {
+          const [countText, extraText] = key.split(":");
+          const nextCount = (Number.parseInt(countText, 10) || 0) + 1;
+          const nextExtra = (Number.parseInt(extraText, 10) || 0) + candidateExtra;
+          if (nextCount > remainingPackCount || nextExtra > remainingExtraNeeded) {
+            continue;
+          }
+          const nextKey = stateKey(nextCount, nextExtra);
+          if (!states.has(nextKey)) {
+            states.set(nextKey, [...subset, candidate]);
+          }
+          if (nextCount === remainingPackCount && nextExtra === remainingExtraNeeded) {
+            return [...baseChosen, ...(states.get(nextKey) || [])];
+          }
         }
-        chosen.pop();
       }
-      return null;
+      const found = states.get(stateKey(remainingPackCount, remainingExtraNeeded));
+      return found ? [...baseChosen, ...found] : null;
     }
 
     function getMaxTailExtraFromCandidates(candidates = []) {
@@ -5565,6 +5587,19 @@
       const usedRoundPassages = new Set();
       const assignments = [];
       const passageOrderMap = new Map(usablePassages.map((entry, index) => [entry.passageKey, index]));
+      const failedSearchStates = new Set();
+
+      const getSearchStateKey = () => {
+        const remainingKey = Array.from(remainingCounts.entries())
+          .filter(([, count]) => count > 0)
+          .sort(([left], [right]) => String(left).localeCompare(String(right), "ko"))
+          .map(([typeLabel, count]) => `${typeLabel}:${count}`)
+          .join("|");
+        const passageKey = Array.from(usedRoundPassages)
+          .sort((left, right) => String(left).localeCompare(String(right), "ko"))
+          .join("|");
+        return `${remainingKey}::${passageKey}`;
+      };
 
       const getCandidateRecordsForType = (typeLabel) => usablePassages
         .filter((entry) => !usedRoundPassages.has(entry.passageKey))
@@ -5600,7 +5635,12 @@
         if (!remainingTotal) {
           return true;
         }
+        const searchStateKey = getSearchStateKey();
+        if (failedSearchStates.has(searchStateKey)) {
+          return false;
+        }
         if ((usablePassages.length - usedRoundPassages.size) < remainingTotal) {
+          failedSearchStates.add(searchStateKey);
           return false;
         }
 
@@ -5612,6 +5652,7 @@
           }
           const candidates = getCandidateRecordsForType(typeLabel);
           if (candidates.length < count) {
+            failedSearchStates.add(searchStateKey);
             return false;
           }
           if (!selectedType || candidates.length < selectedCandidates.length) {
@@ -5640,6 +5681,7 @@
           usedRoundPassages.delete(candidate.passageKey);
           assignments.pop();
         }
+        failedSearchStates.add(searchStateKey);
         return false;
       }
 
@@ -10910,11 +10952,19 @@
         });
       }
       if (elements.generateSchoolDraftButton) {
-        elements.generateSchoolDraftButton.addEventListener("click", () => {
+        elements.generateSchoolDraftButton.addEventListener("click", async () => {
+          if (state.isBusy) {
+            return;
+          }
+          setBusy(true);
+          setStatus(`${getFinalExamRoundRangeLabel()} 생성 중입니다...`, "working", "생성 중");
+          await new Promise((resolve) => setTimeout(resolve, 0));
           try {
             generateSchoolDraft();
           } catch (error) {
             handleError(error);
+          } finally {
+            setBusy(false);
           }
         });
       }
