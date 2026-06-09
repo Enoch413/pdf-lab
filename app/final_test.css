@@ -1399,6 +1399,20 @@ button:disabled {
   line-height: 1.5;
 }
 
+.firebase-auth-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(24, 71, 72, 0.1);
+  border-radius: 16px;
+  background: rgba(250, 248, 244, 0.72);
+}
+
+.firebase-auth-panel[hidden],
+#firebaseLogoutButton[hidden] {
+  display: none;
+}
+
 .school-section-header {
   display: flex;
   align-items: center;

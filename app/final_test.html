@@ -256,6 +256,14 @@
                 <button class="solid-button" type="button" id="saveSchoolButton">학교 저장</button>
               </div>
               <p class="small-note" id="schoolSelectionSummary">학교를 저장하거나 선택하면 학교별 출제 흐름을 시작할 수 있습니다.</p>
+              <div class="firebase-auth-panel" id="firebaseAuthPanel">
+                <p class="small-note" id="firebaseAuthStatus">Firebase 로그인 상태를 확인하는 중입니다.</p>
+                <div class="action-row compact-action-row">
+                  <button class="solid-button" type="button" id="firebaseGoogleLoginButton">Google로 로그인</button>
+                  <button class="ghost-button" type="button" id="firebaseLogoutButton" hidden>로그아웃</button>
+                </div>
+                <p class="small-note">공용 라이브러리 이미지는 CODE LAB 관리자 Google 계정으로 로그인해야 불러올 수 있습니다.</p>
+              </div>
             </div>
             <div class="school-chip-list" id="schoolList"></div>
           </section>
@@ -1239,6 +1247,10 @@
       libraryProblemCount: document.getElementById("libraryProblemCount"),
       libraryImportCount: document.getElementById("libraryImportCount"),
       librarySummaryNote: document.getElementById("librarySummaryNote"),
+      firebaseAuthPanel: document.getElementById("firebaseAuthPanel"),
+      firebaseAuthStatus: document.getElementById("firebaseAuthStatus"),
+      firebaseGoogleLoginButton: document.getElementById("firebaseGoogleLoginButton"),
+      firebaseLogoutButton: document.getElementById("firebaseLogoutButton"),
       examObjectiveCountInput: document.getElementById("examObjectiveCountInput"),
       examSubjectiveCountInput: document.getElementById("examSubjectiveCountInput"),
       examTailCountInput: document.getElementById("examTailCountInput"),
@@ -1658,6 +1670,7 @@
       if (environmentMessage) {
         state.firebaseSharedLibrary.enabled = false;
         state.firebaseSharedLibrary.error = environmentMessage;
+        renderPdfLabFirebaseAuthUi();
         return false;
       }
       try {
@@ -1671,12 +1684,13 @@
       } catch (error) {
         state.firebaseSharedLibrary.enabled = false;
         state.firebaseSharedLibrary.error = getFriendlyFirebaseMessage(error);
+        renderPdfLabFirebaseAuthUi();
         console.warn("Failed to initialize Firebase services", error);
         return false;
       }
     }
 
-    function waitForPdfLabFirebaseAuth(auth, timeoutMs = 1500) {
+    function waitForPdfLabFirebaseAuth(auth, timeoutMs = 2500) {
       return new Promise((resolve) => {
         let settled = false;
         const finish = (user) => {
@@ -1707,6 +1721,15 @@
       if (code.includes("permission-denied")) {
         return "Firebase 공용 문제 라이브러리 권한이 없습니다. 관리자 계정으로 로그인해주세요.";
       }
+      if (code.includes("unauthorized-domain")) {
+        return "현재 도메인이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 localhost와 127.0.0.1을 추가한 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("popup-blocked")) {
+        return "브라우저가 Google 로그인 팝업을 차단했습니다. 팝업을 허용한 뒤 다시 시도해주세요.";
+      }
+      if (code.includes("popup-closed-by-user")) {
+        return "Google 로그인 창이 닫혔습니다. 다시 로그인해주세요.";
+      }
       if (code.includes("network-request-failed")) {
         return "Firebase 네트워크 연결이 불안정합니다.";
       }
@@ -1714,6 +1737,96 @@
         return getPdfLabFirebaseAuthEnvironmentMessage() || "현재 브라우저 환경에서 Firebase 로그인을 사용할 수 없습니다. PDF LAB을 http://127.0.0.1:8762 주소로 열고, 이 사이트의 쿠키/사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
       }
       return error?.message || "Firebase 공용 문제 라이브러리를 불러오지 못했습니다.";
+    }
+
+    function getPdfLabFirebaseAccountLabel(user = state.firebaseSharedLibrary.currentUser, profile = state.firebaseSharedLibrary.currentProfile) {
+      const name = normalizeProblemText(profile?.name || user?.displayName || "");
+      const email = normalizeProblemText(user?.email || "");
+      const role = normalizeProblemText(profile?.role || "").toLowerCase();
+      const roleLabel = role === "admin" ? "관리자" : (role || "사용자");
+      if (name && email && name !== email) {
+        return `${name} (${email}) · ${roleLabel}`;
+      }
+      return `${name || email || "Firebase 계정"} · ${roleLabel}`;
+    }
+
+    function renderPdfLabFirebaseAuthUi() {
+      const configured = isPdfLabFirebaseConfigured();
+      const authUser = state.firebaseSharedLibrary.currentUser || state.firebaseSharedLibrary.auth?.currentUser || null;
+      if (elements.firebaseAuthPanel) {
+        elements.firebaseAuthPanel.hidden = false;
+      }
+      if (elements.firebaseAuthStatus) {
+        if (!configured) {
+          elements.firebaseAuthStatus.textContent = "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
+        } else if (authUser) {
+          elements.firebaseAuthStatus.textContent = `로그인됨: ${getPdfLabFirebaseAccountLabel(authUser)}`;
+        } else if (state.firebaseSharedLibrary.error) {
+          elements.firebaseAuthStatus.textContent = state.firebaseSharedLibrary.error;
+        } else {
+          elements.firebaseAuthStatus.textContent = "공용 라이브러리 이미지를 불러오려면 Firebase 관리자 계정으로 로그인하세요.";
+        }
+      }
+      if (elements.firebaseGoogleLoginButton) {
+        elements.firebaseGoogleLoginButton.hidden = !configured || Boolean(authUser);
+        elements.firebaseGoogleLoginButton.disabled = state.isBusy || !configured || Boolean(authUser);
+      }
+      if (elements.firebaseLogoutButton) {
+        elements.firebaseLogoutButton.hidden = !configured || !authUser;
+        elements.firebaseLogoutButton.disabled = state.isBusy || !configured || !authUser;
+      }
+    }
+
+    async function setPdfLabFirebaseLocalPersistence(auth) {
+      if (!auth?.setPersistence || !window.firebase?.auth?.Auth?.Persistence?.LOCAL) {
+        return;
+      }
+      try {
+        await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+      } catch (error) {
+        console.warn("Failed to set Firebase local persistence", error);
+      }
+    }
+
+    async function signInPdfLabFirebaseWithGoogle() {
+      if (!ensurePdfLabFirebaseServices()) {
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(state.firebaseSharedLibrary.error || "Firebase 설정이 없어 로그인할 수 없습니다.");
+      }
+      try {
+        state.firebaseSharedLibrary.error = "";
+        renderPdfLabFirebaseAuthUi();
+        await setPdfLabFirebaseLocalPersistence(state.firebaseSharedLibrary.auth);
+        const provider = new window.firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const credential = await state.firebaseSharedLibrary.auth.signInWithPopup(provider);
+        state.firebaseSharedLibrary.currentUser = credential?.user || state.firebaseSharedLibrary.auth.currentUser || null;
+        const profile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSharedLibrary.db, state.firebaseSharedLibrary.currentUser);
+        state.firebaseSharedLibrary.currentProfile = profile;
+        renderPdfLabFirebaseAuthUi();
+        await refreshLibrarySummary();
+        return true;
+      } catch (error) {
+        const message = getFriendlyFirebaseMessage(error);
+        state.firebaseSharedLibrary.error = message;
+        renderPdfLabFirebaseAuthUi();
+        throw new Error(message);
+      }
+    }
+
+    async function signOutPdfLabFirebase() {
+      if (!ensurePdfLabFirebaseServices()) {
+        return false;
+      }
+      await state.firebaseSharedLibrary.auth.signOut();
+      state.firebaseSharedLibrary.currentUser = null;
+      state.firebaseSharedLibrary.currentProfile = null;
+      state.firebaseSharedLibrary.enabled = false;
+      state.firebaseSharedLibrary.error = "Firebase에서 로그아웃했습니다. 로컬 문제 라이브러리를 사용합니다.";
+      state.libraryCache.problemAssetCache = {};
+      renderPdfLabFirebaseAuthUi();
+      await refreshLibrarySummary();
+      return true;
     }
 
     async function fetchPdfLabFirebaseCurrentProfile(db, user) {
@@ -1755,6 +1868,7 @@
       if (!ensurePdfLabFirebaseServices()) {
         state.firebaseSharedLibrary.enabled = false;
         state.firebaseSharedLibrary.error = state.firebaseSharedLibrary.error || "Firebase 설정이 없어 로컬 문제 라이브러리를 사용합니다.";
+        renderPdfLabFirebaseAuthUi();
         return null;
       }
       try {
@@ -1763,6 +1877,7 @@
         if (!user) {
           state.firebaseSharedLibrary.enabled = false;
           state.firebaseSharedLibrary.error = "Firebase 로그인 상태가 없어 로컬 문제 라이브러리를 사용합니다.";
+          renderPdfLabFirebaseAuthUi();
           return null;
         }
         const profile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSharedLibrary.db, user);
@@ -1770,6 +1885,7 @@
         if (String(profile?.role || "").toLowerCase() !== "admin") {
           state.firebaseSharedLibrary.enabled = false;
           state.firebaseSharedLibrary.error = "관리자 계정이 아니어서 로컬 문제 라이브러리를 사용합니다.";
+          renderPdfLabFirebaseAuthUi();
           return null;
         }
         const [importsSnapshot, problemSnapshot] = await Promise.all([
@@ -1779,6 +1895,7 @@
         state.firebaseSharedLibrary.enabled = true;
         state.firebaseSharedLibrary.error = "";
         state.firebaseSharedLibrary.lastSyncedAt = Date.now();
+        renderPdfLabFirebaseAuthUi();
         return {
           imports: importsSnapshot.docs.map((doc) => normalizeSharedFirebaseImportRecord(doc.data(), doc.id)),
           problemRecords: problemSnapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id))
@@ -1786,6 +1903,7 @@
       } catch (error) {
         state.firebaseSharedLibrary.enabled = false;
         state.firebaseSharedLibrary.error = getFriendlyFirebaseMessage(error);
+        renderPdfLabFirebaseAuthUi();
         console.warn("Failed to load shared Firebase library", error);
         return null;
       }
@@ -6299,14 +6417,33 @@
       };
     }
 
+    function buildAnswerEditorImageFromUrl(record, url, index) {
+      if (!isUsableLibraryImageUrl(url)) {
+        return null;
+      }
+      const segment = record.answerSegmentMeta?.[index] || record.answerSegments?.[index] || {};
+      return {
+        id: `${record.recordId || record.id || "answer"}-editor-answer-url-${index + 1}`,
+        width: Math.max(1, Number(segment.x1 || 0) - Number(segment.x0 || 0) || Number(segment.width) || 1),
+        height: Math.max(1, Number(segment.y1 || 0) - Number(segment.y0 || 0) || Number(segment.height) || 1),
+        url
+      };
+    }
+
     function createExamAnswerEditorImageRecords(records = []) {
       cleanupExamAnswerEditUrls();
       return (Array.isArray(records) ? records : []).map((record) => {
-        const answerSegmentImages = Array.isArray(record.answerSegmentBlobs) && record.answerSegmentBlobs.length
+        const answerSegmentImages = hasUsableLibraryBlobs(record.answerSegmentBlobs)
           ? record.answerSegmentBlobs
               .map((blob, index) => buildAnswerEditorImageFromBlob(record, blob, index))
               .filter(Boolean)
-          : (Array.isArray(record.answerSegmentImages) ? record.answerSegmentImages.filter((image) => image?.url) : []);
+          : (
+              hasUsableLibraryImageUrls(record.answerSegmentImageUrls)
+                ? record.answerSegmentImageUrls
+                    .map((url, index) => buildAnswerEditorImageFromUrl(record, url, index))
+                    .filter(Boolean)
+                : (Array.isArray(record.answerSegmentImages) ? record.answerSegmentImages.filter((image) => image?.url) : [])
+            );
         const cloned = {
           ...record,
           answerSegmentImages
@@ -6977,10 +7114,10 @@
       ]);
       const sharedSnapshot = await loadSharedLibrarySnapshotFromFirebase();
       const imports = Array.isArray(sharedSnapshot?.imports)
-        ? mergeSharedAndLocalLibraryImports(localImports, sharedSnapshot.imports)
+        ? sharedSnapshot.imports
         : localImports;
       const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
-        ? mergeSharedAndLocalLibraryProblems(localProblemRecords, sharedSnapshot.problemRecords)
+        ? sharedSnapshot.problemRecords
         : localProblemRecords;
       const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
@@ -8947,6 +9084,7 @@
       if (elements.clearSelectedPassagesButton) {
         elements.clearSelectedPassagesButton.disabled = isBusy;
       }
+      renderPdfLabFirebaseAuthUi();
       if (!isBusy) {
         updateExamActionButtons();
       }
@@ -10682,6 +10820,8 @@
       updateLogoUi();
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
+      ensurePdfLabFirebaseServices();
+      renderPdfLabFirebaseAuthUi();
       applyExamAnswerModeToUi(state.examBuilder.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
       applyExamContentModeToUi(state.examBuilder.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       if (elements.librarySourceSelect) {
@@ -10721,6 +10861,36 @@
       if (elements.clearLibraryFolderButton) {
         elements.clearLibraryFolderButton.addEventListener("click", () => {
           clearLibraryFolderConnection().catch(handleError);
+        });
+      }
+      if (elements.firebaseGoogleLoginButton) {
+        elements.firebaseGoogleLoginButton.addEventListener("click", () => {
+          Promise.resolve()
+            .then(async () => {
+              setBusy(true);
+              setStatus("Google Firebase 로그인 중입니다...", "working", "로그인");
+              await signInPdfLabFirebaseWithGoogle();
+              setStatus("Google 로그인 후 공용 라이브러리를 다시 불러왔습니다.", "idle", "Firebase");
+            })
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
+        });
+      }
+      if (elements.firebaseLogoutButton) {
+        elements.firebaseLogoutButton.addEventListener("click", () => {
+          Promise.resolve()
+            .then(async () => {
+              setBusy(true);
+              setStatus("Firebase 로그아웃 중입니다...", "working", "로그아웃");
+              await signOutPdfLabFirebase();
+              setStatus("Firebase에서 로그아웃했습니다. 로컬 라이브러리 흐름은 유지됩니다.", "idle", "로그아웃");
+            })
+            .catch(handleError)
+            .finally(() => {
+              setBusy(false);
+            });
         });
       }
       elements.choosePdfButton.addEventListener("click", () => elements.pdfInput.click());
