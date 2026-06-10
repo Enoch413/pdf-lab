@@ -8096,7 +8096,7 @@
       const cssText = getCssTextForStandaloneDocument();
       const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
       const baseHref = new URL(window.location.href).toString();
-      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
+      return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.standalone-print-toolbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:#fff;color:#153f3b;border-bottom:1px solid rgba(21,63,59,.16);font-family:Arial,sans-serif}.standalone-print-toolbar button{border:0;border-radius:8px;background:#1d7568;color:#fff;font-size:14px;font-weight:700;padding:9px 14px;cursor:pointer}.standalone-print-toolbar span{font-size:13px;color:#506461}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.standalone-print-toolbar{display:none !important}.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><div class="standalone-print-toolbar"><button type="button" onclick="window.print()">인쇄/PDF 저장</button><span>자동 인쇄창이 뜨지 않으면 이 버튼을 누르세요.</span></div><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
     }
 
     function createExamPreviewLimitNotice(renderedQuestionCount, totalQuestionCount) {
@@ -8262,19 +8262,12 @@
       if (printWindow && !printWindow.closed) {
         return new Promise((resolve, reject) => {
           let settled = false;
-          const finish = (closeWindow = true) => {
+          const finish = () => {
             if (settled) {
               return;
             }
             settled = true;
             setTimeout(() => {
-              if (closeWindow) {
-                try {
-                  printWindow.close();
-                } catch (error) {
-                  console.warn("Failed to close print window", error);
-                }
-              }
               resolve();
             }, 250);
           };
@@ -8282,9 +8275,9 @@
             try {
               await waitForDocumentImages(printWindow.document);
               printWindow.focus();
-              printWindow.addEventListener("afterprint", () => finish(true), { once: true });
+              printWindow.addEventListener("afterprint", finish, { once: true });
               printWindow.print();
-              setTimeout(() => finish(false), 5000);
+              setTimeout(finish, 5000);
             } catch (error) {
               reject(error);
             }
@@ -8514,9 +8507,9 @@
         const { settings, html } = await buildExamPreviewDocument("exportUrls");
         await printStandaloneHtml(html, printWindow);
         setOptionalText(elements.examExportSummary, commitHistory
-          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 인쇄/PDF 출력 창을 열었습니다.`
-          : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 인쇄/PDF 출력 창을 열었습니다.`);
-        setStatus(`시험지 ${settings.title} 인쇄 창을 열었습니다.`, "idle", settings.title);
+          ? `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 이력 저장 후 출력 문서를 열었습니다. 자동 인쇄창이 뜨지 않으면 새 창의 인쇄/PDF 저장 버튼을 누르세요.`
+          : `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} · 출력 문서를 열었습니다. 자동 인쇄창이 뜨지 않으면 새 창의 인쇄/PDF 저장 버튼을 누르세요.`);
+        setStatus(`시험지 ${settings.title} 출력 문서를 열었습니다.`, "idle", settings.title);
       } catch (error) {
         if (printWindow && !printWindow.closed) {
           printWindow.close();
