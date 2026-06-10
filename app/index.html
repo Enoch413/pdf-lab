@@ -5615,10 +5615,13 @@
     function normalizeStudentRetryRound(round = {}, fallbackIndex = 1) {
       const roundIndex = Math.max(1, Number.parseInt(round.roundIndex, 10) || fallbackIndex);
       const items = Array.isArray(round.items) ? round.items : [];
+      const createdAt = Number(round.createdAt) || Date.now();
       return {
+        roundId: normalizeProblemText(round.roundId || round.roundKey || ""),
         roundIndex,
         label: normalizeProblemText(round.label || `${roundIndex}차`),
-        createdAt: Number(round.createdAt) || Date.now(),
+        createdAt,
+        updatedAt: Number(round.updatedAt) || createdAt,
         items: items
           .map((item, index) => ({
             itemId: String(item?.itemId || createRetryId("retry-item")),
@@ -5638,6 +5641,102 @@
           }))
           .filter((item) => item.problemRecordId && item.passageKey && item.typeLabel)
       };
+    }
+
+    function getStudentRetryRoundItemSignature(round = {}) {
+      return (Array.isArray(round.items) ? round.items : [])
+        .map((item) => [
+          normalizeProblemText(item?.problemRecordId || ""),
+          normalizeProblemText(item?.passageKey || ""),
+          normalizeProblemTypeToken(item?.typeLabel || "")
+        ].filter(Boolean).join(":"))
+        .filter(Boolean)
+        .join("::");
+    }
+
+    function getStudentRetryRoundMergeKeys(round = {}) {
+      const roundIndex = Math.max(1, Number.parseInt(round?.roundIndex, 10) || 1);
+      const itemSignature = getStudentRetryRoundItemSignature(round);
+      const keys = [];
+      const roundId = normalizeProblemText(round?.roundId || "");
+      if (roundId) {
+        keys.push(`id:${roundId}`);
+      }
+      if (itemSignature) {
+        keys.push(`idx-items:${roundIndex}:${itemSignature}`);
+      }
+      const createdAt = Number(round?.createdAt || 0);
+      if (createdAt && itemSignature) {
+        keys.push(`idx-created-items:${roundIndex}:${createdAt}:${itemSignature}`);
+      }
+      return keys;
+    }
+
+    function choosePreferredStudentRetryRound(existingRound, incomingRound) {
+      if (!existingRound) {
+        return incomingRound;
+      }
+      if (!incomingRound) {
+        return existingRound;
+      }
+      const existingUpdatedAt = Number(existingRound.updatedAt || existingRound.createdAt || 0);
+      const incomingUpdatedAt = Number(incomingRound.updatedAt || incomingRound.createdAt || 0);
+      const existingItemCount = Array.isArray(existingRound.items) ? existingRound.items.length : 0;
+      const incomingItemCount = Array.isArray(incomingRound.items) ? incomingRound.items.length : 0;
+      const incomingIsNewer = incomingUpdatedAt > existingUpdatedAt ||
+        (incomingUpdatedAt === existingUpdatedAt && incomingItemCount >= existingItemCount);
+      const baseRound = incomingIsNewer ? existingRound : incomingRound;
+      const preferredRound = incomingIsNewer ? incomingRound : existingRound;
+      return normalizeStudentRetryRound({
+        ...baseRound,
+        ...preferredRound,
+        roundId: preferredRound.roundId || baseRound.roundId || "",
+        createdAt: Math.min(
+          Number(existingRound.createdAt || incomingRound.createdAt || Date.now()),
+          Number(incomingRound.createdAt || existingRound.createdAt || Date.now())
+        ),
+        updatedAt: Math.max(existingUpdatedAt, incomingUpdatedAt) || Date.now()
+      }, preferredRound.roundIndex || baseRound.roundIndex || 1);
+    }
+
+    function mergeStudentRetryRounds(existingRounds = [], incomingRounds = []) {
+      const mergedRounds = [];
+      const keyToIndex = new Map();
+      const rememberRoundKeys = (round, index) => {
+        getStudentRetryRoundMergeKeys(round).forEach((key) => {
+          if (key && !keyToIndex.has(key)) {
+            keyToIndex.set(key, index);
+          }
+        });
+      };
+      (Array.isArray(existingRounds) ? existingRounds : [])
+        .map((round, index) => normalizeStudentRetryRound(round, index + 1))
+        .filter((round) => round.items.length)
+        .forEach((round) => {
+          const index = mergedRounds.length;
+          mergedRounds.push(round);
+          rememberRoundKeys(round, index);
+        });
+      (Array.isArray(incomingRounds) ? incomingRounds : [])
+        .map((round, index) => normalizeStudentRetryRound(round, index + 1))
+        .filter((round) => round.items.length)
+        .forEach((round) => {
+          const matchingIndex = getStudentRetryRoundMergeKeys(round)
+            .map((key) => keyToIndex.get(key))
+            .find((index) => Number.isInteger(index));
+          if (Number.isInteger(matchingIndex)) {
+            mergedRounds[matchingIndex] = choosePreferredStudentRetryRound(mergedRounds[matchingIndex], round);
+            rememberRoundKeys(mergedRounds[matchingIndex], matchingIndex);
+            return;
+          }
+          const index = mergedRounds.length;
+          mergedRounds.push(round);
+          rememberRoundKeys(round, index);
+        });
+      return mergedRounds.sort((left, right) =>
+        Number(left.roundIndex || 0) - Number(right.roundIndex || 0) ||
+        Number(left.createdAt || 0) - Number(right.createdAt || 0)
+      );
     }
 
     function createStudentRetryState() {
@@ -5730,6 +5829,174 @@
       };
     }
 
+    function getStudentRetryStudentMatchKeys(student = {}) {
+      const schoolKey = normalizeSchoolKey(student.schoolKey || "");
+      const keys = [];
+      const localId = normalizeProblemText(student.studentId || "");
+      const firebaseUid = normalizeProblemText(student.firebaseUid || "");
+      const firebaseStudentId = normalizeProblemText(student.firebaseStudentId || "");
+      const firebaseLoginId = normalizeProblemText(student.firebaseLoginId || "");
+      const firebaseEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
+      const name = normalizeSchoolName(student.name || "");
+      if (localId) keys.push(`local:${localId}`);
+      if (firebaseUid) keys.push(`uid:${firebaseUid}`);
+      if (firebaseStudentId) keys.push(`firebase-student:${firebaseStudentId}`);
+      if (firebaseLoginId) keys.push(`login:${firebaseLoginId}`);
+      if (firebaseEmail) keys.push(`email:${firebaseEmail}`);
+      if (schoolKey && name) keys.push(`name:${schoolKey}:${name}`);
+      return keys;
+    }
+
+    function getStudentRetrySessionMatchKeys(session = {}) {
+      const keys = [];
+      const sessionId = normalizeProblemText(session.sessionId || "");
+      const sourceBatchId = normalizeProblemText(session.sourceBatchId || "");
+      const sourceSetId = normalizeProblemText(session.sourceSetId || "");
+      const sourceRound = normalizeProblemText(session.sourceRound || "round1");
+      const schoolKey = normalizeSchoolKey(session.schoolKey || "");
+      const sourceKey = normalizeSchoolSourceFilterKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      const baseSignature = buildRetryProblemRecordSignature(session.baseItems || []);
+      if (sessionId) keys.push(`session:${sessionId}`);
+      if (sourceBatchId && sourceSetId) keys.push(`source:${sourceBatchId}:${sourceSetId}:${sourceRound}`);
+      if (schoolKey && sourceKey && baseSignature) keys.push(`base:${schoolKey}:${sourceKey}:${baseSignature}`);
+      return keys;
+    }
+
+    function mergeStudentRetryStudents(existingStudents = [], incomingStudents = []) {
+      const mergedStudents = [];
+      const keyToIndex = new Map();
+      const incomingIdMap = new Map();
+      const rememberStudentKeys = (student, index) => {
+        getStudentRetryStudentMatchKeys(student).forEach((key) => {
+          if (key && !keyToIndex.has(key)) {
+            keyToIndex.set(key, index);
+          }
+        });
+      };
+      (Array.isArray(existingStudents) ? existingStudents : []).forEach((student) => {
+        const index = mergedStudents.length;
+        mergedStudents.push(student);
+        rememberStudentKeys(student, index);
+      });
+      (Array.isArray(incomingStudents) ? incomingStudents : []).forEach((student) => {
+        const incomingLocalId = normalizeProblemText(student.studentId || "");
+        const matchingIndex = getStudentRetryStudentMatchKeys(student)
+          .map((key) => keyToIndex.get(key))
+          .find((index) => Number.isInteger(index));
+        if (Number.isInteger(matchingIndex)) {
+          const existing = mergedStudents[matchingIndex];
+          const existingUpdatedAt = Number(existing.updatedAt || existing.createdAt || 0);
+          const incomingUpdatedAt = Number(student.updatedAt || student.createdAt || 0);
+          const keepExistingId = normalizeProblemText(existing.studentId || "");
+          const merged = incomingUpdatedAt > existingUpdatedAt
+            ? { ...existing, ...student, studentId: keepExistingId || student.studentId }
+            : { ...student, ...existing, studentId: keepExistingId || student.studentId };
+          merged.createdAt = Math.min(Number(existing.createdAt || Date.now()), Number(student.createdAt || Date.now()));
+          merged.updatedAt = Math.max(existingUpdatedAt, incomingUpdatedAt) || Date.now();
+          mergedStudents[matchingIndex] = merged;
+          if (incomingLocalId && merged.studentId) {
+            incomingIdMap.set(incomingLocalId, merged.studentId);
+          }
+          rememberStudentKeys(merged, matchingIndex);
+          return;
+        }
+        const index = mergedStudents.length;
+        mergedStudents.push(student);
+        if (incomingLocalId) {
+          incomingIdMap.set(incomingLocalId, student.studentId);
+        }
+        rememberStudentKeys(student, index);
+      });
+      return { students: mergedStudents, incomingIdMap };
+    }
+
+    function mergeStudentRetrySessionRecords(existingSession, incomingSession, incomingStudentIdMap = new Map()) {
+      const existingUpdatedAt = Number(existingSession?.updatedAt || existingSession?.createdAt || 0);
+      const incomingUpdatedAt = Number(incomingSession?.updatedAt || incomingSession?.createdAt || 0);
+      const existingBaseItems = Array.isArray(existingSession?.baseItems) ? existingSession.baseItems : [];
+      const incomingBaseItems = Array.isArray(incomingSession?.baseItems) ? incomingSession.baseItems : [];
+      const base = incomingUpdatedAt > existingUpdatedAt
+        ? { ...(existingSession || {}), ...(incomingSession || {}) }
+        : { ...(incomingSession || {}), ...(existingSession || {}) };
+      const merged = {
+        ...base,
+        sessionId: existingSession?.sessionId || incomingSession?.sessionId || base.sessionId,
+        createdAt: Math.min(
+          Number(existingSession?.createdAt || incomingSession?.createdAt || Date.now()),
+          Number(incomingSession?.createdAt || existingSession?.createdAt || Date.now())
+        ),
+        updatedAt: Math.max(existingUpdatedAt, incomingUpdatedAt) || Date.now(),
+        baseItems: existingBaseItems.length >= incomingBaseItems.length ? existingBaseItems : incomingBaseItems,
+        studentStates: {}
+      };
+      const addStates = (studentStates = {}, useIncomingMap = false) => {
+        Object.entries(studentStates || {}).forEach(([rawStudentId, value]) => {
+          const studentId = useIncomingMap
+            ? (incomingStudentIdMap.get(String(rawStudentId || "")) || String(rawStudentId || ""))
+            : String(rawStudentId || "");
+          if (!studentId) {
+            return;
+          }
+          const existingRounds = merged.studentStates[studentId]?.rounds || [];
+          merged.studentStates[studentId] = {
+            rounds: mergeStudentRetryRounds(existingRounds, value?.rounds || [])
+          };
+        });
+      };
+      addStates(existingSession?.studentStates || {}, false);
+      addStates(incomingSession?.studentStates || {}, true);
+      return merged;
+    }
+
+    function mergeStudentRetryStates(existingRawState = {}, incomingRawState = {}) {
+      const existing = normalizeStudentRetryState(existingRawState || {});
+      const incoming = normalizeStudentRetryState(incomingRawState || {});
+      const { students, incomingIdMap } = mergeStudentRetryStudents(existing.students, incoming.students);
+      const mergedSessions = [];
+      const sessionKeyToIndex = new Map();
+      const rememberSessionKeys = (session, index) => {
+        getStudentRetrySessionMatchKeys(session).forEach((key) => {
+          if (key && !sessionKeyToIndex.has(key)) {
+            sessionKeyToIndex.set(key, index);
+          }
+        });
+      };
+      existing.sessions.forEach((session) => {
+        const index = mergedSessions.length;
+        mergedSessions.push(session);
+        rememberSessionKeys(session, index);
+      });
+      incoming.sessions.forEach((session) => {
+        const matchingIndex = getStudentRetrySessionMatchKeys(session)
+          .map((key) => sessionKeyToIndex.get(key))
+          .find((index) => Number.isInteger(index));
+        if (Number.isInteger(matchingIndex)) {
+          mergedSessions[matchingIndex] = mergeStudentRetrySessionRecords(mergedSessions[matchingIndex], session, incomingIdMap);
+          rememberSessionKeys(mergedSessions[matchingIndex], matchingIndex);
+          return;
+        }
+        const remappedSession = mergeStudentRetrySessionRecords(null, session, incomingIdMap);
+        const index = mergedSessions.length;
+        mergedSessions.push(remappedSession);
+        rememberSessionKeys(remappedSession, index);
+      });
+      const selectedStudentId = existing.selectedStudentId ||
+        incomingIdMap.get(incoming.selectedStudentId) ||
+        incoming.selectedStudentId ||
+        "";
+      const selectedSessionId = existing.selectedSessionId || incoming.selectedSessionId || "";
+      return normalizeStudentRetryState({
+        selectedStudentId,
+        selectedSessionId,
+        expandedRoundKeys: {
+          ...(incoming.expandedRoundKeys || {}),
+          ...(existing.expandedRoundKeys || {})
+        },
+        students,
+        sessions: mergedSessions
+      });
+    }
+
     function captureStudentRetryState() {
       return JSON.parse(JSON.stringify(normalizeStudentRetryState(state.studentRetry)));
     }
@@ -5751,8 +6018,10 @@
     }
 
     function applyStudentRetryState(rawState = {}, options = {}) {
-      const { persistLocal = true } = options;
-      state.studentRetry = normalizeStudentRetryState(rawState);
+      const { persistLocal = true, merge = true } = options;
+      state.studentRetry = merge
+        ? mergeStudentRetryStates(state.studentRetry, rawState)
+        : normalizeStudentRetryState(rawState);
       if (!persistLocal) {
         return;
       }
@@ -5935,7 +6204,7 @@
     }
 
     async function saveStudentRetryStateToFirebase(options = {}) {
-      const { force = false } = options;
+      const { force = false, mergeRemote = true } = options;
       const bridge = getFirebaseStudentRetryBridge();
       if (!canUseFirebaseStudentRetryStorage()) {
         return { synced: false, reason: "unavailable" };
@@ -5948,6 +6217,18 @@
         const owner = getFirebaseStudentRetryOwnerMeta();
         if (!owner.ownerUid) {
           return { synced: false, reason: "missing-owner" };
+        }
+        if (mergeRemote) {
+          try {
+            const remote = bridge.retryStateLoadPromise
+              ? await bridge.retryStateLoadPromise
+              : await loadStudentRetryStateFromFirebase();
+            if (remote?.hasRemote && remote.state) {
+              state.studentRetry = mergeStudentRetryStates(state.studentRetry, remote.state);
+            }
+          } catch (error) {
+            console.warn("Failed to merge remote student retry state before save", error);
+          }
         }
         const snapshot = flattenStudentRetryStateForFirebase();
         const now = Date.now();
@@ -6073,7 +6354,8 @@
           }
           return { synced: true, source: "firebase" };
         }
-        applyStudentRetryState({}, { persistLocal: false });
+        bridge.retryStateLastLoadedAt = Date.now();
+        bridge.retryStateSyncError = "";
         return { synced: true, source: "empty" };
       })()
         .catch((error) => {
@@ -7680,7 +7962,7 @@
       state.schoolWorkflow.typeSelectionCustomized = false;
 
       writeStoredSchools([]);
-      applyStudentRetryState({});
+      applyStudentRetryState({}, { merge: false });
       clearFirebaseAdminLastSchoolSelections();
 
       const firebaseSchoolCatalog = Array.isArray(state.firebaseSchoolBridge.schoolCatalog)
@@ -11116,6 +11398,167 @@
         .filter(Boolean);
     }
 
+    function getStudentRetryRoundIndexFromCheckSetRecord(record = {}) {
+      const explicitRoundIndex = Number.parseInt(record.studentRetryRoundIndex || getCheckSetRecordPayload(record).studentRetryRoundIndex, 10) || 0;
+      if (explicitRoundIndex > 0) {
+        return explicitRoundIndex;
+      }
+      const sourceRound = getCheckSetRecordSourceRound(record);
+      const match = sourceRound.match(/^round(\d+)$/i);
+      return match ? Math.max(1, Number.parseInt(match[1], 10) || 1) : 0;
+    }
+
+    function createRetryRoundItemsFromQuestionMappings(mappings = []) {
+      const seenProblemIds = new Set();
+      return (Array.isArray(mappings) ? mappings : [])
+        .map((mapping, index) => {
+          const sourceRecord = getRetryRecordById(mapping.problemRecordId);
+          if (!sourceRecord || seenProblemIds.has(sourceRecord.recordId)) {
+            return null;
+          }
+          seenProblemIds.add(sourceRecord.recordId);
+          return createRetryItemFromRecord(
+            sourceRecord,
+            mapping.number || index + 1,
+            mapping.sourceProblemId || mapping.problemRecordId
+          );
+        })
+        .filter(Boolean);
+    }
+
+    function upsertStudentRetryRound(session, studentId, round) {
+      if (!session || !studentId || !round || Number(round.roundIndex || 0) <= 1) {
+        return false;
+      }
+      const studentState = getStudentRetryState(session, studentId);
+      const beforeSignature = JSON.stringify((studentState.rounds || []).map((entry) => ({
+        roundId: entry.roundId || "",
+        roundIndex: entry.roundIndex,
+        createdAt: entry.createdAt || 0,
+        updatedAt: entry.updatedAt || 0,
+        items: getStudentRetryRoundItemSignature(entry)
+      })));
+      studentState.rounds = mergeStudentRetryRounds(studentState.rounds || [], [round]);
+      const afterSignature = JSON.stringify((studentState.rounds || []).map((entry) => ({
+        roundId: entry.roundId || "",
+        roundIndex: entry.roundIndex,
+        createdAt: entry.createdAt || 0,
+        updatedAt: entry.updatedAt || 0,
+        items: getStudentRetryRoundItemSignature(entry)
+      })));
+      if (beforeSignature === afterSignature) {
+        return false;
+      }
+      session.updatedAt = Math.max(Number(session.updatedAt || 0), Number(round.updatedAt || round.createdAt || Date.now()));
+      return true;
+    }
+
+    function restoreMissingStudentRetryRoundsFromCheckSetRecords(student = getSelectedRetryStudent()) {
+      if (!student) {
+        return 0;
+      }
+      let restored = 0;
+      const selectedSchoolKey = getStudentRetrySchoolKey();
+      const selectedSourceKey = getStudentRetrySourceKey();
+      getStoredCheckSetRecords()
+        .filter((record) => getStudentRetryRoundIndexFromCheckSetRecord(record) > 1)
+        .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
+        .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
+        .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
+        .forEach((record) => {
+          const sessionId = normalizeProblemText(record.studentRetrySessionId || getCheckSetRecordPayload(record).studentRetrySessionId || "");
+          if (!sessionId) {
+            return;
+          }
+          const session = (state.studentRetry.sessions || []).find((entry) => String(entry.sessionId || "") === sessionId);
+          if (!session) {
+            return;
+          }
+          const roundIndex = getStudentRetryRoundIndexFromCheckSetRecord(record);
+          const mappings = normalizeCheckSetQuestionMappings(record);
+          const items = createRetryRoundItemsFromQuestionMappings(mappings);
+          if (!items.length) {
+            return;
+          }
+          const createdAt = getTimestampMillis(record.createdAt, Date.now());
+          const updatedAt = getTimestampMillis(record.updatedAt, createdAt);
+          const restoredRound = {
+            roundId: normalizeProblemText(record.checkSetId || record.checkSetRecordId || "")
+              ? `check-${normalizeProblemText(record.checkSetId || record.checkSetRecordId || "")}`
+              : "",
+            roundIndex,
+            label: `${roundIndex}차 개인 오답`,
+            createdAt,
+            updatedAt,
+            items
+          };
+          if (upsertStudentRetryRound(session, student.studentId, restoredRound)) {
+            restored += 1;
+          }
+        });
+      return restored;
+    }
+
+    function doesStudentRetryExamSetMatchStudent(examSet = {}, student = {}) {
+      const examStudentId = normalizeProblemText(examSet.studentRetryStudentId || "");
+      if (examStudentId && examStudentId === normalizeProblemText(student.studentId || "")) {
+        return true;
+      }
+      const examStudentName = normalizeSchoolName(examSet.studentRetryStudentName || "");
+      return Boolean(examStudentName && examStudentName === normalizeSchoolName(student.name || ""));
+    }
+
+    function restoreMissingStudentRetryRoundsFromExamHistory(student = getSelectedRetryStudent()) {
+      if (!student) {
+        return 0;
+      }
+      const examItems = getExamItems();
+      let restored = 0;
+      getExamSets()
+        .filter((examSet) => getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY)
+        .filter((examSet) => Number.parseInt(examSet.studentRetryRoundIndex, 10) > 1)
+        .filter((examSet) => normalizeSchoolKey(examSet.schoolKey || "") === getStudentRetrySchoolKey())
+        .filter((examSet) => doesRetrySourceFilterMatch(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY, getStudentRetrySourceKey()))
+        .filter((examSet) => doesStudentRetryExamSetMatchStudent(examSet, student))
+        .forEach((examSet) => {
+          const sessionId = normalizeProblemText(examSet.studentRetrySessionId || "");
+          if (!sessionId) {
+            return;
+          }
+          const session = (state.studentRetry.sessions || []).find((entry) => String(entry.sessionId || "") === sessionId);
+          if (!session) {
+            return;
+          }
+          const roundIndex = Math.max(2, Number.parseInt(examSet.studentRetryRoundIndex, 10) || 2);
+          const mappings = examItems
+            .filter((item) => item.examId === examSet.examId)
+            .sort((left, right) => (Number(left.slotIndex) || 0) - (Number(right.slotIndex) || 0))
+            .map((item, index) => ({
+              number: Number(item.slotIndex) || index + 1,
+              problemRecordId: item.problemRecordId,
+              sourceProblemId: item.problemRecordId
+            }));
+          const items = createRetryRoundItemsFromQuestionMappings(mappings);
+          if (!items.length) {
+            return;
+          }
+          const createdAt = getTimestampMillis(examSet.createdAt, Date.now());
+          const updatedAt = getTimestampMillis(examSet.updatedAt, createdAt);
+          const restoredRound = {
+            roundId: normalizeProblemText(examSet.examId || "") ? `exam-${normalizeProblemText(examSet.examId || "")}` : "",
+            roundIndex,
+            label: `${roundIndex}차 개인 오답`,
+            createdAt,
+            updatedAt,
+            items
+          };
+          if (upsertStudentRetryRound(session, student.studentId, restoredRound)) {
+            restored += 1;
+          }
+        });
+      return restored;
+    }
+
     function buildRetrySessionIdFromCheckSetRecord(record = {}, baseItems = []) {
       const signature = buildRetryProblemRecordSignature(baseItems);
       const key = [
@@ -11163,6 +11606,7 @@
       const selectedSchool = getSelectedSchoolProfile();
       const records = getFirstRoundRetryCheckSetCandidates(student);
       let created = 0;
+      let restored = 0;
       records.forEach((record) => {
         const baseItems = createRetryBaseItemsFromCheckSetRecord(record);
         if (!baseItems.length) {
@@ -11200,10 +11644,12 @@
         }
         created += 1;
       });
-      if (created) {
+      restored += restoreMissingStudentRetryRoundsFromCheckSetRecords(student);
+      restored += restoreMissingStudentRetryRoundsFromExamHistory(student);
+      if (created || restored) {
         writeStudentRetryState({ syncFolder: false });
       }
-      return { created, matched: records.length };
+      return { created, restored, matched: records.length };
     }
 
     function normalizePortalCheckSetDocForRetry(doc) {
@@ -11485,6 +11931,9 @@
           changed = true;
         }
       });
+      if (changed) {
+        round.updatedAt = Date.now();
+      }
       return changed;
     }
 
@@ -11984,6 +12433,7 @@
         return;
       }
       item.result = isWrong ? "wrong" : "correct";
+      round.updatedAt = Date.now();
       session.updatedAt = Date.now();
       writeStudentRetryState();
       renderStudentRetryPanel();
@@ -12027,14 +12477,28 @@
 
       const nextRoundIndex = Number(previousRound.roundIndex || rounds.length) + 1;
       const nextRound = {
+        roundId: createRetryId("retry-round"),
         roundIndex: nextRoundIndex,
         label: `${nextRoundIndex}차 개인 오답`,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
         items: nextItems
       };
       rounds.push(nextRound);
       session.updatedAt = Date.now();
       writeStudentRetryState();
+      if (canUseFirebaseStudentRetryStorage()) {
+        saveStudentRetryStateToFirebase()
+          .then((result) => {
+            if (!result?.synced) {
+              setStatus(`2차 이상 개인 오답은 이 PC에 저장됐지만 Firebase 원격 저장은 확인되지 않았습니다: ${result?.reason || "알 수 없는 오류"}`, "error", "오답유형");
+            }
+          })
+          .catch((error) => {
+            console.warn("Immediate Firebase student retry save failed", error);
+            setStatus(`2차 이상 개인 오답은 이 PC에 저장됐지만 Firebase 원격 저장에 실패했습니다: ${error?.message || "알 수 없는 오류"}`, "error", "오답유형");
+          });
+      }
 
       cleanupExamPreviewUrls();
       cleanupExamExportUrls();
