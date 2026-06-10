@@ -1777,6 +1777,49 @@
       }
     }
 
+    function getSharedFirebaseLibraryAccessState() {
+      if (!isPdfLabFirebaseConfigured()) {
+        return {
+          enabled: false,
+          reason: "Firebase 설정이 없어 공용 문제 라이브러리를 사용할 수 없습니다."
+        };
+      }
+      const environmentMessage = getPdfLabFirebaseAuthEnvironmentMessage();
+      if (environmentMessage) {
+        return {
+          enabled: false,
+          reason: environmentMessage
+        };
+      }
+      if (!ensurePdfLabFirebaseServices()) {
+        return {
+          enabled: false,
+          reason: state.firebaseSharedLibrary.error || "Firebase 서비스를 초기화하지 못해 공용 문제 라이브러리를 사용할 수 없습니다."
+        };
+      }
+      const bridge = state.firebaseSharedLibrary || {};
+      const user = bridge.currentUser || bridge.auth?.currentUser || null;
+      if (!user) {
+        return {
+          enabled: false,
+          reason: "Firebase 관리자 로그인 후 공용 문제 라이브러리 이미지를 불러올 수 있습니다."
+        };
+      }
+      if (String(bridge.currentProfile?.role || "").toLowerCase() !== "admin") {
+        return {
+          enabled: false,
+          reason: "공용 문제 라이브러리 이미지는 관리자 계정에서만 불러올 수 있습니다."
+        };
+      }
+      if (!bridge.db || !bridge.storage) {
+        return {
+          enabled: false,
+          reason: "Firebase Firestore/Storage 초기화에 실패했습니다."
+        };
+      }
+      return { enabled: true, reason: "" };
+    }
+
     async function setPdfLabFirebaseLocalPersistence(auth) {
       if (!auth?.setPersistence || !window.firebase?.auth?.Auth?.Persistence?.LOCAL) {
         return;
@@ -2104,7 +2147,7 @@
     }
 
     function canFetchSharedLibraryAssetsFromFirebase() {
-      return Boolean(isSharedFirebaseLibraryActive() && state.firebaseSharedLibrary?.storage);
+      return Boolean(getSharedFirebaseLibraryAccessState().enabled);
     }
 
     function getSharedLibraryAssetLoadErrorMessage(error, fallback = "Firebase Storage 이미지를 다운로드하지 못했습니다.") {
@@ -3931,7 +3974,7 @@
           if (!Object.prototype.hasOwnProperty.call(cache, recordId)) {
             const record = recordMap.get(recordId);
             const reason = hasSharedStoragePaths(record, "segmentStoragePaths") || hasSharedStoragePaths(record, "answerSegmentStoragePaths")
-              ? (state.firebaseSharedLibrary?.error || "Firebase Storage 이미지 다운로드 권한을 확인하지 못했습니다.")
+              ? (getSharedFirebaseLibraryAccessState().reason || "Firebase Storage 이미지 다운로드 권한을 확인하지 못했습니다.")
               : "Firebase 문제 문서에 이미지 Storage 경로가 없습니다.";
             cache[recordId] = { recordId, segmentBlobs: [], answerSegmentBlobs: [], segmentImageUrls: [], answerSegmentImageUrls: [], sharedAssetError: reason };
           }
