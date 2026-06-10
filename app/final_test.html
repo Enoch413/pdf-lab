@@ -979,6 +979,10 @@
         : EXAM_CONTENT_MODE_IMAGE;
     }
 
+    function getLibraryProblemMode(problem) {
+      return normalizeExamContentMode(problem?.contentMode || EXAM_CONTENT_MODE_IMAGE);
+    }
+
     function getExamContentModeLabel(value) {
       return normalizeExamContentMode(value) === EXAM_CONTENT_MODE_TEXT
         ? "텍스트 출제"
