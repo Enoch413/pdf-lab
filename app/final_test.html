@@ -1788,6 +1788,55 @@
       }
     }
 
+    function shouldFallbackToFirebaseRedirect(error) {
+      const code = String(error?.code || "");
+      return code.includes("popup-blocked") ||
+        code.includes("popup-closed-by-user") ||
+        code.includes("cancelled-popup-request") ||
+        code.includes("operation-not-supported-in-this-environment");
+    }
+
+    function createPdfLabGoogleAuthProvider() {
+      const provider = new window.firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      return provider;
+    }
+
+    async function applyPdfLabFirebaseSignedInUser(user) {
+      state.firebaseSharedLibrary.currentUser = user || state.firebaseSharedLibrary.auth?.currentUser || null;
+      if (!state.firebaseSharedLibrary.currentUser) {
+        return null;
+      }
+      const profile = await fetchPdfLabFirebaseCurrentProfile(
+        state.firebaseSharedLibrary.db,
+        state.firebaseSharedLibrary.currentUser
+      );
+      state.firebaseSharedLibrary.currentProfile = profile;
+      state.firebaseSharedLibrary.error = "";
+      renderPdfLabFirebaseAuthUi();
+      return profile;
+    }
+
+    async function handlePdfLabFirebaseRedirectResult() {
+      if (!ensurePdfLabFirebaseServices() || typeof state.firebaseSharedLibrary.auth?.getRedirectResult !== "function") {
+        return false;
+      }
+      try {
+        const result = await state.firebaseSharedLibrary.auth.getRedirectResult();
+        if (!result?.user) {
+          return false;
+        }
+        await applyPdfLabFirebaseSignedInUser(result.user);
+        return true;
+      } catch (error) {
+        const message = getFriendlyFirebaseMessage(error);
+        state.firebaseSharedLibrary.error = message;
+        renderPdfLabFirebaseAuthUi();
+        console.warn("Failed to finish Firebase redirect login", error);
+        return false;
+      }
+    }
+
     async function signInPdfLabFirebaseWithGoogle() {
       if (!ensurePdfLabFirebaseServices()) {
         renderPdfLabFirebaseAuthUi();
@@ -1797,16 +1846,18 @@
         state.firebaseSharedLibrary.error = "";
         renderPdfLabFirebaseAuthUi();
         await setPdfLabFirebaseLocalPersistence(state.firebaseSharedLibrary.auth);
-        const provider = new window.firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: "select_account" });
+        const provider = createPdfLabGoogleAuthProvider();
         const credential = await state.firebaseSharedLibrary.auth.signInWithPopup(provider);
-        state.firebaseSharedLibrary.currentUser = credential?.user || state.firebaseSharedLibrary.auth.currentUser || null;
-        const profile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSharedLibrary.db, state.firebaseSharedLibrary.currentUser);
-        state.firebaseSharedLibrary.currentProfile = profile;
-        renderPdfLabFirebaseAuthUi();
+        await applyPdfLabFirebaseSignedInUser(credential?.user || state.firebaseSharedLibrary.auth.currentUser || null);
         await refreshLibrarySummary();
         return true;
       } catch (error) {
+        if (shouldFallbackToFirebaseRedirect(error) && typeof state.firebaseSharedLibrary.auth?.signInWithRedirect === "function") {
+          state.firebaseSharedLibrary.error = "Google 로그인 팝업을 사용할 수 없어 Google 로그인 페이지로 이동합니다.";
+          renderPdfLabFirebaseAuthUi();
+          await state.firebaseSharedLibrary.auth.signInWithRedirect(createPdfLabGoogleAuthProvider());
+          return false;
+        }
         const message = getFriendlyFirebaseMessage(error);
         state.firebaseSharedLibrary.error = message;
         renderPdfLabFirebaseAuthUi();
@@ -10822,6 +10873,7 @@
       updateLibraryStorageUi();
       ensurePdfLabFirebaseServices();
       renderPdfLabFirebaseAuthUi();
+      await handlePdfLabFirebaseRedirectResult();
       applyExamAnswerModeToUi(state.examBuilder.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
       applyExamContentModeToUi(state.examBuilder.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
       if (elements.librarySourceSelect) {
@@ -10869,8 +10921,14 @@
             .then(async () => {
               setBusy(true);
               setStatus("Google Firebase 로그인 중입니다...", "working", "로그인");
-              await signInPdfLabFirebaseWithGoogle();
-              setStatus("Google 로그인 후 공용 라이브러리를 다시 불러왔습니다.", "idle", "Firebase");
+              const signedIn = await signInPdfLabFirebaseWithGoogle();
+              setStatus(
+                signedIn
+                  ? "Google 로그인 후 공용 라이브러리를 다시 불러왔습니다."
+                  : "Google 로그인 페이지로 이동합니다. 로그인 후 파이널테스트로 돌아옵니다.",
+                "idle",
+                "Firebase"
+              );
             })
             .catch(handleError)
             .finally(() => {
