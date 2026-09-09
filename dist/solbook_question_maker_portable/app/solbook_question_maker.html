@@ -1,0 +1,3053 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쏠북용 문제제작</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
+  <style>
+    :root {
+      --ink: #000000;
+      --muted: #000000;
+      --line: rgba(15, 59, 60, 0.14);
+      --paper: #ffffff;
+      --panel: rgba(255, 255, 255, 0.86);
+      --accent: #000000;
+      --accent-soft: rgba(24, 107, 99, 0.12);
+      --wash: #eee8dc;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Noto Sans KR", "Plus Jakarta Sans", sans-serif;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(208, 218, 202, 0.74), transparent 28rem),
+        radial-gradient(circle at 86% 8%, rgba(236, 219, 190, 0.76), transparent 30rem),
+        linear-gradient(135deg, #eef1e9 0%, #f6efe3 100%);
+    }
+
+    .general2-shell {
+      width: min(1360px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 18px 0 56px;
+    }
+
+    .general2-layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      margin-top: 32px;
+    }
+
+    .general2-panel,
+    .general2-preview {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 20px 50px rgba(31, 48, 41, 0.08);
+    }
+
+    .general2-panel {
+      position: sticky;
+      top: 20px;
+      box-sizing: border-box;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 22px;
+      scrollbar-color: rgba(24, 107, 99, 0.42) transparent;
+      scrollbar-width: thin;
+    }
+
+    .general2-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .general2-panel::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(24, 107, 99, 0.34);
+    }
+
+    .general2-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .general2-preview {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      box-sizing: border-box;
+      max-height: calc(100vh - 150px);
+      overflow: auto;
+      overscroll-behavior: auto;
+      padding: 28px;
+      min-height: 70vh;
+      scrollbar-color: rgba(24, 107, 99, 0.36) transparent;
+      scrollbar-width: thin;
+    }
+
+    .general2-preview::-webkit-scrollbar {
+      width: 9px;
+      height: 9px;
+    }
+
+    .general2-preview::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(24, 107, 99, 0.3);
+    }
+
+    .general2-preview::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .general2-title-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .general2-title-row h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .general2-count {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .json-picker {
+      border: 1px dashed rgba(24, 107, 99, 0.32);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(24, 107, 99, 0.06);
+      display: grid;
+      gap: 10px;
+    }
+
+    .json-picker strong {
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .json-picker small {
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.55;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field span,
+    .check-row span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .input,
+    .select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(15, 59, 60, 0.16);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 13px;
+      outline: none;
+    }
+
+    .input:focus,
+    .select:focus {
+      border-color: rgba(24, 107, 99, 0.52);
+      box-shadow: 0 0 0 4px rgba(24, 107, 99, 0.1);
+    }
+
+    .check-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(15, 59, 60, 0.12);
+      border-radius: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .check-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      position: sticky;
+      bottom: -2px;
+      z-index: 2;
+      padding-top: 8px;
+      background: linear-gradient(180deg, rgba(255, 253, 248, 0), rgba(255, 253, 248, 0.96) 34%);
+    }
+
+    .button-row .wide-action {
+      grid-column: 1 / -1;
+    }
+
+    .action-button {
+      border: 0;
+      border-radius: 16px;
+      padding: 13px 14px;
+      color: white;
+      background: var(--accent);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 14px 25px rgba(24, 107, 99, 0.18);
+    }
+
+    .action-button.secondary {
+      color: var(--ink);
+      background: white;
+      border: 1px solid rgba(15, 59, 60, 0.14);
+      box-shadow: none;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .batch-status {
+      min-height: 18px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .preview-limit-note {
+      margin: 0 0 12px;
+      border: 1px solid rgba(24, 107, 99, 0.22);
+      border-radius: 10px;
+      padding: 9px 12px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .pdf-export-stage {
+      position: fixed;
+      top: 0;
+      left: -100000px;
+      width: 794px;
+      background: white;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .pdf-export-stage .exam-document {
+      flex: none;
+      width: 794px;
+      min-height: auto;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+
+    .pdf-page {
+      width: 794px;
+      height: 1123px;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding: 42px 42px 60px;
+      background: white;
+    }
+
+    .pdf-page .answer-section {
+      break-before: auto;
+      page-break-before: auto;
+      margin-top: 0;
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .exam-document {
+      flex: 0 0 794px;
+      width: 794px;
+      min-height: 1123px;
+      box-sizing: border-box;
+      background: white;
+      border: 0;
+      border-radius: 18px;
+      padding: 42px 42px 60px;
+      box-shadow: 0 0 0 1px rgba(15, 59, 60, 0.12);
+    }
+
+    .exam-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      break-after: avoid;
+      page-break-after: avoid;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .exam-head h1 {
+      margin: 0;
+      font-size: 27px;
+      letter-spacing: -0.05em;
+    }
+
+    .exam-head p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .exam-logo {
+      display: block;
+      width: 66px;
+      height: 50px;
+      object-fit: contain;
+    }
+
+    .question-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      align-items: start;
+    }
+
+    .question-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(15, 59, 60, 0.13);
+      border-radius: 12px;
+      padding: 8px;
+      background: transparent;
+      overflow-wrap: anywhere;
+      overflow: hidden;
+    }
+
+    .question-kicker {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 9.6pt;
+      font-weight: 900;
+      text-shadow: 0.012em 0 0 currentColor;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      max-width: 100%;
+    }
+
+    .question-stem {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      margin: 0 0 5px;
+      font-size: 10.5pt;
+      font-weight: 900;
+      text-shadow: 0.012em 0 0 currentColor;
+      line-height: 1.5;
+      letter-spacing: normal;
+      text-align: left;
+      text-align-last: left;
+      overflow-wrap: anywhere;
+      word-break: break-all;
+      line-break: anywhere;
+      max-width: 100%;
+      white-space: normal;
+      overflow: hidden;
+    }
+
+    .question-body {
+      margin: 0 0 14pt;
+      color: #000000;
+      font-size: 9.5pt;
+      line-height: 1.5;
+      letter-spacing: normal;
+      text-align: justify;
+      white-space: pre-wrap;
+      word-spacing: normal;
+    }
+
+    .question-body u,
+    .choice-box {
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1.5px;
+      font-weight: 800;
+    }
+
+    .choice-box {
+      display: inline-block;
+      text-decoration: none;
+      white-space: nowrap;
+      word-spacing: normal;
+      letter-spacing: normal;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: #000000;
+      font-size: 9.5pt;
+      line-height: 1.5;
+    }
+
+    .choice-list li {
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      gap: 4px;
+    }
+
+    .choice-list li > strong {
+      font-weight: 400;
+      text-shadow: none;
+    }
+
+    .choice-list span {
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+      letter-spacing: normal;
+      word-spacing: normal;
+      word-break: normal;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      text-align: left;
+      text-align-last: left;
+    }
+
+    .choice-list.order-choice-list span {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+      text-align: left;
+      text-align-last: left;
+    }
+
+    .answer-section {
+      break-before: page;
+      page-break-before: always;
+      margin-top: 36px;
+      border-top: 2px solid var(--ink);
+      padding-top: 18px;
+    }
+
+    .answer-section h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+      letter-spacing: -0.04em;
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .answer-card {
+      border: 1px solid rgba(15, 59, 60, 0.13);
+      border-radius: 13px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      background: transparent;
+    }
+
+    .answer-card strong {
+      color: var(--accent);
+      font-weight: 900;
+      text-shadow: 0.012em 0 0 currentColor;
+    }
+
+    .answer-card p {
+      white-space: pre-line;
+    }
+
+    .empty-state {
+      border: 1px dashed rgba(15, 59, 60, 0.18);
+      border-radius: 18px;
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .general2-shell {
+        width: min(100% - 24px, 760px);
+      }
+
+      .general2-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .general2-panel {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+
+      .general2-preview {
+        max-height: none;
+        overflow: auto;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .app-topbar,
+      .general2-panel {
+        display: none !important;
+      }
+
+      .general2-shell {
+        width: auto;
+        padding: 0;
+      }
+
+      .general2-layout {
+        display: block;
+        margin: 0;
+      }
+
+      .general2-preview {
+        border: 0;
+        box-shadow: none;
+        max-height: none;
+        overflow: visible;
+        padding: 0;
+      }
+
+      .exam-document {
+        flex: initial;
+        box-shadow: none;
+        width: auto;
+        min-height: 0;
+        padding: 0;
+      }
+
+      .exam-head {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+      }
+
+      .exam-logo {
+        width: 66px;
+        height: 50px;
+      }
+
+      .question-card {
+        border-color: #cdd6d3;
+      }
+
+      .question-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .question-card {
+        padding: 8px;
+      }
+
+      .preview-limit-note {
+        display: none;
+      }
+
+      .question-kicker {
+        margin-bottom: 4px;
+        font-size: 9.6pt;
+      }
+
+      .question-stem {
+        margin-bottom: 5px;
+        font-size: 10.5pt;
+        line-height: 1.5;
+      }
+
+      .question-body {
+        margin-bottom: 14pt;
+        font-size: 9.5pt;
+        line-height: 1.5;
+      }
+
+      .choice-list {
+        gap: 2px;
+        font-size: 9.5pt;
+        line-height: 1.5;
+      }
+
+      @page {
+        size: A4;
+        margin: 11mm 11mm 16mm;
+
+        @bottom-left {
+          content: "수록된 모든 문제는 코드 영어 연구소 저작물입니다. 무단 배포·판매를 금지합니다.";
+          color: #000000;
+          font-size: 7.5pt;
+          font-weight: 600;
+        }
+
+        @bottom-right {
+          content: counter(page);
+          color: #000000;
+          font-size: 10pt;
+          font-weight: 700;
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-page-shell">
+    <div class="general2-shell">
+      <header class="app-topbar">
+        <div class="app-topbar-copy">
+          <h1 class="app-topbar-title">쏠북용 문제제작</h1>
+        </div>
+        <div class="app-topbar-badge">WORKSPACE</div>
+        <nav class="app-topbar-actions" aria-label="Workspace navigation">
+          <a class="app-topbar-link app-topbar-tab" href="./index.html?workspace=exam">PDF LAB</a>
+          <a class="app-topbar-link app-topbar-tab" href="./final_test.html">파이널테스트</a>
+          <a class="app-topbar-link app-topbar-tab" href="./index.html?workspace=library">문제 라이브러리</a>
+        </nav>
+      </header>
+
+      <main class="general2-layout">
+        <aside class="general2-panel">
+          <div class="general2-title-row">
+            <h2>쏠북 JSON 출제</h2>
+            <span class="general2-count" id="loadedCount">0문항</span>
+          </div>
+          <div class="control-stack">
+            <label class="json-picker">
+              <strong>JSON 파일 선택</strong>
+              <small>여러 JSON을 선택하면 지문 전체를 통합해 12개 시험지 ZIP을 만들 수 있습니다.</small>
+              <input class="input" id="jsonFileInput" type="file" accept=".json,application/json" multiple>
+              <small id="jsonFileName">선택된 JSON 없음</small>
+            </label>
+            <label class="field">
+              <span>시험지 제목</span>
+              <input class="input" id="examTitleInput" type="text" value="쏠북 문제지">
+            </label>
+            <label class="field">
+              <span>머리말 아래 문구</span>
+              <input class="input" id="examSubtitleInput" type="text" placeholder="예: walking_transport_90_questions.json · 90문항">
+            </label>
+            <label class="field">
+              <span>문제 유형</span>
+              <select class="select" id="typeSelect">
+                <option value="">전체 유형</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>난이도</span>
+              <select class="select" id="difficultySelect">
+                <option value="">전체 난이도</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>문항 정렬</span>
+              <select class="select" id="sortModeSelect">
+                <option value="source">지문별 정렬 (JSON 파일 순서)</option>
+                <option value="type">유형별 정렬</option>
+              </select>
+              <small>선택한 정렬 기준이 미리보기, PDF, ZIP 파일에 모두 적용됩니다.</small>
+            </label>
+            <label class="check-row">
+              <input id="includeAnswerInput" type="checkbox">
+              <span>정답/해설 페이지 포함</span>
+            </label>
+            <label class="check-row">
+              <input id="fastZipInput" type="checkbox" checked>
+              <span>12개 ZIP jsPDF 직접 출력(권장)</span>
+            </label>
+            <div class="button-row">
+              <button class="action-button secondary" id="resetButton" type="button">전체 보기</button>
+              <button class="action-button" id="printButton" type="button" disabled>빠른 PDF 저장</button>
+              <button class="action-button wide-action" id="batchZipButton" type="button" disabled>12개 시험지 ZIP 저장</button>
+            </div>
+            <p class="batch-status" id="batchZipStatus" aria-live="polite"></p>
+            <p class="hint">화면 미리보기는 속도를 위해 앞부분만 표시하지만 PDF와 ZIP에는 선택 조건의 모든 문항이 저장됩니다.</p>
+          </div>
+        </aside>
+
+        <section class="general2-preview">
+          <div id="examRoot" class="empty-state">JSON 문제를 불러오는 중입니다...</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="./vendor/jszip/jszip.min.js"></script>
+  <script src="./vendor/jspdf/jspdf.umd.min.js"></script>
+  <script src="./vendor/html2canvas/html2canvas.min.js"></script>
+  <script>
+    const CHOICE_MARKERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"];
+    const ORDER_CHOICE_SEPARATOR = "\u00A0\u2011\u00A0";
+    const COPYRIGHT_WARNING = "수록된 모든 문제는 코드 영어 연구소 저작물입니다. 무단 배포·판매를 금지합니다.";
+    const DIRECT_SAFE_OPEN_BRACKET = "__PDFLAB_OPEN_BRACKET__";
+    const DIRECT_SAFE_CLOSE_BRACKET = "__PDFLAB_CLOSE_BRACKET__";
+    const SLOT_MARKERS = ["①", "②", "③", "④", "⑤"];
+    const TYPE_LABELS = {
+      topic: "주제",
+      title: "제목",
+      implication: "함축의미",
+      blank: "빈칸",
+      summary: "요약",
+      vocab_underline: "밑줄어휘",
+      vocab_box: "어휘박스",
+      factual: "내용일치",
+      unfactual: "내용불일치",
+      gist: "요지",
+      claim: "주장",
+      grammar_underline: "밑줄어법",
+      grammar_box: "어법박스",
+      order: "순서",
+      insertion: "삽입",
+      irrelevant: "무관문"
+    };
+    const DIFFICULTY_LABELS = {
+      easy: "쉬움",
+      medium: "중간",
+      hard: "어려움",
+      none: "기본"
+    };
+    const BATCH_DIFFICULTY_GROUPS = [
+      { key: "easy", label: "쉬움" },
+      { key: "medium", label: "중간" },
+      { key: "hard", label: "어려움" },
+      { key: "none", label: "공통" }
+    ];
+    const BATCH_ROUNDS = [1, 2, 3];
+    const SORT_MODE_SOURCE = "source";
+    const SORT_MODE_TYPE = "type";
+    const PREVIEW_QUESTION_LIMIT = 36;
+    const BATCH_TYPE_ORDER = [
+      "claim",
+      "gist",
+      "topic",
+      "title",
+      "implication",
+      "factual",
+      "unfactual",
+      "grammar_box",
+      "vocab_box",
+      "grammar_underline",
+      "vocab_underline",
+      "blank",
+      "irrelevant",
+      "order",
+      "insertion",
+      "summary"
+    ];
+
+    function compactTypeLabel(value) {
+      return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+    }
+
+    function normalizeQuestionType(type) {
+      const raw = String(type || "").trim();
+      if (!raw) {
+        return "";
+      }
+      if (TYPE_LABELS[raw]) {
+        return raw;
+      }
+      const compactRaw = compactTypeLabel(raw);
+      const aliases = {
+        주장: "claim",
+        요지: "gist",
+        주제: "topic",
+        제목: "title",
+        함축: "implication",
+        함축의미: "implication",
+        내용일치: "factual",
+        내용불일치: "unfactual",
+        선택어법: "grammar_box",
+        어법박스: "grammar_box",
+        선택어휘: "vocab_box",
+        어휘박스: "vocab_box",
+        밑줄어법: "grammar_underline",
+        밑줄어휘: "vocab_underline",
+        빈칸: "blank",
+        무관: "irrelevant",
+        무관문: "irrelevant",
+        순서: "order",
+        삽입: "insertion",
+        요약: "summary"
+      };
+      if (aliases[compactRaw]) {
+        return aliases[compactRaw];
+      }
+      const matched = Object.entries(TYPE_LABELS)
+        .find(([, label]) => compactTypeLabel(label) === compactRaw);
+      return matched ? matched[0] : raw;
+    }
+
+    function isQuestionType(type, expected) {
+      return normalizeQuestionType(type) === expected;
+    }
+
+    const state = {
+      questions: [],
+      filtered: [],
+      sources: [],
+      sourceName: "",
+      subtitleEdited: false,
+      sortMode: SORT_MODE_SOURCE,
+      batchQuestionIndex: null,
+      renderFrame: 0,
+      renderVersion: 0,
+      isSingleBusy: false,
+      isBatchBusy: false,
+      batchDownloadUrl: ""
+    };
+
+    const elements = {
+      loadedCount: document.getElementById("loadedCount"),
+      jsonFileInput: document.getElementById("jsonFileInput"),
+      jsonFileName: document.getElementById("jsonFileName"),
+      examTitleInput: document.getElementById("examTitleInput"),
+      examSubtitleInput: document.getElementById("examSubtitleInput"),
+      typeSelect: document.getElementById("typeSelect"),
+      difficultySelect: document.getElementById("difficultySelect"),
+      sortModeSelect: document.getElementById("sortModeSelect"),
+      includeAnswerInput: document.getElementById("includeAnswerInput"),
+      fastZipInput: document.getElementById("fastZipInput"),
+      resetButton: document.getElementById("resetButton"),
+      printButton: document.getElementById("printButton"),
+      batchZipButton: document.getElementById("batchZipButton"),
+      batchZipStatus: document.getElementById("batchZipStatus"),
+      examRoot: document.getElementById("examRoot")
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeRegExp(value) {
+      return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function cleanBoxChoiceText(value) {
+      return String(value || "")
+        .replace(/&(?:amp;)?nbsp;|&(?:amp;)?#160;/gi, " ")
+        .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function removeSpaceBeforeClosingBracket(value) {
+      return String(value || "")
+        .replace(/(?:&(?:amp;)?nbsp;|&(?:amp;)?#160;|[\s\u00A0\u2000-\u200B\u202F\u205F\u3000])+(?=\])/g, "");
+    }
+
+    function normalizeBracketChoiceSpacing(value) {
+      return removeSpaceBeforeClosingBracket(value)
+        .replace(/\[([^\[\]]*?\/[^\[\]]*?)\]/g, (_, content) => {
+          const parts = content.split("/").map(cleanBoxChoiceText).filter(Boolean);
+          if (parts.length < 2) {
+            return removeSpaceBeforeClosingBracket(`[${content}]`);
+          }
+          return `[${parts[0]} / ${parts.slice(1).join(" / ")}]`;
+        })
+        .replace(/(?:&(?:amp;)?nbsp;|&(?:amp;)?#160;|[\s\u00A0\u2000-\u200B\u202F\u205F\u3000])+(?=\])/g, "");
+    }
+
+    function renderPlainBracketChoiceBox(content) {
+      const parts = String(content || "").split("/").map(cleanBoxChoiceText).filter(Boolean);
+      if (parts.length < 2) {
+        return `[${removeSpaceBeforeClosingBracket(content)}]`;
+      }
+      return `<strong class="choice-box">[${parts[0]} / ${parts.slice(1).join(" / ")}]</strong>`;
+    }
+
+    function directPlainBracketChoiceMarker(content) {
+      const parts = String(content || "").split("/").map(cleanBoxChoiceText).filter(Boolean);
+      if (parts.length < 2) {
+        return `[${removeSpaceBeforeClosingBracket(content)}]`;
+      }
+      return `[[direct-bold:${DIRECT_SAFE_OPEN_BRACKET}${parts[0]} / ${parts.slice(1).join(" / ")}${DIRECT_SAFE_CLOSE_BRACKET}]]`;
+    }
+
+    function directLabeledBracketChoiceMarker(label, left, right) {
+      return `[[direct-bold:${cleanBoxChoiceText(label)}]] ${directPlainBracketChoiceMarker(`${left} / ${right}`)}`;
+    }
+
+    function restoreDirectSafeBrackets(value) {
+      return removeSpaceBeforeClosingBracket(String(value || "")
+        .replaceAll(DIRECT_SAFE_OPEN_BRACKET, "[")
+        .replaceAll(DIRECT_SAFE_CLOSE_BRACKET, "]"));
+    }
+
+    function normalizeRenderedBracketChoiceSpacing(root) {
+      if (!root) {
+        return;
+      }
+      root.querySelectorAll(".choice-box").forEach((node) => {
+        node.textContent = normalizeBracketChoiceSpacing(node.textContent);
+      });
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) {
+        textNodes.push(walker.currentNode);
+      }
+      textNodes.forEach((node) => {
+        const normalized = normalizeBracketChoiceSpacing(node.nodeValue);
+        if (normalized !== node.nodeValue) {
+          node.nodeValue = normalized;
+        }
+      });
+    }
+
+    function cleanUnderlineTargetText(value) {
+      return String(value || "")
+        .replace(/^[\s\u00A0\u2000-\u200B\u202F\u205F\u3000]*[①②③④⑤⑥⑦]\s*/u, "")
+        .replace(/^[\s\u00A0\u2000-\u200B\u202F\u205F\u3000]*(?:\(?[1-7]\)?[.)．、:]?)\s*/u, "")
+        .trim();
+    }
+
+    function normalizeSolbookSectionText(value, type = "") {
+      const normalizedType = normalizeQuestionType(type);
+      let text = String(value || "").replace(/\r\n?/g, "\n");
+      const hadInsertionHeader = normalizedType === "insertion" && /\[\s*삽입문\s*\]/.test(text);
+      const headerLabelsByType = {
+        summary: ["본문", "요약문"],
+        order: ["주어진 글", "보기"],
+        insertion: ["삽입문", "주어진 글", "주어진 문장", "보기", "본문"]
+      };
+      const labels = headerLabelsByType[normalizedType] || [];
+      if (normalizedType === "insertion") {
+        text = text.replace(/\[\s*삽입문\s*\]\s*/g, "\n\n");
+      }
+      labels.forEach((label) => {
+        text = text.replace(new RegExp(`(^|\\n)\\s*\\[${escapeRegExp(label)}\\]\\s*(?=\\n|$)`, "g"), "\n\n");
+      });
+      if (hadInsertionHeader) {
+        const lines = text
+          .replace(/\n{3,}/g, "\n\n")
+          .trim()
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length >= 2) {
+          return [lines[0], lines.slice(1).join("\n")].join("\n\n");
+        }
+      }
+      return text.replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+    function normalizeSolbookMarkers(value, type = "") {
+      const normalizedType = normalizeQuestionType(type);
+      let slotIndex = 0;
+      let text = normalizeSolbookSectionText(value, type)
+        .replace(/\[\[blank(?::([A-Za-z]))?\]\]/g, (_, label) => label ? `___(${label})___` : "____________________")
+        .replace(/\[\[box:([^:\]]+):([^|\]]*)\|([^\]]*)\]\]/g, (_, label, left, right) => `[[boxout:${cleanBoxChoiceText(label)}:${cleanBoxChoiceText(left)}|${cleanBoxChoiceText(right)}]]`)
+        .replace(/\[\[(?:s|slot)\]\]/g, () => {
+          const marker = SLOT_MARKERS[slotIndex] || `(${slotIndex + 1})`;
+          slotIndex += 1;
+          return marker;
+        });
+      text = normalizeBracketChoiceSpacing(text);
+      if (normalizedType === "order") {
+        text = text
+          .replace(/(\([A-C]\))\s*\n+\s*/g, "$1 ")
+          .replace(/\s*(\([A-C]\)\s*)/g, "\n\n$1")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      }
+      return removeSpaceBeforeClosingBracket(text);
+    }
+
+    function shouldNumberUnderlineMarkers(type = "") {
+      return ["vocab_underline", "grammar_underline"].includes(normalizeQuestionType(type));
+    }
+
+    function renderInlineText(value, type = "") {
+      const safe = removeSpaceBeforeClosingBracket(normalizeBracketChoiceSpacing(escapeHtml(normalizeSolbookMarkers(value, type))));
+      let underlineIndex = 0;
+      const rendered = safe
+        .replace(/\[([^\[\]<>]*?\/[^\[\]<>]*?)\]/g, (_, content) => renderPlainBracketChoiceBox(content))
+        .replace(/\[\[boxout:([^:\]]+):([^|\]]*)\|([^\]]*)\]\]/g, (_, label, left, right) => (
+          `<strong class="choice-box">(${cleanBoxChoiceText(label)}) [${cleanBoxChoiceText(left)} / ${cleanBoxChoiceText(right)}]</strong>`
+        ))
+        .replace(/\[\[u:([\s\S]*?)\]\]/g, (_, text) => {
+          const marker = shouldNumberUnderlineMarkers(type)
+            ? `${SLOT_MARKERS[underlineIndex] || `(${underlineIndex + 1})`} `
+            : "";
+          const targetText = cleanUnderlineTargetText(text);
+          underlineIndex += 1;
+          return `${marker}<u>${targetText}</u>`;
+        });
+      return removeSpaceBeforeClosingBracket(rendered);
+    }
+
+    function addKoreanBreakHintsToHtml(html) {
+      const source = String(html || "");
+      let result = "";
+      let insideTag = false;
+      for (const char of source) {
+        if (char === "<") {
+          insideTag = true;
+          result += char;
+          continue;
+        }
+        if (char === ">") {
+          insideTag = false;
+          result += char;
+          continue;
+        }
+        result += char;
+        if (!insideTag && /[\uAC00-\uD7A3]/.test(char)) {
+          result += "<wbr>";
+        }
+      }
+      return result;
+    }
+
+    function renderStemText(value, type = "") {
+      return addKoreanBreakHintsToHtml(renderInlineText(value, type));
+    }
+
+    function renderChoiceText(value, type = "") {
+      const normalized = normalizeChoiceText(value, type);
+      const html = renderInlineText(normalized, "");
+      return isQuestionType(type, "order") ? html : addKoreanBreakHintsToHtml(html);
+    }
+
+    function stripChoiceSlotLabels(value) {
+      return String(value || "")
+        .replace(/(?:\(|（|\[|【)\s*[A-C]\s*(?:\)|）|\]|】)\s*/g, "")
+        .replace(/\b[A-C]\s*[)）\]】.．:：]\s*/g, "");
+    }
+
+    function cleanChoiceSegment(value, options = {}) {
+      let cleaned = stripChoiceSlotLabels(value);
+      if (options.removeBareLabel) {
+        cleaned = cleaned.replace(/^\s*[A-C]\s+(?=\S)/, "");
+      }
+      return cleaned
+        .replace(/^[\s,，:：/|ㆍ·.…\-–—－]+|[\s,，:：/|ㆍ·.…\-–—－]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function splitChoiceParts(value) {
+      return String(value || "")
+        .split(/\s*(?:\/|／|……|\.{2,}|…{2,}|[-–—－]{2,}|\s+[-–—－]\s+|\s+[|｜]\s+)\s*/);
+    }
+
+    function isBareChoiceSlotLabel(value) {
+      return /^[A-C]$/i.test(String(value || "").trim());
+    }
+
+    function cleanSummarySlotValue(value) {
+      return String(value || "")
+        .replace(/^[\s,，:：/／|｜ㆍ·.…\-–—－]+|[\s,，:：/／|｜ㆍ·.…\-–—－]+$/g, "")
+        .replace(/^\([A-C]\)\s*:?\s*/i, "")
+        .replace(/^[A-C]\s*:\s*/i, "")
+        .replace(/^[A-C]\s+/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function parseSummarySlotParts(value) {
+      const normalized = String(value || "")
+        .replace(/／/g, "/")
+        .replace(/…{2,}|\.{2,}/g, "……")
+        .replace(/\s+/g, " ")
+        .trim();
+      const matches = Array.from(normalized.matchAll(/(?:^|[\s,，/／|｜ㆍ·.…\-–—－]+)(?:\(([A-C])\)|([A-C])(?:\s*:|\s+))/gi));
+      const parts = matches.map((match, index) => {
+        const next = matches[index + 1];
+        const text = cleanSummarySlotValue(normalized.slice(match.index + match[0].length, next ? next.index : normalized.length));
+        return { label: (match[1] || match[2]).toUpperCase(), text };
+      }).filter((part) => part.text);
+      const uniqueLabels = new Set(parts.map((part) => part.label));
+      if (parts.length >= 2 && uniqueLabels.size >= 2) {
+        return parts;
+      }
+      return [];
+    }
+
+    function normalizeKoreanSummaryVerb(value) {
+      const text = cleanSummarySlotValue(value);
+      if (text.endsWith("시킬")) {
+        return `${text.slice(0, -1)}키다`;
+      }
+      if (text.endsWith("할")) {
+        return `${text.slice(0, -1)}하다`;
+      }
+      if (text.endsWith("을") || text.endsWith("를")) {
+        return `${text.slice(0, -1)}다`;
+      }
+      return text;
+    }
+
+    function simplifySummaryTranslationPart(value, index) {
+      let text = cleanSummarySlotValue(value);
+      if (index === 0) {
+        const fixedMatch = text.match(/영구적으로\s+(.+?)\s+것이/);
+        if (fixedMatch) {
+          return cleanSummarySlotValue(fixedMatch[1]);
+        }
+        text = text
+          .replace(/^뇌가\s+/, "")
+          .replace(/\s*때문에$/, "")
+          .replace(/하게\s+남아\s+있기$/, "한")
+          .replace(/되어\s+있기$/, "된")
+          .replace(/적이기$/, "적인")
+          .replace(/가\s+있기$/, "가 있는")
+          .replace(/\s+있기$/, " 있는");
+        return cleanSummarySlotValue(text);
+      }
+      const exposureMatch = text.match(/반복\s+([^\s을를]+)(?:을|를)?\s+통해/);
+      if (exposureMatch) {
+        return cleanSummarySlotValue(exposureMatch[1]);
+      }
+      const objectMatch = text.match(/그것을\s+(.+?)\s+수\s+있다/);
+      if (objectMatch) {
+        return normalizeKoreanSummaryVerb(objectMatch[1]);
+      }
+      return text;
+    }
+
+    function splitSummaryPairText(value) {
+      const normalized = String(value || "")
+        .replace(/／/g, "/")
+        .replace(/…{2,}|\.{2,}/g, "……")
+        .replace(/\s+/g, " ")
+        .trim();
+      const parts = normalized
+        .split(/\s*(?:……|\/|\s+[-–—－]\s+)\s*/)
+        .map(cleanSummarySlotValue)
+        .filter(Boolean);
+      if (parts.length >= 2) {
+        return parts.slice(0, 2);
+      }
+      const commaParts = normalized
+        .split(/\s*,\s*/)
+        .map(cleanSummarySlotValue)
+        .filter(Boolean);
+      return commaParts.length >= 2
+        ? [
+          simplifySummaryTranslationPart(commaParts[0], 0),
+          simplifySummaryTranslationPart(commaParts.slice(1).join(", "), 1)
+        ]
+        : [];
+    }
+
+    function normalizeSummaryChoiceText(value) {
+      const slots = parseSummarySlotParts(value);
+      if (slots.length >= 2) {
+        return slots.map((slot) => cleanSummarySlotValue(slot.text)).join(" - ");
+      }
+      const pair = splitSummaryPairText(value);
+      if (pair.length >= 2) {
+        return `${cleanSummarySlotValue(pair[0])} - ${cleanSummarySlotValue(pair[1])}`;
+      }
+      return cleanSummarySlotValue(value);
+    }
+
+    function normalizeChoiceText(value, type = "") {
+      const raw = String(value || "").trim();
+      const normalizedType = normalizeQuestionType(type);
+      if (normalizedType === "summary") {
+        return normalizeSummaryChoiceText(raw);
+      }
+      if (normalizedType === "order") {
+        const normalized = raw
+          .replace(/[–—－]/g, "-")
+          .replace(/\s*[-–—－]\s*/g, " - ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const parts = normalized
+          .split(/\s+-\s+/)
+          .map((part) => part.trim())
+          .filter(Boolean);
+        if (parts.length >= 2 && parts.every((part) => /^\(?[A-C]\)?$/i.test(part))) {
+          return parts
+            .map((part) => `(${part.replace(/[()]/g, "").toUpperCase()})`)
+            .join(ORDER_CHOICE_SEPARATOR);
+        }
+        const labelSequence = normalized.match(/\(?[A-C]\)?/gi) || [];
+        const onlyLabels = normalized.replace(/\(?[A-C]\)?/gi, "").trim();
+        if (labelSequence.length >= 2 && !onlyLabels) {
+          return labelSequence
+            .map((part) => `(${part.replace(/[()]/g, "").toUpperCase()})`)
+            .join(ORDER_CHOICE_SEPARATOR);
+        }
+        return normalized.replace(/\s+-\s+/g, ORDER_CHOICE_SEPARATOR);
+      }
+      const labelToken = "(?:\\(|（|\\[|【)?\\s*[A-C]\\s*(?:\\)|）|\\]|】|[)）.．:：])";
+      const labelSeparator = "[\\s,，;；/／|｜ㆍ·\\-–—－]+";
+      const labeledRegex = new RegExp(`(?:^|${labelSeparator})${labelToken}\\s*([\\s\\S]*?)(?=(?:${labelSeparator}${labelToken})|$)`, "g");
+      const labeledSegments = Array.from(raw.matchAll(labeledRegex))
+        .map((match) => cleanChoiceSegment(match[1]))
+        .filter(Boolean);
+      if (labeledSegments.length >= 2) {
+        return labeledSegments.join(" - ");
+      }
+      const withoutLabels = stripChoiceSlotLabels(raw);
+      const parts = splitChoiceParts(withoutLabels)
+        .map((part) => cleanChoiceSegment(part, { removeBareLabel: true }))
+        .filter((part) => !isBareChoiceSlotLabel(part))
+        .filter(Boolean);
+      if (parts.length >= 2) {
+        return parts.join(" - ");
+      }
+      return cleanChoiceSegment(withoutLabels).replace(/\s*(?:\/|／|……|\.{2,}|…{2,})\s*/g, " - ").trim();
+    }
+
+    function normalizeDifficulty(value) {
+      const raw = String(value ?? "").trim().toLowerCase();
+      if (!raw || ["none", "common", "공통", "기본", "난이도없음", "난이도 없음"].includes(raw)) {
+        return "none";
+      }
+      if (["easy", "쉬움", "하"].includes(raw)) {
+        return "easy";
+      }
+      if (["medium", "중간", "중", "보통"].includes(raw)) {
+        return "medium";
+      }
+      if (["hard", "어려움", "상"].includes(raw)) {
+        return "hard";
+      }
+      return raw;
+    }
+
+    function getTypeLabel(type) {
+      const normalizedType = normalizeQuestionType(type);
+      return TYPE_LABELS[normalizedType] || type || "기타";
+    }
+
+    function getDifficultyLabel(value) {
+      return DIFFICULTY_LABELS[normalizeDifficulty(value)] || value || "기본";
+    }
+
+    function normalizeSortMode(value) {
+      return value === SORT_MODE_TYPE ? SORT_MODE_TYPE : SORT_MODE_SOURCE;
+    }
+
+    function getSelectedSortMode() {
+      return normalizeSortMode(elements.sortModeSelect?.value || state.sortMode);
+    }
+
+    function getSortModeLabel(value = getSelectedSortMode()) {
+      return normalizeSortMode(value) === SORT_MODE_TYPE ? "유형별" : "지문별";
+    }
+
+    function getOrderedTypeKeys(questions) {
+      const availableTypes = new Set((questions || []).map((question) => question.type || "기타"));
+      const extraTypes = Array.from(availableTypes)
+        .filter((type) => !BATCH_TYPE_ORDER.includes(type))
+        .sort((left, right) => getTypeLabel(left).localeCompare(getTypeLabel(right), "ko"));
+      return [
+        ...BATCH_TYPE_ORDER.filter((type) => availableTypes.has(type)),
+        ...extraTypes
+      ];
+    }
+
+    function sortQuestions(questions, sortMode = getSelectedSortMode()) {
+      const mode = normalizeSortMode(sortMode);
+      const typeOrder = new Map(getOrderedTypeKeys(questions).map((type, index) => [type, index]));
+      return questions.slice().sort((left, right) => {
+        const sourceDifference = Number(left.sourceOrder || 0) - Number(right.sourceOrder || 0);
+        const sourceIndexDifference = Number(left.sourceIndex || 0) - Number(right.sourceIndex || 0);
+        const typeDifference = (typeOrder.get(left.type || "기타") ?? Number.MAX_SAFE_INTEGER)
+          - (typeOrder.get(right.type || "기타") ?? Number.MAX_SAFE_INTEGER);
+        if (mode === SORT_MODE_TYPE) {
+          return typeDifference || sourceDifference || sourceIndexDifference;
+        }
+        return sourceDifference || typeDifference || sourceIndexDifference;
+      });
+    }
+
+    function populateFilters() {
+      const types = Array.from(new Set(state.questions.map((question) => question.type || "").filter(Boolean)))
+        .sort((left, right) => getTypeLabel(left).localeCompare(getTypeLabel(right), "ko"));
+      elements.typeSelect.innerHTML = [
+        '<option value="">전체 유형</option>',
+        ...types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(getTypeLabel(type))}</option>`)
+      ].join("");
+
+      const difficulties = Array.from(new Set(state.questions.map((question) => question.difficultyKey || normalizeDifficulty(question.difficulty))));
+      elements.difficultySelect.innerHTML = [
+        '<option value="">전체 난이도</option>',
+        ...difficulties.map((difficulty) => `<option value="${escapeHtml(difficulty)}">${escapeHtml(getDifficultyLabel(difficulty))}</option>`)
+      ].join("");
+    }
+
+    function getFilteredQuestions() {
+      const type = elements.typeSelect.value;
+      const difficulty = elements.difficultySelect.value;
+      const filtered = state.questions.filter((question) => {
+        if (type && question.type !== type) {
+          return false;
+        }
+        if (difficulty && (question.difficultyKey || normalizeDifficulty(question.difficulty)) !== difficulty) {
+          return false;
+        }
+        return true;
+      });
+      return sortQuestions(filtered);
+    }
+
+    function renderChoices(question) {
+      const choices = Array.isArray(question.choices) ? question.choices : [];
+      if (!choices.length) {
+        return "";
+      }
+      const choiceListClass = isQuestionType(question.type, "order") ? "choice-list order-choice-list" : "choice-list";
+      return `
+        <ol class="${choiceListClass}">
+          ${choices.map((choice, index) => `
+            <li>
+              <strong>${CHOICE_MARKERS[index] || `${index + 1}.`}</strong>
+              <span>${renderChoiceText(choice, question.type)}</span>
+            </li>
+          `).join("")}
+        </ol>
+      `;
+    }
+
+    function getRenderedLineCount(element) {
+      const style = getComputedStyle(element);
+      const fontSize = parseFloat(style.fontSize) || 16;
+      const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.5;
+      const height = element.getBoundingClientRect().height;
+      return Math.max(1, Math.round(height / lineHeight));
+    }
+
+    function isInlineTextInsideBox(element) {
+      const tolerance = 1;
+      const parent = element.parentElement;
+      const elementRect = element.getBoundingClientRect();
+      const parentRect = parent?.getBoundingClientRect();
+      const widthOk = element.scrollWidth <= element.clientWidth + tolerance;
+      const rightOk = !parentRect || elementRect.right <= parentRect.right + tolerance;
+      return widthOk && rightOk;
+    }
+
+    function fitChoiceTextSpacing(root) {
+      const scope = root || document;
+      scope.querySelectorAll(".choice-list span").forEach((target) => {
+        const isOrderChoice = Boolean(target.closest(".order-choice-list"));
+        target.style.letterSpacing = "normal";
+        target.style.wordSpacing = "normal";
+        target.style.textAlign = "left";
+        target.style.textAlignLast = "left";
+        target.style.whiteSpace = isOrderChoice ? "nowrap" : "normal";
+        target.style.overflowWrap = isOrderChoice ? "normal" : "anywhere";
+        target.style.wordBreak = isOrderChoice ? "normal" : "normal";
+        delete target.dataset.choiceFitSpacing;
+
+        if (isOrderChoice) {
+          return;
+        }
+
+        if (getRenderedLineCount(target) <= 1 && isInlineTextInsideBox(target)) {
+          return;
+        }
+
+        let fitted = false;
+        for (let step = 1; step <= 10; step += 1) {
+          const spacing = `-${(step / 100).toFixed(2)}em`;
+          target.style.letterSpacing = spacing;
+          target.dataset.choiceFitSpacing = spacing;
+          if (getRenderedLineCount(target) <= 1 && isInlineTextInsideBox(target)) {
+            fitted = true;
+            break;
+          }
+        }
+
+        if (!fitted) {
+          target.style.letterSpacing = "normal";
+          delete target.dataset.choiceFitSpacing;
+          target.style.textAlign = "justify";
+          target.style.textAlignLast = "left";
+          target.style.whiteSpace = "normal";
+          target.style.overflowWrap = "anywhere";
+          target.style.wordBreak = "normal";
+        }
+      });
+    }
+
+    function renderQuestionCard(question, outputNumber) {
+      return `
+        <article class="question-card">
+          <div class="question-kicker">${outputNumber}번 · ${escapeHtml(getTypeLabel(question.type))} ${escapeHtml(getDifficultyLabel(question.difficulty))}</div>
+          <p class="question-stem">${renderStemText(question.stem || "다음 글을 읽고 물음에 답하시오.", question.type)}</p>
+          <p class="question-body">${renderInlineText(question.body || "", question.type)}</p>
+          ${renderChoices(question)}
+        </article>
+      `;
+    }
+
+    function splitCircledItems(value) {
+      const normalized = String(value || "").replace(/\r\n?/g, "\n").trim();
+      const matches = Array.from(normalized.matchAll(/([①②③④⑤])\s*([\s\S]*?)(?=\s*[①②③④⑤]\s*|$)/g));
+      return matches.map((match) => ({
+        marker: match[1],
+        text: cleanSummarySlotValue(match[2])
+      })).filter((item) => item.text);
+    }
+
+    function formatChoiceInterpretation(value) {
+      const items = splitCircledItems(value);
+      if (items.length) {
+        return items.map((item) => `${item.marker} ${item.text}`).join("\n");
+      }
+      return cleanSummarySlotValue(value);
+    }
+
+    function formatSummaryChoiceInterpretation(question, value) {
+      const items = splitCircledItems(value);
+      if (!items.length) {
+        return cleanSummarySlotValue(value);
+      }
+      return items.map((item) => `${item.marker} ${normalizeSummaryChoiceText(item.text)}`).join("\n");
+    }
+
+    function formatVocabularyMeanings(value) {
+      const text = String(value || "").replace(/\r\n?/g, "\n").trim();
+      const match = text.match(/어휘\s*뜻\s*:/);
+      if (!match) {
+        return text;
+      }
+      const before = text
+        .slice(0, match.index)
+        .trimEnd()
+        .replace(/(^|[\s.。!?])([A-C])는/g, "$1($2)는");
+      const label = match[0].replace(/\s+/g, " ");
+      const rawAfter = text.slice(match.index + match[0].length).trim();
+      const abcMatches = Array.from(rawAfter.matchAll(/(?:^|[;\n]\s*)(?:\(([A-C])\)|([A-C]))\s+([\s\S]*?)(?=(?:[;\n]\s*)(?:\([A-C]\)|[A-C])\s+|$)/g));
+      const after = abcMatches.length >= 2
+        ? abcMatches.map((item) => `(${item[1] || item[2]}) ${cleanSummarySlotValue(item[3])}`).join("\n")
+        : formatChoiceInterpretation(rawAfter);
+      return [before, label, after].filter(Boolean).join("\n\n").replace(`${label}\n\n`, `${label}\n`);
+    }
+
+    function formatExplanationText(value, question = null) {
+      const text = formatVocabularyMeanings(value);
+      const match = text.match(/선택지\s*해석\s*:/);
+      if (!match) {
+        return text;
+      }
+      const before = text.slice(0, match.index).trimEnd();
+      const label = match[0].replace(/\s+/g, " ");
+      const rawAfter = text.slice(match.index + match[0].length).trim();
+      const after = isQuestionType(question?.type, "summary")
+        ? formatSummaryChoiceInterpretation(question, rawAfter)
+        : formatChoiceInterpretation(rawAfter);
+      return before
+        ? [before, `${label}\n${after}`].filter(Boolean).join("\n\n")
+        : [label, after].filter(Boolean).join("\n");
+    }
+
+    function renderAnswerCard(question, index) {
+      const explanationType = isQuestionType(question.type, "order") ? "" : question.type;
+      return `
+        <article class="answer-card">
+          <strong>${index + 1}번 ${escapeHtml(question.answer || "-")}</strong>
+          <p>${renderInlineText(formatExplanationText(question.explanation || "", question), explanationType)}</p>
+        </article>
+      `;
+    }
+
+    function renderAnswerSection(questions, force = false) {
+      if (!force && !elements.includeAnswerInput.checked) {
+        return "";
+      }
+      return `
+        <section class="answer-section">
+          <h2>정답 및 해설</h2>
+          <div class="answer-grid">
+            ${questions.map((question, index) => renderAnswerCard(question, index)).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderExamDocumentHtml(questions, options = {}) {
+      const title = options.title || "쏠북 문제지";
+      const subtitle = options.subtitle || `${state.sourceName || "선택한 JSON"} · ${questions.length}문항`;
+      const includeAnswers = Boolean(options.includeAnswers);
+      const totalQuestionCount = Number(options.totalQuestionCount || questions.length);
+      const isPreviewLimited = totalQuestionCount > questions.length;
+      return `
+        <header class="exam-head">
+          <div>
+            <h1>${escapeHtml(title)}</h1>
+            <p>${escapeHtml(subtitle)}</p>
+          </div>
+          <img class="exam-logo" src="./assets/code-english-institute-header-logo.png" alt="CODE 영어연구소">
+        </header>
+        ${isPreviewLimited ? `<p class="preview-limit-note">빠른 미리보기: ${questions.length}/${totalQuestionCount}문항 표시 · PDF와 ZIP에는 전체 ${totalQuestionCount}문항 저장</p>` : ""}
+        <section class="question-grid">
+          ${questions.map((question, index) => renderQuestionCard(question, index + 1)).join("")}
+        </section>
+        ${renderAnswerSection(questions, includeAnswers)}
+      `;
+    }
+
+    function renderExam() {
+      const questions = getFilteredQuestions();
+      state.sortMode = getSelectedSortMode();
+      state.filtered = questions;
+      elements.loadedCount.textContent = `${questions.length}/${state.questions.length}문항`;
+      updateBatchButton();
+      if (!state.questions.length) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = "쏠북 형식 JSON 파일을 선택하면 바로 문제지가 생성됩니다.";
+        return;
+      }
+      if (!questions.length) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = "조건에 맞는 문제가 없습니다.";
+        return;
+      }
+      elements.examRoot.className = "exam-document";
+      const previewQuestions = questions.slice(0, PREVIEW_QUESTION_LIMIT);
+      const title = elements.examTitleInput.value.trim() || "쏠북 문제지";
+      const defaultSubtitle = `${state.sourceName || "선택한 JSON"} · ${questions.length}문항`;
+      if (!state.subtitleEdited) {
+        elements.examSubtitleInput.value = defaultSubtitle;
+      }
+      const subtitle = elements.examSubtitleInput.value.trim() || defaultSubtitle;
+      const renderVersion = ++state.renderVersion;
+      elements.examRoot.innerHTML = renderExamDocumentHtml(previewQuestions, {
+        title,
+        subtitle,
+        includeAnswers: elements.includeAnswerInput.checked,
+        totalQuestionCount: questions.length
+      });
+      const finishPreviewLayout = () => {
+        if (renderVersion !== state.renderVersion) {
+          return;
+        }
+        normalizeRenderedBracketChoiceSpacing(elements.examRoot);
+        fitChoiceTextSpacing(elements.examRoot);
+      };
+      if (!document.fonts || document.fonts.status === "loaded") {
+        finishPreviewLayout();
+      } else {
+        document.fonts.ready.then(() => {
+          finishPreviewLayout();
+        });
+      }
+    }
+
+    function scheduleRenderExam() {
+      if (state.renderFrame) {
+        cancelAnimationFrame(state.renderFrame);
+      }
+      state.renderFrame = requestAnimationFrame(() => {
+        state.renderFrame = 0;
+        renderExam();
+      });
+    }
+
+    function updatePreviewHeader() {
+      const title = elements.examTitleInput.value.trim() || "쏠북 문제지";
+      const defaultSubtitle = `${state.sourceName || "선택한 JSON"} · ${state.filtered.length}문항`;
+      const subtitle = elements.examSubtitleInput.value.trim() || defaultSubtitle;
+      const heading = elements.examRoot.querySelector(".exam-head h1");
+      const subheading = elements.examRoot.querySelector(".exam-head p");
+      if (heading) {
+        heading.textContent = title;
+      }
+      if (subheading) {
+        subheading.textContent = subtitle;
+      }
+    }
+
+    function normalizeQuestionRows(payload) {
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+      if (payload && typeof payload === "object") {
+        const listKey = Object.keys(payload).find((key) => Array.isArray(payload[key]));
+        if (listKey) {
+          return payload[listKey];
+        }
+      }
+      throw new Error("JSON 최상위 구조가 배열이 아니거나, 배열 필드를 찾지 못했습니다.");
+    }
+
+    function normalizeQuestionsFromPayload(payload, sourceName = "선택한 JSON", sourceOrder = 0) {
+      const sourceId = `${sourceOrder + 1}-${sourceName}`;
+      return normalizeQuestionRows(payload)
+        .filter((row) => row && typeof row === "object")
+        .map((row, index) => ({
+          type: normalizeQuestionType(row.type || ""),
+          difficulty: row.difficulty ?? null,
+          stem: row.stem || row.question || row.prompt || "",
+          body: row.body || row.passage || row.text || "",
+          choices: Array.isArray(row.choices) ? row.choices : [],
+          answer: row.answer || "",
+          explanation: row.explanation || row.commentary || "",
+          sourceName,
+          sourceOrder,
+          sourceId,
+          sourceIndex: index + 1,
+          difficultyKey: normalizeDifficulty(row.difficulty),
+          uniqueId: `${sourceId}__${index + 1}`
+        }));
+    }
+
+    function buildBatchQuestionIndex(questions) {
+      const sourceMap = new Map();
+      const byDifficulty = new Map();
+      (questions || []).forEach((question) => {
+        if (!sourceMap.has(question.sourceId)) {
+          sourceMap.set(question.sourceId, {
+            sourceId: question.sourceId,
+            sourceOrder: question.sourceOrder
+          });
+        }
+        const difficultyKey = question.difficultyKey || normalizeDifficulty(question.difficulty);
+        if (!byDifficulty.has(difficultyKey)) {
+          byDifficulty.set(difficultyKey, new Map());
+        }
+        const sourceGroups = byDifficulty.get(difficultyKey);
+        if (!sourceGroups.has(question.sourceId)) {
+          sourceGroups.set(question.sourceId, new Map());
+        }
+        const typeGroups = sourceGroups.get(question.sourceId);
+        const typeKey = question.type || "기타";
+        if (!typeGroups.has(typeKey)) {
+          typeGroups.set(typeKey, []);
+        }
+        typeGroups.get(typeKey).push(question);
+      });
+      byDifficulty.forEach((sourceGroups) => {
+        sourceGroups.forEach((typeGroups) => {
+          typeGroups.forEach((rows) => rows.sort((left, right) => left.sourceIndex - right.sourceIndex));
+        });
+      });
+      return {
+        sources: Array.from(sourceMap.values()).sort((left, right) => left.sourceOrder - right.sourceOrder),
+        byDifficulty
+      };
+    }
+
+    function getSourceSummary(sources) {
+      if (!sources.length) {
+        return "선택된 JSON 없음";
+      }
+      if (sources.length === 1) {
+        return sources[0].name;
+      }
+      const preview = sources.slice(0, 2).map((source) => source.name).join(", ");
+      return `${sources.length}개 JSON 통합: ${preview}${sources.length > 2 ? " ..." : ""}`;
+    }
+
+    function applyLoadedQuestions(rows, sources, sourceName = "선택한 JSON") {
+      if (!rows.length) {
+        throw new Error("출제할 문항이 없습니다.");
+      }
+      state.questions = rows;
+      state.sources = sources;
+      state.sourceName = sourceName;
+      state.batchQuestionIndex = buildBatchQuestionIndex(rows);
+      state.subtitleEdited = false;
+      elements.jsonFileName.textContent = getSourceSummary(sources);
+      setBatchStatus("");
+      if (!elements.examTitleInput.value.trim() || elements.examTitleInput.value.trim() === "쏠북 문제지" || elements.examTitleInput.dataset.autoTitle === "true") {
+        elements.examTitleInput.value = sources.length > 1 ? "통합 문제지" : sourceName.replace(/\.json$/i, "") || "JSON 문제지";
+        elements.examTitleInput.dataset.autoTitle = "true";
+      }
+      populateFilters();
+      renderExam();
+    }
+
+    function loadQuestionsFromPayload(payload, sourceName = "선택한 JSON") {
+      const rows = normalizeQuestionsFromPayload(payload, sourceName, 0);
+      applyLoadedQuestions(rows, [{ name: sourceName, count: rows.length }], sourceName);
+    }
+
+    async function loadQuestionsFromFiles(files) {
+      try {
+        const selectedFiles = Array.from(files || []).filter(Boolean);
+        if (!selectedFiles.length) {
+          renderExam();
+          return;
+        }
+        setBatchStatus(`${selectedFiles.length}개 JSON을 읽는 중입니다...`);
+        const loadedSources = await Promise.all(selectedFiles.map(async (file, sourceOrder) => {
+          const text = (await file.text()).replace(/^\uFEFF/, "");
+          const payload = JSON.parse(text);
+          const rows = normalizeQuestionsFromPayload(payload, file.name, sourceOrder);
+          return { name: file.name, count: rows.length, rows };
+        }));
+        const sourceRows = loadedSources.flatMap((source) => source.rows);
+        const sources = loadedSources.map(({ name, count }) => ({ name, count }));
+        applyLoadedQuestions(
+          sourceRows,
+          sources,
+          selectedFiles.length > 1 ? `${selectedFiles.length}개 JSON 통합` : selectedFiles[0].name
+        );
+      } catch (error) {
+        elements.examRoot.className = "empty-state";
+        elements.examRoot.textContent = error?.message || "JSON 문제를 읽지 못했습니다.";
+      }
+    }
+
+    async function loadQuestionsFromFile(file) {
+      return loadQuestionsFromFiles(file ? [file] : []);
+    }
+
+    function updateBatchButton() {
+      const isBusy = state.isBatchBusy || state.isSingleBusy;
+      elements.batchZipButton.disabled = isBusy || !state.questions.length;
+      elements.printButton.disabled = isBusy || !state.filtered.length;
+    }
+
+    function setBatchStatus(message = "") {
+      elements.batchZipStatus.textContent = message;
+    }
+
+    function clearBatchDownloadUrl() {
+      if (state.batchDownloadUrl) {
+        URL.revokeObjectURL(state.batchDownloadUrl);
+        state.batchDownloadUrl = "";
+      }
+    }
+
+    function setBatchBusy(isBusy) {
+      state.isBatchBusy = isBusy;
+      updateBatchButton();
+      elements.batchZipButton.textContent = isBusy ? "ZIP 저장 중..." : "12개 시험지 ZIP 저장";
+    }
+
+    function setSingleBusy(isBusy) {
+      state.isSingleBusy = isBusy;
+      updateBatchButton();
+      elements.printButton.textContent = isBusy ? "PDF 저장 중..." : "빠른 PDF 저장";
+    }
+
+    function toSafeFileName(value) {
+      return String(value || "solbook")
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120) || "solbook";
+    }
+
+    function getQuestionsForBatchExam(difficultyKey, round, sortMode = getSelectedSortMode()) {
+      const index = state.batchQuestionIndex || buildBatchQuestionIndex(state.questions);
+      const sources = index.sources;
+      const selected = [];
+      const availableTypes = new Set();
+      const sourceTypeGroups = index.byDifficulty.get(difficultyKey) || new Map();
+      sourceTypeGroups.forEach((typeGroups) => {
+        typeGroups.forEach((questions, type) => {
+          if (questions.length >= round) {
+            availableTypes.add(type);
+          }
+        });
+      });
+      const orderedTypes = getOrderedTypeKeys(Array.from(availableTypes).map((type) => ({ type })));
+      const appendQuestion = (source, type) => {
+          const questions = sourceTypeGroups.get(source.sourceId)?.get(type) || [];
+          const question = questions[round - 1];
+          if (question) {
+            selected.push(question);
+          }
+      };
+      if (normalizeSortMode(sortMode) === SORT_MODE_TYPE) {
+        orderedTypes.forEach((type) => sources.forEach((source) => appendQuestion(source, type)));
+      } else {
+        sources.forEach((source) => orderedTypes.forEach((type) => appendQuestion(source, type)));
+      }
+      return selected;
+    }
+
+    function buildBatchExamPlans(sortMode = getSelectedSortMode()) {
+      const title = elements.examTitleInput.value.trim() || "통합 문제지";
+      const sortLabel = getSortModeLabel(sortMode);
+      return BATCH_DIFFICULTY_GROUPS.flatMap((difficulty) => (
+        BATCH_ROUNDS.map((round) => {
+          const subtitle = `난이도 - ${difficulty.label} ${round}차 · ${sortLabel} 정렬`;
+          const questions = getQuestionsForBatchExam(difficulty.key, round, sortMode);
+          return {
+            title,
+            subtitle,
+            questions,
+            includeAnswers: true,
+            filename: `${toSafeFileName(title)}_${toSafeFileName(difficulty.label)}_${round}차_${sortLabel}.pdf`
+          };
+        })
+      ));
+    }
+
+    function waitForImages(root) {
+      const images = Array.from(root.querySelectorAll("img"));
+      return Promise.all(images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", resolve, { once: true });
+        });
+      }));
+    }
+
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(reader.result));
+        reader.addEventListener("error", reject);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function inlineCanvasSafeImages(root) {
+      const images = Array.from(root.querySelectorAll("img"));
+      await Promise.all(images.map(async (image) => {
+        const source = image.currentSrc || image.src || image.getAttribute("src");
+        if (!source || source.startsWith("data:")) {
+          return;
+        }
+        try {
+          const response = await fetch(source, { cache: "force-cache" });
+          if (!response.ok) {
+            throw new Error(`이미지를 불러오지 못했습니다: ${response.status}`);
+          }
+          const blob = await response.blob();
+          image.crossOrigin = "anonymous";
+          image.src = await blobToDataUrl(blob);
+        } catch (error) {
+          console.warn("PDF 이미지 변환 실패, 해당 이미지를 출력에서 제외합니다.", error);
+          image.removeAttribute("src");
+          image.style.visibility = "hidden";
+        }
+      }));
+      await waitForImages(root);
+    }
+
+    function nodeFromHtml(html) {
+      const template = document.createElement("template");
+      template.innerHTML = html.trim();
+      return template.content.firstElementChild;
+    }
+
+    function createPdfPage(stage, options = {}) {
+      const page = document.createElement("section");
+      page.className = "pdf-page";
+      if (options.header) {
+        page.insertAdjacentHTML("beforeend", `
+          <header class="exam-head">
+            <div>
+              <h1>${escapeHtml(options.title || "통합 문제지")}</h1>
+              <p>${escapeHtml(options.subtitle || "")}</p>
+            </div>
+            <img class="exam-logo" src="./assets/code-english-institute-header-logo.png" alt="CODE 영어연구소">
+          </header>
+        `);
+      }
+      if (options.answer) {
+        const section = document.createElement("section");
+        section.className = "answer-section";
+        if (options.answerTitle) {
+          section.insertAdjacentHTML("beforeend", "<h2>정답 및 해설</h2>");
+        }
+        const grid = document.createElement("div");
+        grid.className = "answer-grid";
+        section.appendChild(grid);
+        page.appendChild(section);
+        stage.appendChild(page);
+        return { page, grid };
+      }
+      const grid = document.createElement("section");
+      grid.className = "question-grid";
+      page.appendChild(grid);
+      stage.appendChild(page);
+      return { page, grid };
+    }
+
+    function getGridAvailableHeight(page, grid) {
+      const pageStyle = getComputedStyle(page);
+      const pageRect = page.getBoundingClientRect();
+      const gridRect = grid.getBoundingClientRect();
+      return pageRect.bottom - gridRect.top - parseFloat(pageStyle.paddingBottom || "0");
+    }
+
+    function appendPaginatedCards(stage, items, createCard, createPage) {
+      let current = createPage(true);
+      items.forEach((item, index) => {
+        const card = createCard(item, index);
+        current.grid.appendChild(card);
+        normalizeRenderedBracketChoiceSpacing(card);
+        fitChoiceTextSpacing(card);
+        const availableHeight = getGridAvailableHeight(current.page, current.grid);
+        if (current.grid.scrollHeight > availableHeight && current.grid.children.length > 1) {
+          card.remove();
+          current = createPage(false);
+          current.grid.appendChild(card);
+          normalizeRenderedBracketChoiceSpacing(card);
+          fitChoiceTextSpacing(card);
+        }
+      });
+    }
+
+    function buildPdfPagesForPlan(plan, stage) {
+      appendPaginatedCards(
+        stage,
+        plan.questions,
+        (question, index) => nodeFromHtml(renderQuestionCard(question, index + 1)),
+        (isFirstPage) => createPdfPage(stage, {
+          header: isFirstPage,
+          title: plan.title,
+          subtitle: plan.subtitle
+        })
+      );
+      appendPaginatedCards(
+        stage,
+        plan.questions,
+        (question, index) => nodeFromHtml(renderAnswerCard(question, index)),
+        (isFirstAnswerPage) => createPdfPage(stage, {
+          answer: true,
+          answerTitle: isFirstAnswerPage
+        })
+      );
+    }
+
+    function getPdfRenderOptions(page) {
+      return {
+        backgroundColor: "#ffffff",
+        logging: false,
+        scale: 1,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 0,
+        windowWidth: 794,
+        width: 794,
+        height: 1123
+      };
+    }
+
+    async function capturePdfPageImage(page) {
+      let canvas = await html2canvas(page, getPdfRenderOptions(page));
+      try {
+        const image = canvas.toDataURL("image/jpeg", 0.86);
+        return { canvas, image };
+      } catch (error) {
+        canvas.width = 0;
+        canvas.height = 0;
+        if (!String(error?.message || error).toLowerCase().includes("tainted")) {
+          throw error;
+        }
+        page.querySelectorAll("img").forEach((image) => {
+          image.removeAttribute("src");
+          image.style.visibility = "hidden";
+        });
+        canvas = await html2canvas(page, getPdfRenderOptions(page));
+        return {
+          canvas,
+          image: canvas.toDataURL("image/jpeg", 0.86)
+        };
+      }
+    }
+
+    const DIRECT_PDF_FONT = {
+      url: "./assets/fonts/NotoSansKR-VF.ttf",
+      base64ScriptUrl: "./assets/fonts/NotoSansKR-VF.base64.js",
+      fileName: "NotoSansKR-VF.ttf",
+      family: "NotoSansKR"
+    };
+    const DIRECT_HEADER_LOGO = {
+      url: "./assets/code-english-institute-header-logo.png",
+      base64ScriptUrl: "./assets/code-english-institute-header-logo.base64.js"
+    };
+    const DIRECT_PX_TO_MM = 210 / 794;
+    const DIRECT_TEXT_LINE_RATIO = 1.5;
+    const DIRECT_LAYOUT = {
+      page: {
+        width: 210,
+        height: 297,
+        marginX: 10,
+        marginTop: 15,
+        marginBottom: 15
+      },
+      grid: {
+        questionGap: 2,
+        answerGap: 2
+      },
+      colors: {
+        ink: [0, 0, 0],
+        muted: [0, 0, 0],
+        accent: [0, 0, 0],
+        body: [0, 0, 0],
+        choice: [0, 0, 0],
+        line: [205, 214, 211],
+        paper: [255, 255, 255],
+        answerPaper: [255, 255, 255]
+      },
+      header: {
+        titleSize: 20.25,
+        subtitleSize: 9.75,
+        logoWidth: 22,
+        logoHeight: 16.7,
+        paddingBottom: 2,
+        marginBottom: 3,
+        lineWidth: 0.45
+      },
+      card: {
+        padding: 1.6,
+        radius: 2.6,
+        gapAfter: 1.2,
+        borderWidth: 0.26
+      },
+      answerCard: {
+        padding: 1.8,
+        radius: 2.8,
+        gapAfter: 1.4,
+        borderWidth: 0.26
+      },
+      typography: {
+        kicker: 9.6,
+        stem: 10.5,
+        body: 9.5,
+        choice: 9.5,
+        answer: 9,
+        answerTitle: 16.5
+      },
+      spacing: {
+        kickerAfter: 0.5,
+        stemAfter: 0.6,
+        bodyAfter: 9.5 * 0.352778 * DIRECT_TEXT_LINE_RATIO,
+        choiceItemGap: 0.1,
+        choiceMarkerWidth: 3.8,
+        choiceMarkerGap: 0.7
+      }
+    };
+    let directPdfFontBase64Promise = null;
+    let directPdfFontScriptPromise = null;
+    let directHeaderLogoDataUrlPromise = null;
+    let directHeaderLogoScriptPromise = null;
+
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 0x8000;
+      let binary = "";
+      for (let index = 0; index < bytes.length; index += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function loadDirectPdfFontBase64Script() {
+      if (window.PDFLAB_DIRECT_PDF_FONT_BASE64) {
+        return Promise.resolve();
+      }
+      if (!directPdfFontScriptPromise) {
+        directPdfFontScriptPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = DIRECT_PDF_FONT.base64ScriptUrl;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("빠른 직접 출력용 내장 한글 폰트 파일을 불러오지 못했습니다."));
+          document.head.appendChild(script);
+        });
+      }
+      return directPdfFontScriptPromise;
+    }
+
+    async function getDirectPdfFontBase64() {
+      if (!directPdfFontBase64Promise) {
+        directPdfFontBase64Promise = (async () => {
+          try {
+            await loadDirectPdfFontBase64Script();
+            if (window.PDFLAB_DIRECT_PDF_FONT_BASE64) {
+              return window.PDFLAB_DIRECT_PDF_FONT_BASE64;
+            }
+          } catch (error) {
+            console.warn(error);
+          }
+
+          try {
+            const response = await fetch(DIRECT_PDF_FONT.url);
+            if (!response.ok) {
+              throw new Error(`빠른 직접 출력용 한글 폰트를 불러오지 못했습니다: ${response.status}`);
+            }
+            return arrayBufferToBase64(await response.arrayBuffer());
+          } catch (error) {
+            throw new Error("빠른 직접 출력용 한글 폰트를 불러오지 못했습니다. start.bat 로컬 서버에서 다시 열거나 새로고침 후 시도해주세요.");
+          }
+        })();
+      }
+      return directPdfFontBase64Promise;
+    }
+
+    async function registerDirectPdfFont(pdf) {
+      const fontBase64 = await getDirectPdfFontBase64();
+      pdf.addFileToVFS(DIRECT_PDF_FONT.fileName, fontBase64);
+      pdf.addFont(DIRECT_PDF_FONT.fileName, DIRECT_PDF_FONT.family, "normal");
+      pdf.addFont(DIRECT_PDF_FONT.fileName, DIRECT_PDF_FONT.family, "bold");
+      pdf.setFont(DIRECT_PDF_FONT.family, "normal");
+    }
+
+    function loadDirectHeaderLogoBase64Script() {
+      if (window.PDFLAB_DIRECT_HEADER_LOGO_DATA_URL) {
+        return Promise.resolve();
+      }
+      if (!directHeaderLogoScriptPromise) {
+        directHeaderLogoScriptPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = DIRECT_HEADER_LOGO.base64ScriptUrl;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("빠른 직접 출력용 학원 로고 파일을 불러오지 못했습니다."));
+          document.head.appendChild(script);
+        });
+      }
+      return directHeaderLogoScriptPromise;
+    }
+
+    async function getDirectHeaderLogoDataUrl() {
+      if (!directHeaderLogoDataUrlPromise) {
+        directHeaderLogoDataUrlPromise = (async () => {
+          try {
+            await loadDirectHeaderLogoBase64Script();
+            if (window.PDFLAB_DIRECT_HEADER_LOGO_DATA_URL) {
+              return window.PDFLAB_DIRECT_HEADER_LOGO_DATA_URL;
+            }
+          } catch (error) {
+            console.warn(error);
+          }
+
+          try {
+            const response = await fetch(DIRECT_HEADER_LOGO.url);
+            if (!response.ok) {
+              return "";
+            }
+            return blobToDataUrl(await response.blob());
+          } catch (error) {
+            console.warn("직접 출력용 학원 로고를 불러오지 못했습니다.", error);
+            return "";
+          }
+        })();
+      }
+      return directHeaderLogoDataUrlPromise;
+    }
+
+    function directNormalizeMarkedText(value, type = "") {
+      let underlineIndex = 0;
+      return removeSpaceBeforeClosingBracket(normalizeBracketChoiceSpacing(normalizeSolbookMarkers(value, type)))
+        .replace(/\[([^\[\]]*?\/[^\[\]]*?)\]/g, (_, content) => directPlainBracketChoiceMarker(content))
+        .replace(/\[\[boxout:([^:\]]+):([^|\]]*)\|([^\]]*)\]\]/g, (_, label, left, right) => directLabeledBracketChoiceMarker(`(${label})`, left, right))
+        .replace(/\[\[u:([\s\S]*?)\]\]/g, (_, text) => {
+          const marker = shouldNumberUnderlineMarkers(type)
+            ? `${SLOT_MARKERS[underlineIndex] || `(${underlineIndex + 1})`} `
+            : "";
+          const targetText = cleanUnderlineTargetText(text);
+          underlineIndex += 1;
+          return `${marker}[[direct-bold-underline:${targetText}]]`;
+        })
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, "\"")
+        .replace(/&#39;/g, "'")
+        .replace(/\r\n?/g, "\n")
+        .replace(/[\s\u00A0\u2000-\u200B\u202F\u205F\u3000]+(?=\])/g, "")
+        .trim();
+    }
+
+    function directPlainText(value, type = "") {
+      return directNormalizeMarkedText(value, type)
+        .replace(/\[\[direct-bold-bracket:([\s\S]*?)\]\]/g, (_, text) => `[${removeSpaceBeforeClosingBracket(text)}]`)
+        .replace(/\[\[direct-(?:bold|underline|bold-underline):([\s\S]*?)\]\]/g, (_, text) => restoreDirectSafeBrackets(text));
+    }
+
+    function directMarkedSegments(value, type = "") {
+      const raw = removeSpaceBeforeClosingBracket(value);
+      const normalized = (raw.includes("[[direct-")
+        ? raw
+        : directNormalizeMarkedText(raw, type))
+        .replace(/\[\[direct-bold-bracket:([\s\S]*?)\]\]/g, (_, text) => (
+          `[[direct-bold:${DIRECT_SAFE_OPEN_BRACKET}${removeSpaceBeforeClosingBracket(text)}${DIRECT_SAFE_CLOSE_BRACKET}]]`
+        ));
+      const segments = [];
+      let lastIndex = 0;
+      const pattern = /\[\[direct-(bold|underline|bold-underline):([\s\S]*?)\]\]/g;
+      normalized.replace(pattern, (match, kind, text, offset) => {
+        if (offset > lastIndex) {
+          segments.push({ text: normalized.slice(lastIndex, offset), bold: false, underline: false });
+        }
+        const segmentText = restoreDirectSafeBrackets(text);
+        segments.push({
+          text: segmentText,
+          bold: kind === "bold" || kind === "bold-underline",
+          underline: kind === "underline" || kind === "bold-underline"
+        });
+        lastIndex = offset + match.length;
+        return match;
+      });
+      if (lastIndex < normalized.length) {
+        segments.push({ text: normalized.slice(lastIndex), bold: false, underline: false });
+      }
+      return segments.length ? segments : [{ text: normalized, bold: false, underline: false }];
+    }
+
+    function directLineHeight(fontSize, ratio = 1.5) {
+      return fontSize * 0.352778 * ratio;
+    }
+
+    function directCharSpaceForStep(fontSize, step) {
+      return -(step / 100) * fontSize * 0.352778;
+    }
+
+    function directTextWidthWithCharSpace(pdf, text, charSpace = 0) {
+      return pdf.getTextWidth(text) + charSpace * Math.max(0, String(text || "").length - 1);
+    }
+
+    function getDirectFitCharSpace(pdf, text, width, fontSize) {
+      pdf.setFontSize(fontSize);
+      if (directTextWidthWithCharSpace(pdf, text, 0) <= width) {
+        return { fits: true, charSpace: 0 };
+      }
+      for (let step = 1; step <= 10; step += 1) {
+        const charSpace = directCharSpaceForStep(fontSize, step);
+        if (directTextWidthWithCharSpace(pdf, text, charSpace) <= width) {
+          return { fits: true, charSpace };
+        }
+      }
+      return { fits: false, charSpace: 0 };
+    }
+
+    function getDirectCandidateFit(pdf, text, width, fontSize, options = {}) {
+      return {
+        fits: directTextWidthWithCharSpace(pdf, text, 0) <= width,
+        charSpace: 0
+      };
+    }
+
+    function directLineTextFromWords(words) {
+      return words.map((word) => word.text).join(" ");
+    }
+
+    function splitDirectLongWord(pdf, word, width, fontSize, options = {}) {
+      const text = String(word?.text || "");
+      if (!text || getDirectCandidateFit(pdf, text, width, fontSize, options).fits) {
+        return [word];
+      }
+
+      const chunks = [];
+      let current = "";
+      Array.from(text).forEach((char) => {
+        const candidate = `${current}${char}`;
+        if (!current || getDirectCandidateFit(pdf, candidate, width, fontSize, options).fits) {
+          current = candidate;
+          return;
+        }
+        chunks.push({ text: current, bold: Boolean(word.bold), underline: Boolean(word.underline) });
+        current = char;
+      });
+      if (current) {
+        chunks.push({ text: current, bold: Boolean(word.bold), underline: Boolean(word.underline) });
+      }
+      return chunks;
+    }
+
+    function directWordsFromMarkedParagraph(paragraph) {
+      return directMarkedSegments(paragraph)
+        .flatMap((segment) => String(segment.text || "")
+          .trim()
+          .split(/[ \t\r\n\f\v]+/)
+          .filter(Boolean)
+          .map((word) => ({ text: word, bold: Boolean(segment.bold), underline: Boolean(segment.underline) })));
+    }
+
+    function layoutDirectTextParagraph(pdf, paragraph, width, fontSize, options = {}) {
+      const words = directWordsFromMarkedParagraph(paragraph);
+      if (!words.length) {
+        return [{ text: "", words: [], charSpace: 0, justify: false, style: options.style || "normal", paragraphEnd: true }];
+      }
+
+      const lines = [];
+      let current = [];
+      let currentCharSpace = 0;
+      words.flatMap((word) => splitDirectLongWord(pdf, word, width, fontSize, options)).forEach((word) => {
+        const candidateWords = current.length ? [...current, word] : [word];
+        const candidate = directLineTextFromWords(candidateWords);
+        const fit = getDirectCandidateFit(pdf, candidate, width, fontSize, options);
+        if (fit.fits) {
+          current = candidateWords;
+          currentCharSpace = fit.charSpace;
+          return;
+        }
+
+        if (current.length) {
+          lines.push({
+            text: directLineTextFromWords(current),
+            words: current,
+            charSpace: currentCharSpace,
+            justify: Boolean(options.justify),
+            style: options.style || "normal",
+            paragraphEnd: false
+          });
+        }
+
+        const wordFit = getDirectCandidateFit(pdf, word.text, width, fontSize, options);
+        current = [word];
+        currentCharSpace = wordFit.fits ? wordFit.charSpace : 0;
+      });
+
+      if (current.length) {
+        lines.push({
+          text: directLineTextFromWords(current),
+          words: current,
+          charSpace: currentCharSpace,
+          justify: false,
+          style: options.style || "normal",
+          paragraphEnd: true
+        });
+      }
+      return lines;
+    }
+
+    function directLayoutTextLines(pdf, text, width, fontSize, options = {}) {
+      pdf.setFont(DIRECT_PDF_FONT.family, options.style || "normal");
+      pdf.setFontSize(fontSize);
+      const paragraphs = String(text || "").split("\n");
+      const lines = [];
+      paragraphs.forEach((paragraph, index) => {
+        if (!paragraph.trim()) {
+          lines.push({ text: "", words: [], charSpace: 0, justify: false, style: options.style || "normal", paragraphEnd: true });
+          return;
+        }
+        const paragraphLines = layoutDirectTextParagraph(pdf, paragraph, width, fontSize, {
+          justify: options.justify !== false,
+          fitSpacing: options.fitSpacing === true,
+          style: options.style || "normal"
+        });
+        lines.push(...paragraphLines);
+        if (index < paragraphs.length - 1 && paragraphs[index + 1] === "") {
+          lines.push({ text: "", words: [], charSpace: 0, justify: false, style: options.style || "normal", paragraphEnd: true });
+        }
+      });
+      return lines;
+    }
+
+    function withDirectCharSpace(pdf, charSpace, callback) {
+      if (typeof pdf.setCharSpace === "function") {
+        pdf.setCharSpace(charSpace || 0);
+      }
+      try {
+        return callback();
+      } finally {
+        if (typeof pdf.setCharSpace === "function") {
+          pdf.setCharSpace(0);
+        }
+      }
+    }
+
+    function drawDirectLine(pdf, line, x, y, width, fontSize) {
+      const text = String(line?.text || "");
+      const charSpace = line?.charSpace || 0;
+      const words = Array.isArray(line?.words) && line.words.length
+        ? line.words
+        : text.split(/\s+/).filter(Boolean).map((word) => ({ text: word, bold: false, underline: false }));
+      const baseStyle = line?.style || "normal";
+      const shouldJustify = Boolean(line?.justify) && words.length > 1;
+      const drawWord = (word, drawX) => {
+        const effectiveStyle = word.bold ? "bold" : baseStyle;
+        pdf.setFont(DIRECT_PDF_FONT.family, effectiveStyle);
+        const wordWidth = directTextWidthWithCharSpace(pdf, word.text, charSpace);
+        withDirectCharSpace(pdf, charSpace, () => {
+          pdf.text(word.text, drawX, y, { charSpace });
+          if (effectiveStyle === "bold") {
+            pdf.text(word.text, drawX + 0.035, y, { charSpace });
+          }
+        });
+        if (word.underline) {
+          const underlineY = y + fontSize * 0.352778 * 0.14;
+          pdf.setDrawColor(...DIRECT_LAYOUT.colors.body);
+          pdf.setLineWidth(0.18);
+          pdf.line(drawX, underlineY, drawX + wordWidth, underlineY);
+        }
+      };
+      const getWordWidth = (word) => {
+        pdf.setFont(DIRECT_PDF_FONT.family, word.bold ? "bold" : baseStyle);
+        return directTextWidthWithCharSpace(pdf, word.text, charSpace);
+      };
+      if (!shouldJustify) {
+        let cursorX = x;
+        words.forEach((word, index) => {
+          drawWord(word, cursorX);
+          cursorX += getWordWidth(word);
+          if (index < words.length - 1) {
+            cursorX += pdf.getTextWidth(" ");
+          }
+        });
+        return;
+      }
+
+      const wordWidths = words.map((word) => getWordWidth(word));
+      const totalWordWidth = wordWidths.reduce((sum, item) => sum + item, 0);
+      const gap = (width - totalWordWidth) / (words.length - 1);
+      if (!Number.isFinite(gap) || gap < 0) {
+        let cursorX = x;
+        words.forEach((word, index) => {
+          drawWord(word, cursorX);
+          cursorX += wordWidths[index];
+          if (index < words.length - 1) {
+            cursorX += pdf.getTextWidth(" ");
+          }
+        });
+        return;
+      }
+
+      let cursorX = x;
+      words.forEach((word, index) => {
+        drawWord(word, cursorX);
+        cursorX += wordWidths[index] + gap;
+      });
+      pdf.setFont(DIRECT_PDF_FONT.family, baseStyle);
+    }
+
+    function directQuestionBlocks(question, outputNumber) {
+      const stem = directPlainText(question.stem || "다음 글을 읽고 물음에 답하시오.", question.type);
+      const body = directNormalizeMarkedText(question.body || "", question.type);
+      const choices = Array.isArray(question.choices) ? question.choices : [];
+      return [
+        {
+          kind: "text",
+          text: `${outputNumber}번 · ${getTypeLabel(question.type)} ${getDifficultyLabel(question.difficulty)}`,
+          size: DIRECT_LAYOUT.typography.kicker,
+          style: "bold",
+          color: DIRECT_LAYOUT.colors.accent,
+          fitSpacing: true,
+          justify: false,
+          gap: DIRECT_LAYOUT.spacing.kickerAfter
+        },
+        {
+          kind: "text",
+          text: stem,
+          size: DIRECT_LAYOUT.typography.stem,
+          style: "bold",
+          color: DIRECT_LAYOUT.colors.ink,
+          fitSpacing: true,
+          gap: DIRECT_LAYOUT.spacing.stemAfter
+        },
+        {
+          kind: "text",
+          text: body,
+          size: DIRECT_LAYOUT.typography.body,
+          style: "normal",
+          color: DIRECT_LAYOUT.colors.body,
+          fitSpacing: false,
+          justify: true,
+          gap: choices.length ? DIRECT_LAYOUT.spacing.bodyAfter : 0
+        },
+        {
+          kind: "choices",
+          choices: choices.map((choice, index) => ({
+            marker: CHOICE_MARKERS[index] || `${index + 1}.`,
+            text: directNormalizeMarkedText(normalizeChoiceText(choice, question.type), "")
+          })),
+          size: DIRECT_LAYOUT.typography.choice,
+          color: DIRECT_LAYOUT.colors.choice,
+          fitSpacing: true
+        }
+      ].filter((block) => block.kind !== "choices" || block.choices.length);
+    }
+
+    function measureDirectTextBlock(pdf, block, width) {
+      if (!block.text) {
+        return 0;
+      }
+      const lines = directLayoutTextLines(pdf, block.text, width, block.size, block);
+      return lines.reduce((height, line) => (
+        height + (line.text ? directLineHeight(block.size) : directLineHeight(block.size) * 0.55)
+      ), 0) + (block.gap || 0);
+    }
+
+    function measureDirectChoiceBlock(pdf, block, width) {
+      const markerWidth = DIRECT_LAYOUT.spacing.choiceMarkerWidth;
+      const markerGap = DIRECT_LAYOUT.spacing.choiceMarkerGap;
+      const textWidth = width - markerWidth - markerGap;
+      return block.choices.reduce((height, choice, index) => {
+        const lines = directLayoutTextLines(pdf, choice.text, textWidth, block.size, {
+          style: "normal",
+          justify: true,
+          fitSpacing: block.fitSpacing !== false
+        });
+        const lineCount = Math.max(1, lines.length);
+        return height
+          + lineCount * directLineHeight(block.size)
+          + (index < block.choices.length - 1 ? DIRECT_LAYOUT.spacing.choiceItemGap : 0);
+      }, 0);
+    }
+
+    function measureDirectQuestionCard(pdf, blocks, width) {
+      const padding = DIRECT_LAYOUT.card.padding;
+      const innerWidth = width - padding * 2;
+      return blocks.reduce((height, block) => {
+        if (block.kind === "kicker") {
+          return height + directLineHeight(block.size) + (block.gap || 0);
+        }
+        if (block.kind === "choices") {
+          return height + measureDirectChoiceBlock(pdf, block, innerWidth);
+        }
+        return height + measureDirectTextBlock(pdf, block, innerWidth);
+      }, padding * 2);
+    }
+
+    function drawDirectTextLines(pdf, text, x, y, width, size, options = {}) {
+      pdf.setFont(DIRECT_PDF_FONT.family, options.style || "normal");
+      pdf.setFontSize(size);
+      pdf.setTextColor(...(options.color || DIRECT_LAYOUT.colors.body));
+      const lines = directLayoutTextLines(pdf, text, width, size, {
+        ...options,
+        justify: options.justify !== false
+      });
+      let cursorY = y;
+      lines.forEach((line) => {
+        if (!line.text) {
+          cursorY += directLineHeight(size) * 0.55;
+          return;
+        }
+        drawDirectLine(pdf, line, x, cursorY, width, size);
+        cursorY += directLineHeight(size);
+      });
+      return cursorY;
+    }
+
+    function drawDirectQuestionCard(pdf, x, y, width, blocks) {
+      const height = measureDirectQuestionCard(pdf, blocks, width);
+      const padding = DIRECT_LAYOUT.card.padding;
+      const innerWidth = width - padding * 2;
+      let cursorY = y + padding + directLineHeight(DIRECT_LAYOUT.typography.kicker) * 0.72;
+      pdf.setDrawColor(...DIRECT_LAYOUT.colors.line);
+      pdf.setLineWidth(DIRECT_LAYOUT.card.borderWidth);
+      pdf.roundedRect(x, y, width, height, DIRECT_LAYOUT.card.radius, DIRECT_LAYOUT.card.radius, "S");
+      blocks.forEach((block) => {
+        if (block.kind === "kicker") {
+          pdf.setFont(DIRECT_PDF_FONT.family, "bold");
+          pdf.setFontSize(block.size);
+          pdf.setTextColor(...DIRECT_LAYOUT.colors.accent);
+          pdf.text(block.left, x + padding, cursorY);
+          pdf.text(block.right, x + width - padding, cursorY, { align: "right" });
+          cursorY += directLineHeight(block.size) + (block.gap || 0);
+          return;
+        }
+        if (block.kind === "choices") {
+          pdf.setFont(DIRECT_PDF_FONT.family, "normal");
+          pdf.setFontSize(block.size);
+          pdf.setTextColor(...(block.color || DIRECT_LAYOUT.colors.choice));
+          const markerWidth = DIRECT_LAYOUT.spacing.choiceMarkerWidth;
+          const markerGap = DIRECT_LAYOUT.spacing.choiceMarkerGap;
+          const textWidth = innerWidth - markerWidth - markerGap;
+          block.choices.forEach((choice, index) => {
+            const lines = directLayoutTextLines(pdf, choice.text, textWidth, block.size, {
+              style: "normal",
+              justify: true,
+              fitSpacing: block.fitSpacing !== false
+            });
+            const choiceY = cursorY;
+            pdf.setFont(DIRECT_PDF_FONT.family, "normal");
+            pdf.text(choice.marker, x + padding, choiceY);
+            pdf.setFont(DIRECT_PDF_FONT.family, "normal");
+            lines.forEach((line, lineIndex) => {
+              if (line.text) {
+                drawDirectLine(pdf, line, x + padding + markerWidth + markerGap, cursorY, textWidth, block.size);
+              }
+              cursorY += directLineHeight(block.size);
+              if (lineIndex === lines.length - 1 && index < block.choices.length - 1) {
+                cursorY += DIRECT_LAYOUT.spacing.choiceItemGap;
+              }
+            });
+            if (!lines.length) {
+              cursorY += directLineHeight(block.size);
+            }
+          });
+          return;
+        }
+        cursorY = drawDirectTextLines(pdf, block.text, x + padding, cursorY, innerWidth, block.size, block);
+        cursorY += block.gap || 0;
+      });
+      return height;
+    }
+
+    function addDirectFooter(pdf) {
+      const pageNumber = pdf.internal.getCurrentPageInfo().pageNumber;
+      pdf.setTextColor(...DIRECT_LAYOUT.colors.body);
+      pdf.setFont(DIRECT_PDF_FONT.family, "normal");
+      pdf.setFontSize(7.5);
+      pdf.text(COPYRIGHT_WARNING, DIRECT_LAYOUT.page.marginX, 290);
+      pdf.setFont(DIRECT_PDF_FONT.family, "bold");
+      pdf.setFontSize(10);
+      pdf.text(String(pageNumber), DIRECT_LAYOUT.page.width - DIRECT_LAYOUT.page.marginX, 290, { align: "right" });
+    }
+
+    async function drawDirectHeader(pdf, plan) {
+      const logo = await getDirectHeaderLogoDataUrl();
+      const x = DIRECT_LAYOUT.page.marginX;
+      const y = DIRECT_LAYOUT.page.marginTop;
+      const lineY = y + DIRECT_LAYOUT.header.logoHeight + DIRECT_LAYOUT.header.paddingBottom;
+      pdf.setFont(DIRECT_PDF_FONT.family, "bold");
+      pdf.setTextColor(...DIRECT_LAYOUT.colors.ink);
+      pdf.setFontSize(DIRECT_LAYOUT.header.titleSize);
+      pdf.text(plan.title || "통합 문제지", x, y + 7.8);
+      pdf.setFontSize(DIRECT_LAYOUT.header.subtitleSize);
+      pdf.setTextColor(...DIRECT_LAYOUT.colors.muted);
+      pdf.text(plan.subtitle || "", x, y + 15.2);
+      if (logo) {
+        pdf.addImage(
+          logo,
+          "PNG",
+          DIRECT_LAYOUT.page.width - DIRECT_LAYOUT.page.marginX - DIRECT_LAYOUT.header.logoWidth,
+          y,
+          DIRECT_LAYOUT.header.logoWidth,
+          DIRECT_LAYOUT.header.logoHeight,
+          undefined,
+          "FAST"
+        );
+      }
+      pdf.setDrawColor(...DIRECT_LAYOUT.colors.ink);
+      pdf.setLineWidth(DIRECT_LAYOUT.header.lineWidth);
+      pdf.line(x, lineY, DIRECT_LAYOUT.page.width - DIRECT_LAYOUT.page.marginX, lineY);
+      return lineY + DIRECT_LAYOUT.header.marginBottom;
+    }
+
+    function createDirectFlowState(pdf, top, options = {}) {
+      const gutter = options.gutter ?? DIRECT_LAYOUT.grid.questionGap;
+      const margin = DIRECT_LAYOUT.page.marginX;
+      return {
+        pdf,
+        top,
+        nextTop: options.nextTop ?? top,
+        y: top,
+        column: 0,
+        margin,
+        gutter,
+        bottom: DIRECT_LAYOUT.page.height - DIRECT_LAYOUT.page.marginBottom,
+        columnWidth: (DIRECT_LAYOUT.page.width - margin * 2 - gutter) / 2
+      };
+    }
+
+    function directColumnX(state) {
+      return state.margin + state.column * (state.columnWidth + state.gutter);
+    }
+
+    function moveDirectFlow(state) {
+      if (state.column === 0) {
+        state.column = 1;
+        state.y = state.top;
+        return;
+      }
+      addDirectFooter(state.pdf);
+      state.pdf.addPage();
+      state.column = 0;
+      state.top = state.nextTop;
+      state.y = state.top;
+    }
+
+    function ensureDirectSpace(state, height) {
+      if (state.y + height <= state.bottom || state.y === state.top) {
+        return;
+      }
+      moveDirectFlow(state);
+    }
+
+    function createDirectQuestionPage(top) {
+      return {
+        top,
+        columns: [[], []]
+      };
+    }
+
+    function spreadDirectColumnIfNeeded(column, bottom) {
+      if (column.length !== 2) {
+        return;
+      }
+      column[1].y = Math.max(column[0].y + column[0].height + DIRECT_LAYOUT.card.gapAfter, bottom - column[1].height);
+    }
+
+    function buildDirectQuestionPages(pdf, questions, firstPageTop) {
+      const gutter = DIRECT_LAYOUT.grid.questionGap;
+      const margin = DIRECT_LAYOUT.page.marginX;
+      const bottom = DIRECT_LAYOUT.page.height - DIRECT_LAYOUT.page.marginBottom;
+      const columnWidth = (DIRECT_LAYOUT.page.width - margin * 2 - gutter) / 2;
+      const pages = [createDirectQuestionPage(firstPageTop)];
+      let page = pages[0];
+      let columnIndex = 0;
+      let y = firstPageTop;
+
+      questions.forEach((question, index) => {
+        const blocks = directQuestionBlocks(question, index + 1);
+        const height = measureDirectQuestionCard(pdf, blocks, columnWidth);
+        if (y + height > bottom && y > page.top) {
+          spreadDirectColumnIfNeeded(page.columns[columnIndex], bottom);
+          columnIndex += 1;
+          if (columnIndex > 1) {
+            page = createDirectQuestionPage(DIRECT_LAYOUT.page.marginTop);
+            pages.push(page);
+            columnIndex = 0;
+          }
+          y = page.top;
+        }
+
+        const x = margin + columnIndex * (columnWidth + gutter);
+        page.columns[columnIndex].push({ x, y, height, blocks });
+        y += height + DIRECT_LAYOUT.card.gapAfter;
+      });
+
+      pages.forEach((item) => item.columns.forEach((column) => spreadDirectColumnIfNeeded(column, bottom)));
+      return { pages, columnWidth };
+    }
+
+    function drawDirectQuestions(pdf, questions, top) {
+      const { pages, columnWidth } = buildDirectQuestionPages(pdf, questions, top);
+      pages.forEach((page, pageIndex) => {
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+        page.columns.forEach((column) => {
+          column.forEach((item) => {
+            drawDirectQuestionCard(pdf, item.x, item.y, columnWidth, item.blocks);
+          });
+        });
+        addDirectFooter(pdf);
+      });
+      return pages;
+    }
+
+    function directAnswerBlocks(question, index) {
+      const explanationType = isQuestionType(question.type, "order") ? "" : question.type;
+      const explanation = directPlainText(formatExplanationText(question.explanation || "", question), explanationType);
+      return [
+        {
+          kind: "text",
+          text: `${index + 1}번 ${question.answer || "-"}`,
+          size: DIRECT_LAYOUT.typography.answer,
+          style: "bold",
+          color: DIRECT_LAYOUT.colors.accent,
+          gap: 0.8
+        },
+        {
+          kind: "text",
+          text: explanation,
+          size: DIRECT_LAYOUT.typography.answer,
+          style: "normal",
+          color: DIRECT_LAYOUT.colors.body,
+          gap: 0
+        }
+      ].filter((block) => block.text);
+    }
+
+    function measureDirectAnswerCard(pdf, blocks, width) {
+      const padding = DIRECT_LAYOUT.answerCard.padding;
+      const innerWidth = width - padding * 2;
+      return blocks.reduce((height, block) => (
+        height + measureDirectTextBlock(pdf, block, innerWidth)
+      ), padding * 2);
+    }
+
+    function drawDirectAnswerCard(pdf, x, y, width, blocks) {
+      const height = measureDirectAnswerCard(pdf, blocks, width);
+      const padding = DIRECT_LAYOUT.answerCard.padding;
+      const innerWidth = width - padding * 2;
+      let cursorY = y + padding + directLineHeight(DIRECT_LAYOUT.typography.answer) * 0.72;
+      pdf.setDrawColor(...DIRECT_LAYOUT.colors.line);
+      pdf.setLineWidth(DIRECT_LAYOUT.answerCard.borderWidth);
+      pdf.roundedRect(x, y, width, height, DIRECT_LAYOUT.answerCard.radius, DIRECT_LAYOUT.answerCard.radius, "S");
+      blocks.forEach((block) => {
+        cursorY = drawDirectTextLines(pdf, block.text, x + padding, cursorY, innerWidth, block.size, block);
+        cursorY += block.gap || 0;
+      });
+      return height;
+    }
+
+    function drawDirectAnswers(pdf, questions) {
+      pdf.addPage();
+      const titleY = DIRECT_LAYOUT.page.marginTop + 5.8;
+      pdf.setFont(DIRECT_PDF_FONT.family, "bold");
+      pdf.setFontSize(DIRECT_LAYOUT.typography.answerTitle);
+      pdf.setTextColor(...DIRECT_LAYOUT.colors.ink);
+      pdf.text("정답 및 해설", DIRECT_LAYOUT.page.marginX, titleY);
+      const state = createDirectFlowState(
+        pdf,
+        DIRECT_LAYOUT.page.marginTop
+          + directLineHeight(DIRECT_LAYOUT.typography.answerTitle)
+          + 16 * DIRECT_PX_TO_MM,
+        {
+          gutter: DIRECT_LAYOUT.grid.answerGap,
+          nextTop: DIRECT_LAYOUT.page.marginTop
+        }
+      );
+      questions.forEach((question, index) => {
+        const blocks = directAnswerBlocks(question, index);
+        const height = measureDirectAnswerCard(pdf, blocks, state.columnWidth);
+        ensureDirectSpace(state, height);
+        drawDirectAnswerCard(pdf, directColumnX(state), state.y, state.columnWidth, blocks);
+        state.y += height + DIRECT_LAYOUT.answerCard.gapAfter;
+      });
+      return state;
+    }
+
+    async function createDirectPdfBlobForPlan(plan, onPageProgress = null) {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait",
+        compress: true,
+        putOnlyUsedFonts: true
+      });
+      await registerDirectPdfFont(pdf);
+      if (onPageProgress) {
+        onPageProgress(1, 1);
+      }
+      const questionTop = await drawDirectHeader(pdf, plan);
+      drawDirectQuestions(pdf, plan.questions, questionTop);
+      if (plan.includeAnswers !== false) {
+        drawDirectAnswers(pdf, plan.questions);
+      }
+      addDirectFooter(pdf);
+      return pdf.output("blob");
+    }
+
+    async function createPdfBlobForPlan(plan, onPageProgress = null) {
+      const stage = document.createElement("div");
+      stage.className = "pdf-export-stage";
+      stage.setAttribute("aria-hidden", "true");
+      document.body.appendChild(stage);
+      try {
+        buildPdfPagesForPlan(plan, stage);
+        await inlineCanvasSafeImages(stage);
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+        const pages = Array.from(stage.querySelectorAll(".pdf-page"));
+        for (const [index, page] of pages.entries()) {
+          if (onPageProgress) {
+            onPageProgress(index + 1, pages.length);
+          }
+          if (index > 0) {
+            pdf.addPage();
+          }
+          const { canvas, image } = await capturePdfPageImage(page);
+          pdf.addImage(image, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+          pdf.setFontSize(10);
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(String(index + 1), 105, 290, { align: "center" });
+          canvas.width = 0;
+          canvas.height = 0;
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return pdf.output("blob");
+      } finally {
+        stage.remove();
+      }
+    }
+
+    function triggerDownloadUrl(url, filename) {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      triggerDownloadUrl(url, filename);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
+    function showBatchDownloadLink(blob, filename) {
+      clearBatchDownloadUrl();
+      const url = URL.createObjectURL(blob);
+      state.batchDownloadUrl = url;
+      triggerDownloadUrl(url, filename);
+      elements.batchZipStatus.textContent = "12개 PDF와 답지를 ZIP으로 만들었습니다. ";
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.textContent = "다운로드가 안 뜨면 여기를 눌러 저장";
+      link.style.color = "var(--accent)";
+      link.style.fontWeight = "900";
+      elements.batchZipStatus.appendChild(link);
+    }
+
+    async function generateSinglePdf() {
+      if (state.isSingleBusy || state.isBatchBusy) {
+        return;
+      }
+      const questions = getFilteredQuestions();
+      if (!questions.length) {
+        setBatchStatus("저장할 문항이 없습니다.");
+        return;
+      }
+      if (!window.jspdf?.jsPDF) {
+        setBatchStatus("PDF 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.");
+        return;
+      }
+      setSingleBusy(true);
+      clearBatchDownloadUrl();
+      const title = elements.examTitleInput.value.trim() || "쏠북 문제지";
+      const defaultSubtitle = `${state.sourceName || "선택한 JSON"} · ${questions.length}문항`;
+      const subtitle = elements.examSubtitleInput.value.trim() || defaultSubtitle;
+      const sortLabel = getSortModeLabel();
+      try {
+        setBatchStatus(`빠른 PDF 저장 중: ${sortLabel} 정렬 · ${questions.length}문항`);
+        const pdfBlob = await createDirectPdfBlobForPlan({
+          title,
+          subtitle: `${subtitle} · ${sortLabel} 정렬`,
+          questions,
+          includeAnswers: elements.includeAnswerInput.checked
+        });
+        const filename = `${toSafeFileName(title)}_${sortLabel}.pdf`;
+        downloadBlob(pdfBlob, filename);
+        setBatchStatus(`${filename} 저장을 시작했습니다. 전체 ${questions.length}문항이 포함됩니다.`);
+      } catch (error) {
+        console.error(error);
+        setBatchStatus(error?.message || "PDF 저장 중 오류가 발생했습니다.");
+      } finally {
+        setSingleBusy(false);
+      }
+    }
+
+    async function generateBatchZip() {
+      if (state.isBatchBusy) {
+        return;
+      }
+      if (!state.questions.length) {
+        setBatchStatus("먼저 JSON 파일을 선택해주세요.");
+        return;
+      }
+      const useDirectPdf = elements.fastZipInput?.checked !== false;
+      if (!window.JSZip || !window.jspdf?.jsPDF || (!useDirectPdf && !window.html2canvas)) {
+        setBatchStatus("PDF/ZIP 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.");
+        return;
+      }
+      if (!useDirectPdf) {
+        const shouldContinue = window.confirm("HTML 캡처 방식은 대량 ZIP 생성에서 매우 오래 걸리거나 멈출 수 있습니다. 그래도 진행할까요?");
+        if (!shouldContinue) {
+          setBatchStatus("ZIP 생성을 취소했습니다. jsPDF 직접 출력 모드를 권장합니다.");
+          return;
+        }
+      }
+      setBatchBusy(true);
+      clearBatchDownloadUrl();
+      try {
+        const sortMode = getSelectedSortMode();
+        const sortLabel = getSortModeLabel(sortMode);
+        const plans = buildBatchExamPlans(sortMode);
+        const zip = new JSZip();
+        for (const [index, plan] of plans.entries()) {
+          setBatchStatus(`${index + 1}/12 ${useDirectPdf ? "빠른 직접 출력 중" : "생성 중"}: ${plan.subtitle} · ${plan.questions.length}문항 + 답지`);
+          const pdfBlob = useDirectPdf
+            ? await createDirectPdfBlobForPlan(plan, (page, totalPages) => {
+              setBatchStatus(`${index + 1}/12 빠른 직접 출력 중: ${plan.subtitle} · ${page}/${totalPages}쪽 처리`);
+            })
+            : await createPdfBlobForPlan(plan, (page, totalPages) => {
+              setBatchStatus(`${index + 1}/12 생성 중: ${plan.subtitle} · ${page}/${totalPages}쪽 변환`);
+            });
+          zip.file(plan.filename, pdfBlob);
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        setBatchStatus("ZIP 파일을 묶는 중입니다...");
+        const zipBlob = await zip.generateAsync({ type: "blob" }, (metadata) => {
+          setBatchStatus(`ZIP 압축 중... ${Math.round(metadata.percent)}%`);
+        });
+        const title = toSafeFileName(elements.examTitleInput.value.trim() || "통합 문제지");
+        showBatchDownloadLink(zipBlob, `${title}_${sortLabel}_난이도별_12개_시험지.zip`);
+      } catch (error) {
+        console.error(error);
+        setBatchStatus(error?.message || "ZIP 생성 중 오류가 발생했습니다.");
+      } finally {
+        setBatchBusy(false);
+      }
+    }
+
+    [elements.typeSelect, elements.difficultySelect, elements.sortModeSelect, elements.includeAnswerInput]
+      .forEach((element) => element.addEventListener("change", scheduleRenderExam));
+    elements.examTitleInput.addEventListener("input", () => {
+      elements.examTitleInput.dataset.autoTitle = "false";
+      updatePreviewHeader();
+    });
+    elements.examSubtitleInput.addEventListener("input", () => {
+      state.subtitleEdited = true;
+      updatePreviewHeader();
+    });
+    elements.resetButton.addEventListener("click", () => {
+      elements.typeSelect.value = "";
+      elements.difficultySelect.value = "";
+      elements.sortModeSelect.value = SORT_MODE_SOURCE;
+      renderExam();
+    });
+    elements.printButton.addEventListener("click", generateSinglePdf);
+    elements.batchZipButton.addEventListener("click", generateBatchZip);
+    elements.jsonFileInput.addEventListener("change", () => {
+      loadQuestionsFromFiles(elements.jsonFileInput.files);
+    });
+
+    renderExam();
+  </script>
+</body>
+</html>
