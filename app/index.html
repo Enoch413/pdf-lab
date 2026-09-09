@@ -325,8 +325,17 @@
               <div class="firebase-auth-panel" id="firebaseAuthPanel">
                 <p class="file-name" id="firebaseAuthStatus">Firebase 로그인 상태를 확인하고 있습니다.</p>
                 <form class="firebase-auth-form" id="firebaseLoginForm" hidden>
+                  <label class="field-row">
+                    <span class="field-label">이메일</span>
+                    <input class="text-input" type="email" id="firebaseEmailInput" name="email" autocomplete="username" placeholder="아이디@prep.local" autocapitalize="none" spellcheck="false">
+                  </label>
+                  <label class="field-row">
+                    <span class="field-label">비밀번호</span>
+                    <input class="text-input" type="password" id="firebasePasswordInput" name="password" autocomplete="current-password" placeholder="CODE LAB 비밀번호">
+                  </label>
+                  <button class="solid-button" type="button" id="firebaseLoginButton">이메일로 로그인</button>
                   <button class="solid-button" type="button" id="firebaseGoogleLoginButton">Google로 로그인</button>
-                  <p class="small-note">CODE LAB에서 쓰는 Google 관리자 계정으로 로그인하면 로컬에서도 반/학생 목록을 불러옵니다.</p>
+                  <p class="small-note">CODE LAB 계정으로 로그인하면 반/학생 목록을 불러옵니다. 로컬 계정은 아이디@prep.local과 기존 비밀번호를 입력하고, Google 계정은 Google로 로그인하세요.</p>
                 </form>
                 <button class="ghost-button" type="button" id="firebaseLogoutButton" hidden>로그아웃</button>
               </div>

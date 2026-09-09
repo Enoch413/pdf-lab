@@ -4,14 +4,14 @@
 
 - 기준 브랜치: `main`
 - 작업 시작 전 원격 최신: `e367951`
-- 현재 쏠북메이커 보관 커밋: `8855d72` (`main`)
+- 작업 시작 시 쏠북메이커 보관 커밋: `8855d72`
 - 실험 브랜치: `codex/solbook-text-output`
 
 미추적 상태였던 쏠북메이커의 HTML, CSS, 실행 배치 파일, README와 실행에 필요한 폰트/로고/vendor 파일 11개만 기준 커밋에 보관했습니다.
 Firebase 백업, 문항 JSON, 임시 진단 파일, 이전 ZIP, 별도의 미추적 앱 자산은 커밋하지 않았습니다.
-원격에 push하거나 main에 실험 내용을 병합하지 않았습니다.
+초기 실험 단계에는 원격 push와 main 병합 없이 검증했습니다. 2026-09-09 사용자 확인으로 텍스트 출제 변경을 채택했으며 main 병합과 push가 승인되었습니다.
 
-실험 폐기 시 현재 작업이 커밋되어 있는지 먼저 확인한 다음 `git switch main`으로 돌아가면 됩니다. 강제 초기화나 미추적 파일 삭제는 필요하지 않습니다.
+main 병합 후에는 `git switch main`만으로 실험 이전 상태로 돌아가지 않습니다. 추후 되돌릴 때는 텍스트 출제 커밋 `3f89b06`을 기준으로 영향 범위를 확인하고 별도의 되돌리기 커밋을 사용합니다. 강제 초기화나 미추적 파일 삭제는 필요하지 않습니다.
 
 ## 적용 범위
 
@@ -21,6 +21,8 @@ Firebase 백업, 문항 JSON, 임시 진단 파일, 이전 ZIP, 별도의 미추
 
 쏠북메이커 원본, 이미지 출제 카드, Firebase 읽기/쓰기, 개인 오답 round 복원, 라이브러리 편집/저장 로직은 바꾸지 않았습니다.
 `general_exam.html`은 텍스트 출제 선택 기능이 없는 기존 이미지 기반 화면이므로 변경하지 않았습니다.
+
+후속 로그인 복구에서는 `app/index.html`에 기존 이메일/비밀번호 로그인 함수가 사용하는 입력창과 버튼만 복원했습니다. Google 로그인은 유지하며 Firebase 계정 상태나 권한은 변경하지 않습니다.
 
 ## 텍스트 규칙
 
@@ -52,6 +54,7 @@ node tests/solbook_text_renderer.test.cjs
 # Playwright가 일반 의존성에 없으면 설치된 런타임 node_modules 경로 지정
 $env:PDFLAB_NODE_MODULES = 'C:\Users\CHOI\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules'
 node tests/solbook_text_browser.cjs
+node tests/firebase_email_login_browser.cjs
 ```
 
 브라우저 검사는 새 격리 프로필의 headless Edge에서 동작하며 외부 요청은 차단합니다. 사용자 브라우저나 실제 Firebase 데이터는 사용하지 않습니다.
@@ -65,4 +68,4 @@ node tests/solbook_text_browser.cjs
 - 320문항 배치 계산 약 0.17~0.22초 (이 PC, 합성 데이터, 전체 PDF 저장 시간 아님)
 - PDF 텍스트 재추출에서 1~16번 문항 번호가 모두 존재함을 확인
 
-검증 산출물은 `tmp/pdfs/solbook-text-qa/`에 있으며 커밋 대상이 아닙니다. 실제 새 학기 문항으로 최종 사용자 확인 후 채택 여부를 결정하면 됩니다.
+검증 산출물은 `tmp/pdfs/solbook-text-qa/`에 있으며 커밋 대상이 아닙니다. 사용자 확인 후 채택이 승인되었습니다. 이메일 로그인 UI 검사는 실제 Firebase 요청 없이 버튼/Enter/폼 제출, 오류/성공 표시, 처리 중 중복 입력 차단, 비밀번호 지우기를 검증합니다.
