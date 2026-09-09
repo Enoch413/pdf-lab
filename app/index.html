@@ -619,6 +619,7 @@
     </section>
   </div>
 
+  <script src="./solbook_text_renderer.js?v=20260909-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -16043,7 +16044,9 @@
         renderContentMode: normalizedRenderMode,
         promptText: record.promptText || "",
         analysisText: record.analysisText || "",
-        textStructure: normalizeStructuredProblemData(record.textStructure, record.problemType || PROBLEM_TYPE_OTHER, Boolean(record.isSubjective)),
+        textStructure: normalizedRenderMode === EXAM_CONTENT_MODE_TEXT && record.textStructure
+          ? record.textStructure
+          : normalizeStructuredProblemData(record.textStructure, record.problemType || PROBLEM_TYPE_OTHER, Boolean(record.isSubjective)),
         problemType: record.problemType || PROBLEM_TYPE_OTHER,
         subjectiveType: record.subjectiveType || "",
         isSubjective: Boolean(record.isSubjective),
@@ -16093,7 +16096,9 @@
       const totalQuestionCount = countQuestionEntries(entries);
       const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
       const renderedQuestionCount = countQuestionEntries(selectedEntries);
-      const hydratedRecords = await hydrateProblemRecordsWithAssets(selectedEntries.map((entry) => entry.record));
+      const hydratedRecords = renderContentMode === EXAM_CONTENT_MODE_TEXT
+        ? selectedEntries.map((entry) => ({ ...entry.record }))
+        : await hydrateProblemRecordsWithAssets(selectedEntries.map((entry) => entry.record));
       const hydratedRecordMap = new Map(hydratedRecords.map((record) => [record.recordId, record]));
       let problemNumber = 1;
       const problems = selectedEntries.map((entry) => {
@@ -16156,8 +16161,9 @@
     }
 
     function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
-      const cssText = getCssTextForStandaloneDocument();
-      const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
+      const baseCssText = getCssTextForStandaloneDocument();
+      const cssText = baseCssText + "\n" + (window.PDFLabSolbookText?.cssText || "");
+      const stylesheetHref = baseCssText ? "" : getStandaloneStylesheetHref();
       const baseHref = new URL(window.location.href).toString();
       return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
     }
@@ -16185,7 +16191,11 @@
         ...options,
         renderContentMode: settings.contentRenderMode
       });
+      if (settings.contentRenderMode === EXAM_CONTENT_MODE_TEXT) {
+        await window.PDFLabSolbookText?.ready();
+      }
       const layoutMeta = buildLayoutPages(settings, problems);
+      window.PDFLabSolbookText?.assertFits(layoutMeta.sheets);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");
       container.innerHTML = rawMarkup;
@@ -18589,6 +18599,9 @@
     }
 
     function buildProblemTextMarkup(problem) {
+      if (isTextRenderProblem(problem) && window.PDFLabSolbookText) {
+        return window.PDFLabSolbookText.render(problem, () => buildProblemTextBlocks(problem));
+      }
       const blocks = buildProblemTextBlocks(problem);
       const choiceBlocks = blocks.filter((block) => block.type === "choice");
       const choiceTableMarkup = buildProblemChoicePartTableMarkup(choiceBlocks, problem);
@@ -18639,6 +18652,12 @@
 
     function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
       if (isTextRenderProblem(problem)) {
+        const measuredHeight = window.PDFLabSolbookText?.measureCard(
+          createProblemCardMarkup({ problem, fitScale: 1, appliedSquashPercent: 0 }), columnWidthMm
+        );
+        if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+          return { scalableHeightMm: 0, fixedHeightMm: measuredHeight, supportsFitScale: false };
+        }
         return {
           scalableHeightMm: estimateProblemTextLineCount(problem, columnWidthMm) * TEXT_LINE_HEIGHT_MM,
           fixedHeightMm: TEXT_CARD_FIXED_HEIGHT_MM,
