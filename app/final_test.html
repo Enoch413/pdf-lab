@@ -1606,7 +1606,7 @@
     }
 
     function repairOcrStolenInitialAnswerFields(target) {
-      if (!target || target.kind === "shared") {
+      if (!target || target.kind === "shared" || target.textOnly === true) {
         return false;
       }
       const repaired = repairOcrParsedAnswer({
@@ -7932,6 +7932,9 @@
         ? []
         : (() => {
             const segmentImageUrls = Array.isArray(record.segmentImageUrls) ? record.segmentImageUrls : [];
+            if (record.textOnly === true) {
+              throw new Error(`문항 ${record.number || "-"}은 JSON으로 등록한 텍스트 전용 문항입니다. 문제 렌더링을 '텍스트 출제'로 변경해주세요.`);
+            }
             const imageSources = buildLibraryImageSources(record.segmentBlobs, segmentImageUrls);
             if (!imageSources.length) {
               const hasRemoteImagePaths = hasSharedStoragePaths(record, "segmentStoragePaths");

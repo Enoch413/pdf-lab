@@ -38,7 +38,7 @@
   <div class="app-shell">
     <aside class="controls-panel">
       <section class="panel-card">
-        <h2 class="panel-title">1. PDF 불러오기</h2>
+        <h2 class="panel-title">1. PDF / JSON 불러오기</h2>
         <div class="field-grid compact-field-grid">
           <label class="field-row">
             <span class="field-label">문제 출처</span>
@@ -82,14 +82,14 @@
             <button class="ghost-button" type="button" id="clearButton" disabled>초기화</button>
           </div>
           <input class="visually-hidden" type="file" id="pdfInput" accept="application/pdf">
-          <p class="file-name" id="fileName">아직 불러온 PDF가 없습니다.</p>
+          <p class="file-name" id="fileName">아직 불러온 PDF / JSON이 없습니다.</p>
         </div>
         <div class="single-action-row">
-          <button class="ghost-button" type="button" id="chooseProblemJsonButton" disabled>AI JSON 업로드</button>
+          <button class="ghost-button" type="button" id="chooseProblemJsonButton">AI JSON 업로드</button>
           <button class="ghost-button" type="button" id="saveLibraryButton" disabled hidden>문제 라이브러리에 저장</button>
         </div>
         <input class="visually-hidden" type="file" id="problemJsonInput" accept="application/json,.json">
-        <p class="small-note" id="problemJsonSummary">PDF로 이미지 문항을 먼저 추출한 뒤, AI가 만든 JSON을 올리면 번호 기준으로 문제 텍스트/유형/답안을 덮어씁니다.</p>
+        <p class="small-note" id="problemJsonSummary">PDF 없이 JSON만 올려 텍스트 문항을 등록할 수 있습니다. 이미 불러온 문항이 있으면 번호 기준으로 텍스트/유형/답안을 덮어씁니다. 새 파일로 등록하려면 먼저 초기화하세요.</p>
         <p class="small-note" id="librarySaveSummary">문제를 저장해두면 PDF LAB에서 반별 출제를 바로 이어서 진행할 수 있습니다.</p>
       </section>
 
@@ -139,7 +139,7 @@
             <strong class="library-stat-value" id="libraryWorkspaceProblemCount">0</strong>
           </article>
           <article class="library-stat-card">
-            <span class="library-stat-label">등록 PDF</span>
+            <span class="library-stat-label">등록 파일</span>
             <strong class="library-stat-value" id="libraryWorkspaceImportCount">0</strong>
           </article>
         </div>
@@ -1143,7 +1143,8 @@
       cardGap: 3,
       previewZoom: 1
     });
-    const DEFAULT_LIBRARY_PROGRESS_MESSAGE = "PDF를 불러오면 문제 라이브러리 추출을 시작합니다.";
+    const DEFAULT_LIBRARY_PROGRESS_MESSAGE = "PDF 또는 AI JSON을 불러와 문제 라이브러리 등록을 시작합니다.";
+    const DEFAULT_PROBLEM_JSON_MESSAGE = "PDF 없이 JSON만 올려 텍스트 문항을 등록할 수 있습니다. 이미 불러온 문항이 있으면 번호 기준으로 텍스트/유형/답안을 덮어씁니다. 새 파일로 등록하려면 먼저 초기화하세요.";
 
     function normalizeLibrarySourceKey(value) {
       const compact = normalizeProblemTypeToken(value || "");
@@ -2145,7 +2146,8 @@
       const syncLabel = state.libraryLastSyncedAt
         ? formatTimestamp(state.libraryLastSyncedAt)
         : "아직 동기화 기록 없음";
-      const sourceLabel = state.fileName || "PDF 없음";
+      const sourceLabel = state.fileName || "파일 없음";
+      const isJsonOnly = hasProblems && state.problems.every(isTextOnlyLibraryProblem);
       const librarySourceLabel = getLibrarySourceLabel(state.selectedLibrarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
       const textbookLabel = state.selectedTextbookName || getSelectedTextbookName() || "교재 선택 전";
       const message = shouldUseReadySnapshot ? readyMessage : (progress.message || readyMessage);
@@ -2181,9 +2183,9 @@
               <p class="library-progress-card-note">공유 지문 블록까지 같이 추적합니다. ${escapeHtml(answerSummary)}</p>
             </article>
             <article class="library-progress-card">
-              <span class="library-progress-card-label">원본 PDF</span>
+              <span class="library-progress-card-label">원본 파일</span>
               <strong class="library-progress-card-value">${escapeHtml(sourceLabel)}</strong>
-              <p class="library-progress-card-note">페이지 ${pageCount}쪽 · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)} · PDF 이미지를 기준으로 문항을 자르고, 텍스트는 AI JSON으로 덮어씁니다.</p>
+              <p class="library-progress-card-note">${isJsonOnly ? "JSON 텍스트 전용" : `페이지 ${pageCount}쪽`} · 출처 ${escapeHtml(librarySourceLabel)} · 교재 ${escapeHtml(textbookLabel)} · ${isJsonOnly ? "이미지 없이 저장하고 텍스트 출제로 사용합니다." : "PDF 이미지를 기준으로 문항을 자르고, 텍스트는 AI JSON으로 덮어씁니다."}</p>
             </article>
             <article class="library-progress-card">
               <span class="library-progress-card-label">저장 위치</span>
@@ -4551,8 +4553,8 @@
       ].find((value) => Array.isArray(value)) || [];
     }
 
-    function normalizeAiProblemNumber(item) {
-      const raw = getFirstDefinedAiField(item, [
+    function getAiProblemNumberValue(item) {
+      return getFirstDefinedAiField(item, [
         "number",
         "questionNumber",
         "questionNo",
@@ -4563,7 +4565,10 @@
         "문항번호",
         "문제번호"
       ]);
-      const match = String(raw || "").match(/\d{1,3}/);
+    }
+
+    function normalizeAiProblemNumber(item) {
+      const match = String(getAiProblemNumberValue(item) || "").match(/\d+/);
       return match ? Number(match[0]) : Number.NaN;
     }
 
@@ -4586,7 +4591,13 @@
         getFirstDefinedAiField(item, ["summaryText", "summary", "요약", "요약문"]),
         getFirstDefinedAiField(item, ["rawText", "text", "fullText", "원문"])
       ].filter(Boolean).join(" ");
-      const explicitNormalizedType = explicitType ? normalizeEffectiveProblemType(explicitType) : "";
+      const solbookTypeLabels = {
+        topic: "주제", title: "제목", implication: "함축의미", blank: "빈칸", summary: "요약",
+        vocab_underline: "밑줄어휘", vocab_box: "선택어휘", factual: "내용", unfactual: "내용",
+        gist: "요지", claim: "주장", grammar_underline: "밑줄어법", grammar_box: "선택어법",
+        order: "순서", insertion: "삽입", irrelevant: "무관"
+      };
+      const explicitNormalizedType = explicitType ? normalizeEffectiveProblemType(solbookTypeLabels[explicitType] || explicitType) : "";
       const fallbackType = normalizeEffectiveProblemType(classifyProblemType(fallbackText));
       const normalizedType = explicitNormalizedType && explicitNormalizedType !== PROBLEM_TYPE_OTHER
         ? explicitNormalizedType
@@ -4618,10 +4629,10 @@
       );
     }
 
-    function buildStructuredProblemDataFromAiItem(item, problemType) {
+    function buildStructuredProblemDataFromAiItem(item, problemType, isSubjective = false) {
       const rawStructure = item?.textStructure || item?.structure || item?.structuredText || item?.["구조"];
       if (rawStructure && typeof rawStructure === "object" && !Array.isArray(rawStructure)) {
-        return normalizeStructuredProblemData(rawStructure, problemType, false);
+        return normalizeStructuredProblemData(rawStructure, problemType, isSubjective);
       }
       const rawText = getFirstDefinedAiField(item, ["rawText", "text", "fullText", "원문", "전체텍스트"]);
       const questionText = getFirstDefinedAiField(item, ["questionText", "question", "prompt", "stem", "문제", "발문"]);
@@ -4629,12 +4640,12 @@
       const questionWithReference = passageLabel && !normalizeProblemText(questionText).includes(`[${passageLabel}]`)
         ? `${normalizeProblemText(questionText)} [${passageLabel}]`.trim()
         : questionText;
-      const bodyText = getFirstDefinedAiField(item, ["bodyText", "body", "passage", "본문", "지문"]);
+      const bodyText = getFirstDefinedAiField(item, ["bodyText", "body", "passage", "본문", "지문"]) || (questionText ? rawText : "");
       const givenText = getFirstDefinedAiField(item, ["givenText", "leadText", "insertionText", "주어진문장", "주어진 문장"]);
       const summaryText = getFirstDefinedAiField(item, ["summaryText", "summary", "요약", "요약문"]);
       const choices = normalizeAiChoiceEntries(getFirstDefinedAiField(item, ["choices", "choiceTexts", "options", "선택지", "보기"]));
       if (!questionWithReference && !bodyText && !givenText && !summaryText && rawText) {
-        return buildStructuredProblemDataFromText(problemType, false, rawText);
+        return buildStructuredProblemDataFromText(problemType, isSubjective, rawText);
       }
       return normalizeStructuredProblemData({
         questionText: questionWithReference,
@@ -4642,7 +4653,59 @@
         givenText,
         summaryText,
         choices
-      }, problemType, false);
+      }, problemType, isSubjective);
+    }
+
+    function buildAiProblemTextPatch(item, previous = {}) {
+      const selection = getFirstDefinedAiField(item, ["subjectiveType", "problemType", "type", "questionType", "category", "유형", "문제유형"]);
+      const isSubjective = item?.isSubjective === true || isSubjectiveProblemTypeSelection(selection);
+      const problemType = isSubjective ? getProblemTypeFromSelection(selection || PROBLEM_TYPE_SUBJECTIVE) : normalizeAiProblemType(item);
+      const textStructure = buildStructuredProblemDataFromAiItem(item, problemType, isSubjective);
+      const rawText = composeStructuredProblemRawText(textStructure);
+      const subjectiveType = isSubjective ? getSubjectiveTypeFromSelection(selection, rawText, problemType) : "";
+      const explanationText = getFirstDefinedAiField(item, ["explanationText", "explanation", "commentary", "해설"]) || previous.explanationText || "";
+      const answerRaw = getFirstDefinedAiField(item, ["answerText", "answer", "correctAnswer", "correct", "답", "정답"]);
+      const passageLabel = normalizeAiPassageLabel(getFirstDefinedAiField(item, ["passageLabel", "worksheetRef", "referenceText", "참조", "지문번호"]));
+      return {
+        problemType, subjectiveType, isSubjective, textStructure,
+        promptText: rawText || previous.promptText || "",
+        analysisText: rawText || previous.analysisText || "",
+        ...(passageLabel ? { worksheetRef: passageLabel, passageGroupKey: `${previous.worksheetFamily || ""}::${passageLabel}` } : {}),
+        answerText: isSubjective ? normalizeProblemText(answerRaw) : normalizeParsedObjectiveAnswerText(answerRaw, explanationText),
+        explanationText,
+        typeTags: buildProblemTypeTags(problemType, isSubjective, subjectiveType),
+        contentMode: LIBRARY_EXTRACTION_MODE_TEXT
+      };
+    }
+
+    function createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, fileName) {
+      const numbers = new Set();
+      return items.map((item, index) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          throw new Error(`JSON ${index + 1}번째 항목이 문항 객체가 아닙니다.`);
+        }
+        const rawNumber = getAiProblemNumberValue(item);
+        const number = rawNumber === "" ? index + 1 : Number(String(rawNumber).replace(/번$/, "").trim());
+        if (!Number.isSafeInteger(number) || number <= 0 || numbers.has(number)) {
+          throw new Error(`JSON ${index + 1}번째 문항 번호가 잘못되었거나 중복됩니다. 양의 정수로 서로 다르게 지정해주세요.`);
+        }
+        numbers.add(number);
+        const problem = {
+          id: `json-problem-${number}`, kind: "problem", number, groupLabel: "",
+          worksheetFamily: textbookName,
+          worksheetRef: fileName.replace(/\.[^.]+$/, ""),
+          passageGroupKey: "",
+          librarySourceKey, librarySourceName: getLibrarySourceLabel(librarySourceKey),
+          segments: [], segmentImages: [], answerSegments: [], answerSegmentImages: [],
+          pageSignature: "", pageCount: 0, manualSquashPercent: null,
+          textOnly: true, renderContentMode: EXAM_CONTENT_MODE_TEXT
+        };
+        const patch = buildAiProblemTextPatch(item, problem);
+        if (!structuredProblemDataHasContent(patch.textStructure)) {
+          throw new Error(`JSON ${number}번 문항의 발문/본문/선택지가 비어 있습니다.`);
+        }
+        return { ...problem, ...patch };
+      });
     }
 
     function applyAiProblemJsonPayload(payload, fileName = "AI JSON") {
@@ -4650,8 +4713,36 @@
       if (!items.length) {
         throw new Error("JSON에서 문항 배열을 찾지 못했습니다. 배열 또는 problems/items/questions 키를 사용해주세요.");
       }
-      if (!state.problems.some((problem) => problem?.kind === "problem")) {
-        throw new Error("먼저 PDF를 불러와 문항 이미지를 추출한 뒤 JSON을 업로드해주세요.");
+      const isNewImport = !state.problems.length;
+      if (isNewImport) {
+        const textbookName = getSelectedTextbookName();
+        if (!textbookName) {
+          throw new Error("JSON을 등록하려면 먼저 새 교재명을 입력하거나 기존 교재를 선택해주세요.");
+        }
+        const librarySourceKey = getSelectedLibrarySourceKey();
+        // Validate the entire file before changing the current import.
+        const problems = createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, fileName);
+        cleanupObjectUrls();
+        if (state.pdfDoc) {
+          Promise.resolve(state.pdfDoc.destroy()).catch((error) => console.warn("Failed to destroy previous PDF document", error));
+        }
+        state.pdfDoc = null;
+        state.problems = problems;
+        state.fileName = fileName;
+        state.selectedTextbookName = textbookName;
+        state.selectedLibrarySourceKey = librarySourceKey;
+        state.libraryExtractionMode = LIBRARY_EXTRACTION_MODE_TEXT;
+        state.lastExportName = slugifyFileName(fileName);
+        state.loadedRepackWorkId = "";
+        state.pages = [];
+        state.stats = { pageCount: 0 };
+        state.visibleProblems = null;
+        state.layoutPages = [];
+        state.renderedSheetIndices = new Set();
+        state.previewSheetCount = 0;
+        updateLoadedFileLabel();
+        updateLibraryExtractionModeUi();
+        applyExamContentModeToUi(EXAM_CONTENT_MODE_TEXT);
       }
       const problemsByNumber = new Map(
         state.problems
@@ -4660,35 +4751,19 @@
       );
       let updatedCount = 0;
       let skippedCount = 0;
-      items.forEach((item) => {
-        const number = normalizeAiProblemNumber(item);
-        const problem = problemsByNumber.get(number);
-        if (!problem) {
-          skippedCount += 1;
-          return;
-        }
-        const problemType = normalizeAiProblemType(item);
-        const textStructure = buildStructuredProblemDataFromAiItem(item, problemType);
-        const rawText = composeStructuredProblemRawText(textStructure);
-        const explanationText = getFirstDefinedAiField(item, ["explanationText", "explanation", "해설"]);
-        const answerTextRaw = getFirstDefinedAiField(item, ["answerText", "answer", "correctAnswer", "correct", "답", "정답"]);
-        const passageLabel = normalizeAiPassageLabel(getFirstDefinedAiField(item, ["passageLabel", "worksheetRef", "referenceText", "참조", "지문번호"]));
-        problem.problemType = problemType;
-        problem.subjectiveType = "";
-        problem.isSubjective = false;
-        problem.textStructure = textStructure;
-        problem.promptText = rawText || problem.promptText || "";
-        problem.analysisText = rawText || problem.analysisText || "";
-        if (passageLabel) {
-          problem.worksheetRef = passageLabel;
-          problem.passageGroupKey = `${problem.worksheetFamily || ""}::${passageLabel}`;
-        }
-        problem.answerText = normalizeParsedObjectiveAnswerText(answerTextRaw, explanationText || problem.explanationText || "");
-        problem.explanationText = explanationText || problem.explanationText || "";
-        problem.typeTags = buildProblemTypeTags(problemType, false, "");
-        problem.contentMode = LIBRARY_EXTRACTION_MODE_TEXT;
-        updatedCount += 1;
-      });
+      if (!isNewImport) {
+        items.forEach((item) => {
+          const number = normalizeAiProblemNumber(item);
+          const problem = problemsByNumber.get(number);
+          if (!problem) {
+            skippedCount += 1;
+            return;
+          }
+          Object.assign(problem, buildAiProblemTextPatch(item, problem));
+          updatedCount += 1;
+        });
+      }
+      if (isNewImport) updatedCount = state.problems.length;
       refreshProblemStats(state.problems);
       renderPreview();
       if (isLibraryWorkspaceMode()) {
@@ -4696,7 +4771,7 @@
       }
       setOptionalText(
         elements.problemJsonSummary,
-        `${fileName} 적용 완료: ${updatedCount}문항을 번호 기준으로 덮어썼습니다.${skippedCount ? ` 매칭 실패 ${skippedCount}개는 건너뛰었습니다.` : ""}`
+        `${fileName} 적용 완료: ${updatedCount}문항을 ${isNewImport ? "PDF 없이 텍스트 문항으로 불러왔습니다" : "번호 기준으로 덮어썼습니다"}.${skippedCount ? ` 매칭 실패 ${skippedCount}개는 건너뛰었습니다. 새 파일로 등록하려면 초기화 후 다시 올려주세요.` : ""}`
       );
       setOptionalText(elements.librarySaveSummary, `${getLibrarySourceLabel(state.selectedLibrarySourceKey)} · ${state.selectedTextbookName || getSelectedTextbookName()} / ${state.fileName || fileName} · JSON 텍스트 적용됨 · ${getAnswerImportSummary(state.problems)} · 아직 라이브러리에 저장되지 않았습니다.`);
       setStatus(`${updatedCount}문항에 AI JSON 텍스트를 적용했습니다.`, "idle", "JSON 적용");
@@ -4711,7 +4786,12 @@
       setStatus("AI JSON을 불러와 문항 텍스트를 적용하는 중입니다...", "working", "JSON");
       try {
         const text = await readBlobAsText(file);
-        const payload = JSON.parse(text);
+        let payload;
+        try {
+          payload = JSON.parse(text.replace(/^\uFEFF/, ""));
+        } catch (error) {
+          throw new Error("JSON 파일 형식이 올바르지 않습니다. 쉼표, 따옴표, 괄호를 확인해주세요.");
+        }
         applyAiProblemJsonPayload(payload, file.name);
       } finally {
         setBusy(false);
@@ -4819,7 +4899,14 @@
     }
 
     function getLibraryProblemMode(problem) {
+      if (problem?.textOnly === true) return LIBRARY_EXTRACTION_MODE_TEXT;
       return normalizeLibraryExtractionMode(problem?.contentMode || LIBRARY_EXTRACTION_MODE_IMAGE);
+    }
+
+    function isTextOnlyLibraryProblem(problem) {
+      return problem?.textOnly === true
+        && ![problem.segments, problem.segmentMeta, problem.segmentStoragePaths].some((rows) => Array.isArray(rows) && rows.length)
+        && Boolean(structuredProblemDataHasContent(problem.textStructure) || normalizeProblemText(problem.promptText || problem.analysisText || ""));
     }
 
     function getLibraryProblemExcerpt(problem, maxLength = 180) {
@@ -5044,6 +5131,7 @@
     }
 
     function normalizeParsedAnswerTextForProblem(problem, value, explanationText = "") {
+      if (problem?.textOnly === true && problem?.isSubjective) return normalizeProblemText(value);
       return problem?.isSubjective
         ? normalizeParsedAnswerText(value)
         : normalizeParsedObjectiveAnswerText(value, explanationText);
@@ -5214,7 +5302,7 @@
     }
 
     function repairOcrStolenInitialAnswerFields(target) {
-      if (!target || target.kind === "shared") {
+      if (!target || target.kind === "shared" || target.textOnly === true) {
         return false;
       }
       const repaired = repairOcrParsedAnswer({
@@ -7048,7 +7136,7 @@
       }
       const segmentBlobCount = countUsableLibraryBlobs(assetRecord.segmentBlobs);
       const segmentPathCount = (Array.isArray(segmentStoragePaths) ? segmentStoragePaths : []).filter((value) => normalizeProblemText(value)).length;
-      if (segmentBlobCount <= 0 || segmentPathCount < segmentBlobCount) {
+      if ((segmentBlobCount <= 0 && !isTextOnlyLibraryProblem(metadataRecord)) || segmentPathCount < segmentBlobCount) {
         throw new Error(`문항 ${metadataRecord.number || metadataRecord.problemId || "-"} 이미지 블록을 Firebase Storage에 저장하지 못했습니다.`);
       }
       const answerBlobCount = countUsableLibraryBlobs(assetRecord.answerSegmentBlobs);
@@ -7315,7 +7403,7 @@
               answerSegmentStoragePaths,
               updatedAt: Number(nextMetadataRecord.updatedAt || Date.now())
             };
-          } else if (metadataRecord.kind !== "shared") {
+          } else if (metadataRecord.kind !== "shared" && !isTextOnlyLibraryProblem(metadataRecord)) {
             const existingDoc = await state.firebaseSchoolBridge.db
               .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
               .doc(metadataRecord.recordId)
@@ -9740,7 +9828,7 @@
           const sourceRows = rows.filter((record) => record.sourceId === sourceId);
           const hydratedRows = await hydrateProblemRecordsWithAssets(sourceRows);
           const missingImageRows = hydratedRows.filter((record) =>
-            record.kind !== "shared" && !hasUsableLibraryBlobs(record.segmentBlobs)
+            record.kind !== "shared" && !isTextOnlyLibraryProblem(record) && !hasUsableLibraryBlobs(record.segmentBlobs)
           );
           if (missingImageRows.length) {
             skippedSources.push(sourceId);
@@ -10542,6 +10630,7 @@
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
         contentMode: getLibraryProblemMode(problem),
+        textOnly: problem.textOnly === true,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
         textStructure: getLibraryProblemStructuredText(problem),
@@ -10593,6 +10682,7 @@
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
         contentMode: getLibraryProblemMode(problem),
+        textOnly: problem.textOnly === true,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
         textStructure: getLibraryProblemStructuredText(problem),
@@ -10625,12 +10715,12 @@
       const problemText = snapshot.analysisText || snapshot.promptText || "";
       const isShared = snapshot.kind === "shared";
       const isTailProblem = !isShared && Boolean(snapshot.groupLabel);
-      const isSubjective = isShared ? false : isSubjectiveProblem(problemText);
+      const isSubjective = isShared ? false : (snapshot.textOnly ? Boolean(snapshot.isSubjective) : isSubjectiveProblem(problemText));
       const problemType = isShared
         ? null
-        : (isTailProblem ? PROBLEM_TYPE_TAIL : classifyProblemType(problemText));
+        : (isTailProblem ? PROBLEM_TYPE_TAIL : (snapshot.textOnly ? snapshot.problemType || PROBLEM_TYPE_OTHER : classifyProblemType(problemText)));
       const subjectiveType = isSubjective && !isTailProblem
-        ? classifySubjectiveType(problemText, problemType)
+        ? (snapshot.textOnly ? snapshot.subjectiveType || SUBJECTIVE_TYPE_OTHER : classifySubjectiveType(problemText, problemType))
         : "";
       return {
         id: snapshot.id,
@@ -10649,6 +10739,8 @@
         pageSignature: snapshot.pageSignature || "",
         pageCount: snapshot.pageCount || 0,
         contentMode: getLibraryProblemMode(snapshot),
+        textOnly: snapshot.textOnly === true,
+        ...(snapshot.textOnly ? { renderContentMode: EXAM_CONTENT_MODE_TEXT } : {}),
         promptText: snapshot.promptText || "",
         analysisText: snapshot.analysisText || "",
         textStructure: normalizeStructuredProblemData(snapshot.textStructure, problemType, isSubjective),
@@ -10703,13 +10795,14 @@
 
       setBusy(true);
       try {
+        const isTextOnlyImport = state.problems.every(isTextOnlyLibraryProblem);
         setStatus("문제 라이브러리에 저장할 데이터를 준비하는 중입니다...", "working", "라이브러리");
         setOptionalText(elements.librarySaveSummary, `${getLibraryExtractionModeLabel(state.libraryExtractionMode)} 기준으로 문제 데이터를 정리해서 라이브러리에 저장하는 중입니다...`);
         if (isLibraryWorkspaceMode()) {
           setLibraryProgressState({
             phaseKey: "segments",
-            phaseLabel: "이미지 준비",
-            message: `${getQuestionCount(state.problems)}문항의 이미지 조각을 준비합니다.`,
+            phaseLabel: isTextOnlyImport ? "텍스트 준비" : "이미지 준비",
+            message: isTextOnlyImport ? `${getQuestionCount(state.problems)}문항의 텍스트를 준비합니다.` : `${getQuestionCount(state.problems)}문항의 이미지 조각을 준비합니다.`,
             current: 0,
             total: Math.max(getQuestionCount(state.problems), 1),
             percent: 0
@@ -10727,7 +10820,7 @@
           librarySourceName: getLibrarySourceLabel(librarySourceKey),
           textbookName: state.selectedTextbookName,
           fileName: state.fileName || `${state.lastExportName}.pdf`,
-          contentMode: normalizeLibraryExtractionMode(state.libraryExtractionMode),
+          contentMode: isTextOnlyImport ? LIBRARY_EXTRACTION_MODE_TEXT : normalizeLibraryExtractionMode(state.libraryExtractionMode),
           importedAt: Date.now(),
           pageCount: state.stats?.pageCount || 0,
           problemCount: getQuestionCount(state.problems),
@@ -10830,7 +10923,7 @@
           );
         }
         setStatus(
-          `페이지 ${state.stats?.pageCount || 0}쪽에서 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다. ${statusTail.filter(Boolean).join(" ")}`.trim(),
+          `${isTextOnlyImport ? "JSON에서" : `페이지 ${state.stats?.pageCount || 0}쪽에서`} 문항 ${getQuestionCount(state.problems)}개를 감지했습니다. ${getAnswerImportSummary(state.problems)}까지 라이브러리 저장이 완료되었습니다. ${statusTail.filter(Boolean).join(" ")}`.trim(),
           "idle",
           "저장 완료"
         );
@@ -16001,6 +16094,9 @@
         ? []
         : (() => {
             const segmentImageUrls = Array.isArray(record.segmentImageUrls) ? record.segmentImageUrls : [];
+            if (record.textOnly === true) {
+              throw new Error(`문항 ${record.number || "-"}은 JSON으로 등록한 텍스트 전용 문항입니다. 문제 렌더링을 '텍스트 출제'로 변경해주세요.`);
+            }
             if (!hasUsableLibraryBlobs(record.segmentBlobs) && !hasUsableLibraryImageUrls(segmentImageUrls)) {
               const hasRemoteImagePaths = hasSharedStoragePaths(record, "segmentStoragePaths");
               const remoteError = normalizeProblemText(record.sharedAssetError || "");
@@ -17497,7 +17593,7 @@
 
     function updateLoadedFileLabel() {
       if (!state.fileName) {
-        elements.fileName.textContent = "아직 불러온 PDF가 없습니다.";
+        elements.fileName.textContent = "아직 불러온 PDF / JSON이 없습니다.";
         return;
       }
       const textbookName = state.selectedTextbookName || getSelectedTextbookName();
@@ -17544,7 +17640,7 @@
       elements.exportHtmlButton.disabled = isBusy || !activeProblems.length;
       elements.saveLibraryButton.disabled = isBusy || !state.problems.length;
       if (elements.chooseProblemJsonButton) {
-        elements.chooseProblemJsonButton.disabled = isBusy || !state.problems.some((problem) => problem?.kind === "problem");
+        elements.chooseProblemJsonButton.disabled = isBusy;
       }
       if (elements.problemJsonInput) {
         elements.problemJsonInput.disabled = isBusy;
@@ -17647,7 +17743,7 @@
       elements.exportHtmlButton.disabled = state.isBusy || !hasProblems;
       elements.saveLibraryButton.disabled = state.isBusy || !state.problems.length;
       if (elements.chooseProblemJsonButton) {
-        elements.chooseProblemJsonButton.disabled = state.isBusy || !state.problems.some((problem) => problem?.kind === "problem");
+        elements.chooseProblemJsonButton.disabled = state.isBusy;
       }
     }
 
@@ -19153,6 +19249,8 @@
       state.fileName = file.name;
       state.selectedLibrarySourceKey = selectedLibrarySourceKey;
       state.selectedTextbookName = selectedTextbookName;
+      state.libraryExtractionMode = LIBRARY_EXTRACTION_MODE_IMAGE;
+      updateLibraryExtractionModeUi();
       if (state.pdfDoc) {
         try {
           await state.pdfDoc.destroy();
@@ -19288,6 +19386,8 @@
       }
       state.fileName = "";
       state.pdfDoc = null;
+      state.libraryExtractionMode = LIBRARY_EXTRACTION_MODE_IMAGE;
+      updateLibraryExtractionModeUi();
       state.problems = [];
       state.visibleProblems = null;
       state.loadedRepackWorkId = "";
@@ -19311,16 +19411,16 @@
       setOptionalText(elements.librarySaveSummary, "");
       resetLibraryProgressState();
       renderPreview();
-      setStatus("PDF를 불러오면 문제를 자동으로 추출해서 공용 라이브러리에 저장할 수 있습니다.", "idle", "준비됨");
+      setStatus("PDF 또는 AI JSON을 불러와 공용 라이브러리에 저장할 수 있습니다.", "idle", "준비됨");
       elements.clearButton.disabled = true;
       elements.saveLibraryButton.disabled = true;
       if (elements.chooseProblemJsonButton) {
-        elements.chooseProblemJsonButton.disabled = true;
+        elements.chooseProblemJsonButton.disabled = state.isBusy;
       }
       if (elements.problemJsonInput) {
         elements.problemJsonInput.value = "";
       }
-      setOptionalText(elements.problemJsonSummary, "PDF로 이미지 문항을 먼저 추출한 뒤, AI가 만든 JSON을 올리면 번호 기준으로 문제 텍스트/유형/답안을 덮어씁니다.");
+      setOptionalText(elements.problemJsonSummary, DEFAULT_PROBLEM_JSON_MESSAGE);
     }
 
     async function blobUrlToDataUrl(url) {
