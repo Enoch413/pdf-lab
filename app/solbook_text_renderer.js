@@ -497,6 +497,8 @@
   }
 
   function render(problem, fallbackBlocks) {
+    // Only runtime pagination creates this field; library records remain intact.
+    if (typeof problem.textFragmentHtml === "string") return problem.textFragmentHtml;
     const question = toQuestion(problem, fallbackBlocks);
     const hasContent = question.stem || question.body || question.choices.length;
     const stem = question.stem ? '<p class="solbook-stem">' + renderStemText(question.stem, question.type) + '</p>' : "";
@@ -540,11 +542,13 @@
     '.solbook-text-question .solbook-choices li { display:grid; grid-template-columns:3.8mm minmax(0,1fr); gap:0.7mm; }',
     '.solbook-text-question .solbook-choice-marker { font-weight:400; }',
     '.solbook-text-question .solbook-choice-text { min-width:0; white-space:normal; overflow-wrap:anywhere; word-break:normal; }',
-    '.solbook-text-question .solbook-choices.is-order .solbook-choice-text { white-space:nowrap; }'
+    '.solbook-text-question .solbook-choices.is-order .solbook-choice-text { white-space:nowrap; }',
+    '.problem-continuation-badge { font-family:"PDF Lab Solbook",sans-serif; font-size:8pt; font-weight:600; color:#555; }'
   ].join("\n");
 
   let measurementRoot = null;
   const heightCache = new Map();
+  const paginationCache = new Map();
   function measureCard(markup, columnWidthMm) {
     if (!root.document?.body) return null;
     const key = columnWidthMm + "|" + markup;
@@ -573,6 +577,126 @@
     }
   }
 
+  // Split rendered paragraphs/choices, preserving inline markup and original
+  // choice numbers. The fragments are layout-only and never become new questions.
+  function paginateProblem(problem, { columnWidthMm, columnHeightMm, renderCard }) {
+    if (!root.document?.body || problem.textFragmentHtml != null) return [problem];
+    const originalMarkup = renderCard(problem);
+    if (measureCard(originalMarkup, columnWidthMm) <= columnHeightMm) return [problem];
+    const cacheKey = columnWidthMm + "|" + columnHeightMm + "|" + originalMarkup;
+    const makeProblem = (html, index) => ({ ...problem, textFragmentHtml: html, textContinuation: index > 0 });
+    if (paginationCache.has(cacheKey)) return paginationCache.get(cacheKey).map(makeProblem);
+    const template = root.document.createElement("template");
+    template.innerHTML = originalMarkup;
+    const content = template.content.querySelector(".solbook-text-question");
+    if (!content) return [problem];
+    const blocks = [];
+    for (const element of content.children) {
+      if (element.matches(".solbook-choices")) {
+        for (const item of element.children) {
+          const text = item.querySelector(".solbook-choice-text");
+          if (text) blocks.push({ element: text, item, list: element, start: 0, end: text.textContent.length });
+        }
+      } else {
+        blocks.push({ element, start: 0, end: element.textContent.length });
+      }
+    }
+    // Copy the selected text interval through the element tree rather than
+    // slicing HTML strings (which would break underlines, blanks, and boxes).
+    function sliceElement(element, start, end) {
+      let cursor = 0;
+      const copyNode = (node) => {
+        if (node.nodeType === 3) {
+          const from = cursor;
+          cursor += node.textContent.length;
+          return root.document.createTextNode(node.textContent.slice(Math.max(0, start - from), Math.max(0, Math.min(cursor, end) - from)));
+        }
+        if (node.nodeType !== 1) return null;
+        const clone = node.cloneNode(false);
+        const position = cursor;
+        for (const child of node.childNodes) {
+          const copied = copyNode(child);
+          if (copied && (copied.nodeType !== 3 || copied.textContent)) clone.append(copied);
+        }
+        return clone.childNodes.length || (position >= start && position < end && /^(BR|WBR)$/.test(node.tagName)) ? clone : null;
+      };
+      return copyNode(element) || element.cloneNode(false);
+    }
+    function fragmentMarkup(parts) {
+      const wrapper = content.cloneNode(false);
+      let lastList = null;
+      let lastSourceList = null;
+      for (const block of parts) {
+        const sliced = sliceElement(block.element, block.start, block.end);
+        if (block.list) {
+          if (lastSourceList !== block.list) {
+            lastList = block.list.cloneNode(false);
+            wrapper.append(lastList);
+            lastSourceList = block.list;
+          }
+          const item = block.item.cloneNode(true);
+          item.querySelector(".solbook-choice-text").replaceWith(sliced);
+          if (block.start > 0) item.querySelector(".solbook-choice-marker")?.setAttribute("data-repeated-marker", "true");
+          lastList.append(item);
+        } else {
+          wrapper.append(sliced);
+          lastSourceList = null;
+        }
+      }
+      return wrapper.outerHTML;
+    }
+    const fragments = [];
+    let current = [];
+    const fits = parts => measureCard(renderCard(makeProblem(fragmentMarkup(parts), fragments.length)), columnWidthMm) <= columnHeightMm;
+    const flush = () => { fragments.push(fragmentMarkup(current)); current = []; };
+    const remaining = blocks.slice();
+    while (remaining.length) {
+      const block = remaining[0];
+      if (fits([...current, block])) {
+        current.push(block);
+        remaining.shift();
+        continue;
+      }
+      // Keep an answer option together when it fits in a fresh column.
+      if (current.length && block.list && fits([block])) { flush(); continue; }
+      const text = block.element.textContent;
+      const boundaries = [];
+      for (const match of text.slice(block.start, block.end).matchAll(/\s+/gu)) boundaries.push(block.start + match.index + match[0].length);
+      boundaries.push(block.end);
+      let low = 0, high = boundaries.length - 1, best = block.start;
+      while (low <= high) {
+        const middle = (low + high) >> 1;
+        const end = boundaries[middle];
+        if (fits([...current, { ...block, end }])) { best = end; low = middle + 1; }
+        else high = middle - 1;
+      }
+      // A very long token (e.g. Korean without spaces) still needs a safe break.
+      if (best === block.start && !current.length) {
+        const points = Array.from(text.slice(block.start, block.end));
+        let offset = block.start;
+        const ends = points.map(point => (offset += point.length));
+        low = 0; high = ends.length - 1;
+        while (low <= high) {
+          const middle = (low + high) >> 1;
+          if (fits([{ ...block, end: ends[middle] }])) { best = ends[middle]; low = middle + 1; }
+          else high = middle - 1;
+        }
+      }
+      if (best === block.start) {
+        if (current.length) { flush(); continue; }
+        throw new Error("문항 " + (problem.displayNumber ?? problem.number ?? "-") + "번의 텍스트를 단에 배치하지 못했습니다. 출력 여백과 글꼴을 확인해주세요.");
+      }
+      current.push({ ...block, end: best });
+      if (best === block.end) remaining.shift();
+      else remaining[0] = { ...block, start: best };
+      flush();
+    }
+    if (current.length) flush();
+    if (paginationCache.size >= 128) paginationCache.clear();
+    paginationCache.set(cacheKey, fragments);
+    return fragments.map(makeProblem);
+  }
+
   function assertFits(sheets) {
     const overflow = sheets.flatMap(sheet => sheet.columns.flatMap(column => column.items))
       .find(entry => entry.isOverflow && entry.problem.renderContentMode === "text");
@@ -582,12 +706,12 @@
     }
   }
 
-  root.PDFLabSolbookText = Object.freeze({ toQuestion, render, measureCard, ready, assertFits, cssText, normalizeQuestionType, normalizeSolbookMarkers, normalizeChoiceText, renderInlineText });
+  root.PDFLabSolbookText = Object.freeze({ toQuestion, render, measureCard, ready, paginateProblem, assertFits, cssText, normalizeQuestionType, normalizeSolbookMarkers, normalizeChoiceText, renderInlineText });
   if (root.document?.head) {
     const style = root.document.createElement("style");
     style.id = "pdflab-solbook-text-style";
     style.textContent = cssText;
     root.document.head.append(style);
-    root.document.fonts?.addEventListener("loadingdone", () => heightCache.clear());
+    root.document.fonts?.addEventListener("loadingdone", () => { heightCache.clear(); paginationCache.clear(); });
   }
 })(typeof window === "object" ? window : globalThis);

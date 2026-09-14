@@ -47,13 +47,14 @@ const server = http.createServer((req,res)=>{
         buildLayoutPages(settings,many);
         const durationMs=performance.now()-started;
         const huge={...runtime[0],textStructure:{questionText:'긴 본문 검증',bodyText:'A very long passage. '.repeat(2500)}};
-        let overflowBlocked=false;
-        try { PDFLabSolbookText.assertFits(buildLayoutPages(settings,[huge]).sheets); }
-        catch(error) { overflowBlocked=error.message.includes('한 단보다'); }
-        return {html:preview.html,durationMs,overflowBlocked,renderedCount:preview.renderedQuestionCount};
+        const longLayout=buildLayoutPages(settings,[huge]);
+        PDFLabSolbookText.assertFits(longLayout.sheets);
+        const longFragments=longLayout.sheets.flatMap(s=>s.columns.flatMap(c=>c.items));
+        const overflowPaginated=longFragments.length>1&&longFragments.slice(1).every(e=>e.problem.textContinuation);
+        return {html:preview.html,durationMs,overflowPaginated,renderedCount:preview.renderedQuestionCount};
       },records);
       assert.equal(payload.renderedCount,16);
-      assert.equal(payload.overflowBlocked,true);
+      assert.equal(payload.overflowPaginated,true);
       assert.deepEqual(errors,[],'App startup/runtime errors');
       fs.writeFileSync(path.join(out,name+'.html'),payload.html);
       await page.goto(origin+'/tmp/pdfs/solbook-text-qa/'+name+'.html',{waitUntil:'load'});

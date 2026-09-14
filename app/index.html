@@ -628,7 +628,7 @@
     </section>
   </div>
 
-  <script src="./solbook_text_renderer.js?v=20260909-1"></script>
+  <script src="./solbook_text_renderer.js?v=20260914-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -18888,7 +18888,13 @@
         columnIndex = 0;
       }
 
-      for (const problem of problems) {
+      const layoutProblems = problems.flatMap((problem) => isTextRenderProblem(problem) && window.PDFLabSolbookText?.paginateProblem
+        ? window.PDFLabSolbookText.paginateProblem(problem, {
+            columnWidthMm, columnHeightMm: firstSheetColumnHeightMm,
+            renderCard: (fragment) => createProblemCardMarkup({ problem: fragment, fitScale: 1, appliedSquashPercent: 0 })
+          })
+        : [problem]);
+      for (const problem of layoutProblems) {
         const baseSquashPercent = getProblemSquashPercent(problem);
         const metrics = calculateProblemMetrics(problem, columnWidthMm, baseSquashPercent);
         const supportsFitScale = metrics.supportsFitScale !== false;
@@ -19069,6 +19075,7 @@
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
+                ${problem.textContinuation ? '<span class="problem-continuation-badge">계속</span>' : ""}
                 ${typeBadges}
               </div>
               ${isTextRender ? "" : `
