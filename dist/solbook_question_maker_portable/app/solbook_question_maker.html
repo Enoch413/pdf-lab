@@ -10,6 +10,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
   <style>
+    /* Static outlines are also used by the HTML-capture ZIP fallback. */
+    @font-face {
+      font-family: "Solbook Print";
+      src: url("./assets/fonts/NotoSansKR-Print-Regular.ttf") format("truetype");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "Solbook Print";
+      src: url("./assets/fonts/NotoSansKR-Print-ExtraBold.ttf") format("truetype");
+      font-weight: 800;
+    }
     :root {
       --ink: #000000;
       --muted: #000000;
@@ -204,6 +215,26 @@
       accent-color: var(--accent);
     }
 
+    .type-filter {
+      margin: 0;
+      padding: 12px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+    }
+
+    .type-filter legend { font-size: 12px; font-weight: 800; padding: 0 5px; }
+    .type-filter-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+    .type-filter-actions button {
+      border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+      background: white; color: #000; font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .type-filter-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 6px; }
+    .type-filter-option { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+    .type-filter-option input { width: 17px; height: 17px; accent-color: #000; margin: 0; flex: none; }
+    .type-filter-option small { color: #555; }
+    .action-button:disabled, .type-filter-actions button:disabled { opacity: 0.45; cursor: default; }
+
     .button-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -276,6 +307,9 @@
     }
 
     .pdf-export-stage .exam-document {
+      font-family: "Solbook Print", "Noto Sans KR", sans-serif;
+      color: #000;
+      font-weight: 400;
       flex: none;
       width: 794px;
       min-height: auto;
@@ -669,7 +703,7 @@
           <div class="control-stack">
             <label class="json-picker">
               <strong>JSON 파일 선택</strong>
-              <small>여러 JSON을 선택하면 지문 전체를 통합해 12개 시험지 ZIP을 만들 수 있습니다.</small>
+              <small>여러 JSON을 통합한 뒤 유형·난이도를 골라 PDF 또는 차수별 ZIP으로 저장할 수 있습니다.</small>
               <input class="input" id="jsonFileInput" type="file" accept=".json,application/json" multiple>
               <small id="jsonFileName">선택된 JSON 없음</small>
             </label>
@@ -681,18 +715,21 @@
               <span>머리말 아래 문구</span>
               <input class="input" id="examSubtitleInput" type="text" placeholder="예: walking_transport_90_questions.json · 90문항">
             </label>
-            <label class="field">
-              <span>문제 유형</span>
-              <select class="select" id="typeSelect">
-                <option value="">전체 유형</option>
-              </select>
-            </label>
+            <fieldset class="type-filter">
+              <legend>문제 유형 · 여러 개 선택 가능</legend>
+              <div class="type-filter-actions">
+                <button id="selectAllTypesButton" type="button">전체 선택</button>
+                <button id="clearTypesButton" type="button">전체 해제</button>
+              </div>
+              <div class="type-filter-options" id="typeFilterOptions">JSON을 먼저 불러오세요.</div>
+            </fieldset>
             <label class="field">
               <span>난이도</span>
               <select class="select" id="difficultySelect">
                 <option value="">전체 난이도</option>
               </select>
             </label>
+            <p class="hint" id="selectionSummary" aria-live="polite">저장할 문항을 불러오세요.</p>
             <label class="field">
               <span>문항 정렬</span>
               <select class="select" id="sortModeSelect">
@@ -707,15 +744,15 @@
             </label>
             <label class="check-row">
               <input id="fastZipInput" type="checkbox" checked>
-              <span>12개 ZIP jsPDF 직접 출력(권장)</span>
+              <span>ZIP 빠른 직접 출력(권장)</span>
             </label>
             <div class="button-row">
               <button class="action-button secondary" id="resetButton" type="button">전체 보기</button>
-              <button class="action-button" id="printButton" type="button" disabled>빠른 PDF 저장</button>
-              <button class="action-button wide-action" id="batchZipButton" type="button" disabled>12개 시험지 ZIP 저장</button>
+              <button class="action-button" id="printButton" type="button" disabled>선택 문항 PDF 저장</button>
+              <button class="action-button wide-action" id="batchZipButton" type="button" disabled>선택 조건 ZIP 저장</button>
             </div>
             <p class="batch-status" id="batchZipStatus" aria-live="polite"></p>
-            <p class="hint">화면 미리보기는 속도를 위해 앞부분만 표시하지만 PDF와 ZIP에는 선택 조건의 모든 문항이 저장됩니다.</p>
+            <p class="hint">PDF는 선택한 유형·난이도의 모든 문항을 저장합니다. ZIP은 같은 조건으로 난이도별 1~3차 시험지와 답지를 만들며, 빈 시험지는 제외합니다. 화면 미리보기만 앞 36문항으로 제한됩니다.</p>
           </div>
         </aside>
 
@@ -857,7 +894,10 @@
       jsonFileName: document.getElementById("jsonFileName"),
       examTitleInput: document.getElementById("examTitleInput"),
       examSubtitleInput: document.getElementById("examSubtitleInput"),
-      typeSelect: document.getElementById("typeSelect"),
+      typeFilterOptions: document.getElementById("typeFilterOptions"),
+      selectAllTypesButton: document.getElementById("selectAllTypesButton"),
+      clearTypesButton: document.getElementById("clearTypesButton"),
+      selectionSummary: document.getElementById("selectionSummary"),
       difficultySelect: document.getElementById("difficultySelect"),
       sortModeSelect: document.getElementById("sortModeSelect"),
       includeAnswerInput: document.getElementById("includeAnswerInput"),
@@ -1317,12 +1357,12 @@
     }
 
     function populateFilters() {
-      const types = Array.from(new Set(state.questions.map((question) => question.type || "").filter(Boolean)))
-        .sort((left, right) => getTypeLabel(left).localeCompare(getTypeLabel(right), "ko"));
-      elements.typeSelect.innerHTML = [
-        '<option value="">전체 유형</option>',
-        ...types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(getTypeLabel(type))}</option>`)
-      ].join("");
+      const types = getOrderedTypeKeys(state.questions);
+      const counts = new Map();
+      state.questions.forEach((question) => counts.set(question.type || "기타", (counts.get(question.type || "기타") || 0) + 1));
+      elements.typeFilterOptions.innerHTML = types.map((type) =>
+        `<label class="type-filter-option"><input type="checkbox" value="${escapeHtml(type)}" checked><span>${escapeHtml(getTypeLabel(type))} <small>(${counts.get(type)})</small></span></label>`
+      ).join("") || "JSON을 먼저 불러오세요.";
 
       const difficulties = Array.from(new Set(state.questions.map((question) => question.difficultyKey || normalizeDifficulty(question.difficulty))));
       elements.difficultySelect.innerHTML = [
@@ -1331,11 +1371,28 @@
       ].join("");
     }
 
+    function getSelectedTypeKeys() {
+      return new Set(Array.from(elements.typeFilterOptions.querySelectorAll("input:checked"), (input) => input.value));
+    }
+
+    function selectAllTypes(checked) {
+      elements.typeFilterOptions.querySelectorAll("input").forEach((input) => { input.checked = checked; });
+      renderExam();
+    }
+
+    function getSelectionLabel() {
+      const types = Array.from(getSelectedTypeKeys());
+      const totalTypes = elements.typeFilterOptions.querySelectorAll("input").length;
+      const typeLabel = types.length === totalTypes ? "전체 유형"
+        : (types.length ? (types.length <= 3 ? types.map(getTypeLabel).join("·") : `${types.length}개 유형`) : "유형 미선택");
+      return `${typeLabel} · ${elements.difficultySelect.value ? getDifficultyLabel(elements.difficultySelect.value) : "전체 난이도"}`;
+    }
+
     function getFilteredQuestions() {
-      const type = elements.typeSelect.value;
+      const types = getSelectedTypeKeys();
       const difficulty = elements.difficultySelect.value;
       const filtered = state.questions.filter((question) => {
-        if (type && question.type !== type) {
+        if (!types.has(question.type || "기타")) {
           return false;
         }
         if (difficulty && (question.difficultyKey || normalizeDifficulty(question.difficulty)) !== difficulty) {
@@ -1549,6 +1606,7 @@
       state.sortMode = getSelectedSortMode();
       state.filtered = questions;
       elements.loadedCount.textContent = `${questions.length}/${state.questions.length}문항`;
+      elements.selectionSummary.textContent = `${getSelectionLabel()} · 저장 대상 ${questions.length} / 전체 ${state.questions.length}문항`;
       updateBatchButton();
       if (!state.questions.length) {
         elements.examRoot.className = "empty-state";
@@ -1753,8 +1811,13 @@
 
     function updateBatchButton() {
       const isBusy = state.isBatchBusy || state.isSingleBusy;
-      elements.batchZipButton.disabled = isBusy || !state.questions.length;
+      elements.batchZipButton.disabled = isBusy || !state.filtered.length;
       elements.printButton.disabled = isBusy || !state.filtered.length;
+      [elements.jsonFileInput, elements.examTitleInput, elements.examSubtitleInput,
+        elements.difficultySelect, elements.sortModeSelect, elements.includeAnswerInput,
+        elements.fastZipInput, elements.resetButton,
+        elements.selectAllTypesButton, elements.clearTypesButton,
+        ...elements.typeFilterOptions.querySelectorAll("input")].forEach((input) => { input.disabled = isBusy; });
     }
 
     function setBatchStatus(message = "") {
@@ -1771,13 +1834,13 @@
     function setBatchBusy(isBusy) {
       state.isBatchBusy = isBusy;
       updateBatchButton();
-      elements.batchZipButton.textContent = isBusy ? "ZIP 저장 중..." : "12개 시험지 ZIP 저장";
+      elements.batchZipButton.textContent = isBusy ? "ZIP 저장 중..." : "선택 조건 ZIP 저장";
     }
 
     function setSingleBusy(isBusy) {
       state.isSingleBusy = isBusy;
       updateBatchButton();
-      elements.printButton.textContent = isBusy ? "PDF 저장 중..." : "빠른 PDF 저장";
+      elements.printButton.textContent = isBusy ? "PDF 저장 중..." : "선택 문항 PDF 저장";
     }
 
     function toSafeFileName(value) {
@@ -1788,8 +1851,7 @@
         .slice(0, 120) || "solbook";
     }
 
-    function getQuestionsForBatchExam(difficultyKey, round, sortMode = getSelectedSortMode()) {
-      const index = state.batchQuestionIndex || buildBatchQuestionIndex(state.questions);
+    function getQuestionsForBatchExam(difficultyKey, round, sortMode = getSelectedSortMode(), index = buildBatchQuestionIndex(getFilteredQuestions())) {
       const sources = index.sources;
       const selected = [];
       const availableTypes = new Set();
@@ -1820,10 +1882,14 @@
     function buildBatchExamPlans(sortMode = getSelectedSortMode()) {
       const title = elements.examTitleInput.value.trim() || "통합 문제지";
       const sortLabel = getSortModeLabel(sortMode);
-      return BATCH_DIFFICULTY_GROUPS.flatMap((difficulty) => (
+      const index = buildBatchQuestionIndex(getFilteredQuestions());
+      const extraDifficulties = Array.from(index.byDifficulty.keys())
+        .filter((key) => !BATCH_DIFFICULTY_GROUPS.some((group) => group.key === key))
+        .map((key) => ({ key, label: getDifficultyLabel(key) }));
+      return [...BATCH_DIFFICULTY_GROUPS, ...extraDifficulties].filter((group) => index.byDifficulty.has(group.key)).flatMap((difficulty) => (
         BATCH_ROUNDS.map((round) => {
           const subtitle = `난이도 - ${difficulty.label} ${round}차 · ${sortLabel} 정렬`;
-          const questions = getQuestionsForBatchExam(difficulty.key, round, sortMode);
+          const questions = getQuestionsForBatchExam(difficulty.key, round, sortMode, index);
           return {
             title,
             subtitle,
@@ -1832,7 +1898,7 @@
             filename: `${toSafeFileName(title)}_${toSafeFileName(difficulty.label)}_${round}차_${sortLabel}.pdf`
           };
         })
-      ));
+      )).filter((plan) => plan.questions.length);
     }
 
     function waitForImages(root) {
@@ -2006,9 +2072,8 @@
     }
 
     const DIRECT_PDF_FONT = {
-      url: "./assets/fonts/NotoSansKR-VF.ttf",
-      base64ScriptUrl: "./assets/fonts/NotoSansKR-VF.base64.js",
-      fileName: "NotoSansKR-VF.ttf",
+      base64ScriptUrl: "./assets/fonts/NotoSansKR-Print.base64.js?v=20260916-1",
+      files: { normal: "NotoSansKR-Print-Regular.ttf", bold: "NotoSansKR-Print-ExtraBold.ttf" },
       family: "NotoSansKR"
     };
     const DIRECT_HEADER_LOGO = {
@@ -2093,7 +2158,7 @@
     }
 
     function loadDirectPdfFontBase64Script() {
-      if (window.PDFLAB_DIRECT_PDF_FONT_BASE64) {
+      if (window.PDFLAB_PRINT_PDF_FONTS_BASE64?.normal && window.PDFLAB_PRINT_PDF_FONTS_BASE64?.bold) {
         return Promise.resolve();
       }
       if (!directPdfFontScriptPromise) {
@@ -2114,19 +2179,20 @@
         directPdfFontBase64Promise = (async () => {
           try {
             await loadDirectPdfFontBase64Script();
-            if (window.PDFLAB_DIRECT_PDF_FONT_BASE64) {
-              return window.PDFLAB_DIRECT_PDF_FONT_BASE64;
+            if (window.PDFLAB_PRINT_PDF_FONTS_BASE64?.normal && window.PDFLAB_PRINT_PDF_FONTS_BASE64?.bold) {
+              return window.PDFLAB_PRINT_PDF_FONTS_BASE64;
             }
           } catch (error) {
             console.warn(error);
           }
 
           try {
-            const response = await fetch(DIRECT_PDF_FONT.url);
-            if (!response.ok) {
-              throw new Error(`빠른 직접 출력용 한글 폰트를 불러오지 못했습니다: ${response.status}`);
-            }
-            return arrayBufferToBase64(await response.arrayBuffer());
+            const entries = await Promise.all(Object.entries(DIRECT_PDF_FONT.files).map(async ([style, fileName]) => {
+              const response = await fetch(`./assets/fonts/${fileName}`);
+              if (!response.ok) throw new Error(`PDF 인쇄용 ${style} 폰트를 불러오지 못했습니다: ${response.status}`);
+              return [style, arrayBufferToBase64(await response.arrayBuffer())];
+            }));
+            return Object.fromEntries(entries);
           } catch (error) {
             throw new Error("빠른 직접 출력용 한글 폰트를 불러오지 못했습니다. start.bat 로컬 서버에서 다시 열거나 새로고침 후 시도해주세요.");
           }
@@ -2136,10 +2202,12 @@
     }
 
     async function registerDirectPdfFont(pdf) {
-      const fontBase64 = await getDirectPdfFontBase64();
-      pdf.addFileToVFS(DIRECT_PDF_FONT.fileName, fontBase64);
-      pdf.addFont(DIRECT_PDF_FONT.fileName, DIRECT_PDF_FONT.family, "normal");
-      pdf.addFont(DIRECT_PDF_FONT.fileName, DIRECT_PDF_FONT.family, "bold");
+      // jsPDF does not apply the wght axis: embed actual 400 / 800 outlines.
+      const fonts = await getDirectPdfFontBase64();
+      for (const [style, fileName] of Object.entries(DIRECT_PDF_FONT.files)) {
+        pdf.addFileToVFS(fileName, fonts[style]);
+        pdf.addFont(fileName, DIRECT_PDF_FONT.family, style);
+      }
       pdf.setFont(DIRECT_PDF_FONT.family, "normal");
     }
 
@@ -2275,6 +2343,8 @@
     }
 
     function getDirectCandidateFit(pdf, text, width, fontSize, options = {}) {
+      pdf.setFont(DIRECT_PDF_FONT.family, options.style || "normal");
+      pdf.setFontSize(fontSize);
       return {
         fits: directTextWidthWithCharSpace(pdf, text, 0) <= width,
         charSpace: 0
@@ -2286,6 +2356,7 @@
     }
 
     function splitDirectLongWord(pdf, word, width, fontSize, options = {}) {
+      options = { ...options, style: word?.bold ? "bold" : (options.style || "normal") };
       const text = String(word?.text || "");
       if (!text || getDirectCandidateFit(pdf, text, width, fontSize, options).fits) {
         return [word];
@@ -2317,6 +2388,16 @@
           .map((word) => ({ text: word, bold: Boolean(segment.bold), underline: Boolean(segment.underline) })));
     }
 
+    function getDirectWordsWidth(pdf, words, fontSize, style = "normal") {
+      pdf.setFontSize(fontSize);
+      const width = words.reduce((total, word, index) => {
+        pdf.setFont(DIRECT_PDF_FONT.family, word.bold ? "bold" : style);
+        return total + pdf.getTextWidth(word.text) + (index < words.length - 1 ? pdf.getTextWidth(" ") : 0);
+      }, 0);
+      pdf.setFont(DIRECT_PDF_FONT.family, style);
+      return width;
+    }
+
     function layoutDirectTextParagraph(pdf, paragraph, width, fontSize, options = {}) {
       const words = directWordsFromMarkedParagraph(paragraph);
       if (!words.length) {
@@ -2328,8 +2409,8 @@
       let currentCharSpace = 0;
       words.flatMap((word) => splitDirectLongWord(pdf, word, width, fontSize, options)).forEach((word) => {
         const candidateWords = current.length ? [...current, word] : [word];
-        const candidate = directLineTextFromWords(candidateWords);
-        const fit = getDirectCandidateFit(pdf, candidate, width, fontSize, options);
+        // Measure the same per-word font faces that drawDirectLine uses.
+        const fit = { fits: getDirectWordsWidth(pdf, candidateWords, fontSize, options.style) <= width, charSpace: 0 };
         if (fit.fits) {
           current = candidateWords;
           currentCharSpace = fit.charSpace;
@@ -2347,7 +2428,7 @@
           });
         }
 
-        const wordFit = getDirectCandidateFit(pdf, word.text, width, fontSize, options);
+        const wordFit = getDirectCandidateFit(pdf, word.text, width, fontSize, { ...options, style: word.bold ? "bold" : options.style });
         current = [word];
         currentCharSpace = wordFit.fits ? wordFit.charSpace : 0;
       });
@@ -2415,9 +2496,6 @@
         const wordWidth = directTextWidthWithCharSpace(pdf, word.text, charSpace);
         withDirectCharSpace(pdf, charSpace, () => {
           pdf.text(word.text, drawX, y, { charSpace });
-          if (effectiveStyle === "bold") {
-            pdf.text(word.text, drawX + 0.035, y, { charSpace });
-          }
         });
         if (word.underline) {
           const underlineY = y + fontSize * 0.352778 * 0.14;
@@ -2640,18 +2718,32 @@
       pdf.text(String(pageNumber), DIRECT_LAYOUT.page.width - DIRECT_LAYOUT.page.marginX, 290, { align: "right" });
     }
 
+    function fitDirectHeaderLine(pdf, text, width) {
+      const cleanText = String(text || "").replace(/\s+/g, " ").trim();
+      if (pdf.getTextWidth(cleanText) <= width) return cleanText;
+      const chars = Array.from(cleanText);
+      let low = 0, high = chars.length;
+      while (low < high) {
+        const mid = Math.ceil((low + high) / 2);
+        if (pdf.getTextWidth(chars.slice(0, mid).join("") + "…") <= width) low = mid;
+        else high = mid - 1;
+      }
+      return chars.slice(0, low).join("") + "…";
+    }
+
     async function drawDirectHeader(pdf, plan) {
       const logo = await getDirectHeaderLogoDataUrl();
       const x = DIRECT_LAYOUT.page.marginX;
       const y = DIRECT_LAYOUT.page.marginTop;
       const lineY = y + DIRECT_LAYOUT.header.logoHeight + DIRECT_LAYOUT.header.paddingBottom;
+      const textWidth = DIRECT_LAYOUT.page.width - x * 2 - DIRECT_LAYOUT.header.logoWidth - 5;
       pdf.setFont(DIRECT_PDF_FONT.family, "bold");
       pdf.setTextColor(...DIRECT_LAYOUT.colors.ink);
       pdf.setFontSize(DIRECT_LAYOUT.header.titleSize);
-      pdf.text(plan.title || "통합 문제지", x, y + 7.8);
+      pdf.text(fitDirectHeaderLine(pdf, plan.title || "통합 문제지", textWidth), x, y + 7.8);
       pdf.setFontSize(DIRECT_LAYOUT.header.subtitleSize);
       pdf.setTextColor(...DIRECT_LAYOUT.colors.muted);
-      pdf.text(plan.subtitle || "", x, y + 15.2);
+      pdf.text(fitDirectHeaderLine(pdf, plan.subtitle || "", textWidth), x, y + 15.2);
       if (logo) {
         pdf.addImage(
           logo,
@@ -2863,8 +2955,8 @@
       drawDirectQuestions(pdf, plan.questions, questionTop);
       if (plan.includeAnswers !== false) {
         drawDirectAnswers(pdf, plan.questions);
+        addDirectFooter(pdf);
       }
-      addDirectFooter(pdf);
       return pdf.output("blob");
     }
 
@@ -2919,12 +3011,12 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
-    function showBatchDownloadLink(blob, filename) {
+    function showBatchDownloadLink(blob, filename, planCount) {
       clearBatchDownloadUrl();
       const url = URL.createObjectURL(blob);
       state.batchDownloadUrl = url;
       triggerDownloadUrl(url, filename);
-      elements.batchZipStatus.textContent = "12개 PDF와 답지를 ZIP으로 만들었습니다. ";
+      elements.batchZipStatus.textContent = `선택 조건의 시험지 ${planCount}개(답지 포함)를 ZIP으로 만들었습니다. `;
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;
@@ -2953,17 +3045,18 @@
       const defaultSubtitle = `${state.sourceName || "선택한 JSON"} · ${questions.length}문항`;
       const subtitle = elements.examSubtitleInput.value.trim() || defaultSubtitle;
       const sortLabel = getSortModeLabel();
+      const selectionLabel = getSelectionLabel();
       try {
-        setBatchStatus(`빠른 PDF 저장 중: ${sortLabel} 정렬 · ${questions.length}문항`);
+        setBatchStatus(`PDF 저장 중: ${selectionLabel} · ${questions.length}문항`);
         const pdfBlob = await createDirectPdfBlobForPlan({
           title,
-          subtitle: `${subtitle} · ${sortLabel} 정렬`,
+          subtitle: `${subtitle} · ${selectionLabel} · ${sortLabel} 정렬`,
           questions,
           includeAnswers: elements.includeAnswerInput.checked
         });
-        const filename = `${toSafeFileName(title)}_${sortLabel}.pdf`;
+        const filename = `${toSafeFileName(`${title}_${selectionLabel}_${sortLabel}`)}.pdf`;
         downloadBlob(pdfBlob, filename);
-        setBatchStatus(`${filename} 저장을 시작했습니다. 전체 ${questions.length}문항이 포함됩니다.`);
+        setBatchStatus(`${filename} 저장을 시작했습니다. 선택 조건의 ${questions.length}문항이 포함됩니다.`);
       } catch (error) {
         console.error(error);
         setBatchStatus(error?.message || "PDF 저장 중 오류가 발생했습니다.");
@@ -2973,11 +3066,11 @@
     }
 
     async function generateBatchZip() {
-      if (state.isBatchBusy) {
+      if (state.isBatchBusy || state.isSingleBusy) {
         return;
       }
-      if (!state.questions.length) {
-        setBatchStatus("먼저 JSON 파일을 선택해주세요.");
+      if (!getFilteredQuestions().length) {
+        setBatchStatus("선택 조건에 맞는 문항이 없습니다. 유형과 난이도를 선택해주세요.");
         return;
       }
       const useDirectPdf = elements.fastZipInput?.checked !== false;
@@ -2998,15 +3091,16 @@
         const sortMode = getSelectedSortMode();
         const sortLabel = getSortModeLabel(sortMode);
         const plans = buildBatchExamPlans(sortMode);
+        const selectionLabel = getSelectionLabel();
         const zip = new JSZip();
         for (const [index, plan] of plans.entries()) {
-          setBatchStatus(`${index + 1}/12 ${useDirectPdf ? "빠른 직접 출력 중" : "생성 중"}: ${plan.subtitle} · ${plan.questions.length}문항 + 답지`);
+          setBatchStatus(`${index + 1}/${plans.length} ${useDirectPdf ? "빠른 직접 출력 중" : "생성 중"}: ${plan.subtitle} · ${plan.questions.length}문항 + 답지`);
           const pdfBlob = useDirectPdf
             ? await createDirectPdfBlobForPlan(plan, (page, totalPages) => {
-              setBatchStatus(`${index + 1}/12 빠른 직접 출력 중: ${plan.subtitle} · ${page}/${totalPages}쪽 처리`);
+              setBatchStatus(`${index + 1}/${plans.length} 빠른 직접 출력 중: ${plan.subtitle} · ${page}/${totalPages}쪽 처리`);
             })
             : await createPdfBlobForPlan(plan, (page, totalPages) => {
-              setBatchStatus(`${index + 1}/12 생성 중: ${plan.subtitle} · ${page}/${totalPages}쪽 변환`);
+              setBatchStatus(`${index + 1}/${plans.length} 생성 중: ${plan.subtitle} · ${page}/${totalPages}쪽 변환`);
             });
           zip.file(plan.filename, pdfBlob);
           await new Promise((resolve) => setTimeout(resolve, 0));
@@ -3016,7 +3110,7 @@
           setBatchStatus(`ZIP 압축 중... ${Math.round(metadata.percent)}%`);
         });
         const title = toSafeFileName(elements.examTitleInput.value.trim() || "통합 문제지");
-        showBatchDownloadLink(zipBlob, `${title}_${sortLabel}_난이도별_12개_시험지.zip`);
+        showBatchDownloadLink(zipBlob, `${toSafeFileName(`${title}_${selectionLabel}_${sortLabel}`)}_${plans.length}개_시험지.zip`, plans.length);
       } catch (error) {
         console.error(error);
         setBatchStatus(error?.message || "ZIP 생성 중 오류가 발생했습니다.");
@@ -3025,8 +3119,10 @@
       }
     }
 
-    [elements.typeSelect, elements.difficultySelect, elements.sortModeSelect, elements.includeAnswerInput]
+    [elements.typeFilterOptions, elements.difficultySelect, elements.sortModeSelect, elements.includeAnswerInput]
       .forEach((element) => element.addEventListener("change", scheduleRenderExam));
+    elements.selectAllTypesButton.addEventListener("click", () => selectAllTypes(true));
+    elements.clearTypesButton.addEventListener("click", () => selectAllTypes(false));
     elements.examTitleInput.addEventListener("input", () => {
       elements.examTitleInput.dataset.autoTitle = "false";
       updatePreviewHeader();
@@ -3036,10 +3132,9 @@
       updatePreviewHeader();
     });
     elements.resetButton.addEventListener("click", () => {
-      elements.typeSelect.value = "";
       elements.difficultySelect.value = "";
       elements.sortModeSelect.value = SORT_MODE_SOURCE;
-      renderExam();
+      selectAllTypes(true);
     });
     elements.printButton.addEventListener("click", generateSinglePdf);
     elements.batchZipButton.addEventListener("click", generateBatchZip);
