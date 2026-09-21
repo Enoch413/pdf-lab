@@ -51,10 +51,20 @@ const server = http.createServer((req,res)=>{
         PDFLabSolbookText.assertFits(longLayout.sheets);
         const longFragments=longLayout.sheets.flatMap(s=>s.columns.flatMap(c=>c.items));
         const overflowPaginated=longFragments.length>1&&longFragments.slice(1).every(e=>e.problem.textContinuation);
-        return {html:preview.html,durationMs,overflowPaginated,renderedCount:preview.renderedQuestionCount};
+        const previewRoot=document.createElement('div');
+        previewRoot.innerHTML=preview.markup;
+        const sheets=Array.from(previewRoot.querySelectorAll('.sheet'));
+        return {html:preview.html,durationMs,overflowPaginated,renderedCount:preview.renderedQuestionCount,
+          sheetCount:sheets.length,headerCount:previewRoot.querySelectorAll('.sheet-header').length,
+          firstHasHeader:sheets[0]?.classList.contains('has-sheet-header'),
+          continuationsWithoutHeader:sheets.slice(1).every(sheet=>sheet.classList.contains('is-continuation-sheet')&&!sheet.querySelector('.sheet-header'))};
       },records);
       assert.equal(payload.renderedCount,16);
       assert.equal(payload.overflowPaginated,true);
+      assert.ok(payload.sheetCount>1,'Header regression needs multiple output pages');
+      assert.equal(payload.headerCount,1,'Only the first output page may contain the heading');
+      assert.equal(payload.firstHasHeader,true);
+      assert.equal(payload.continuationsWithoutHeader,true);
       assert.deepEqual(errors,[],'App startup/runtime errors');
       fs.writeFileSync(path.join(out,name+'.html'),payload.html);
       await page.goto(origin+'/tmp/pdfs/solbook-text-qa/'+name+'.html',{waitUntil:'load'});
@@ -69,13 +79,18 @@ const server = http.createServer((req,res)=>{
         const textOverflow=Array.from(document.querySelectorAll('.solbook-stem,.solbook-body,.solbook-choice-text'))
           .filter(el=>el.scrollWidth>el.clientWidth+2).length;
         const text=document.body.textContent;
-        return {cards:cards.length,sheets:document.querySelectorAll('.sheet').length,overflow,textOverflow,
+        const sheets=Array.from(document.querySelectorAll('.sheet'));
+        return {cards:cards.length,sheets:sheets.length,overflow,textOverflow,
+          headers:document.querySelectorAll('.sheet-header').length,
+          continuationTopGain:sheets.length>1&&parseFloat(getComputedStyle(sheets[1]).getPropertyValue('--column-height'))>parseFloat(getComputedStyle(sheets[0]).getPropertyValue('--column-height')),
           rawMarkers:/\[\[(?:u|blank|box|s|slot)/.test(text),tables:document.querySelectorAll('.problem-choice-part-table').length,
           font:getComputedStyle(document.querySelector('.solbook-body')).fontSize,
           stems:Array.from(document.querySelectorAll('.solbook-stem')).map(el=>el.textContent),
           texts:Array.from(document.querySelectorAll('.solbook-body')).map(el=>el.textContent)};
       });
       assert.equal(geometry.cards,16);
+      assert.equal(geometry.headers,1,'Printed document repeats its heading');
+      assert.equal(geometry.continuationTopGain,true,'Continuation pages do not reclaim heading space');
       assert.equal(geometry.overflow,0,'Cards overflow a printed page');
       assert.equal(geometry.textOverflow,0,'Text overflows a card');
       assert.equal(geometry.rawMarkers,false);

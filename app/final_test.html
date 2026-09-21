@@ -8136,7 +8136,7 @@
       if (settings.contentRenderMode === EXAM_CONTENT_MODE_TEXT) {
         await window.PDFLabSolbookText?.ready();
       }
-      const layoutMeta = buildLayoutPages(settings, problems);
+      const layoutMeta = buildLayoutPages(settings, problems, { repeatHeaderEveryPage: false });
       window.PDFLabSolbookText?.assertFits(layoutMeta.sheets);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");

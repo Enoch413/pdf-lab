@@ -7184,7 +7184,7 @@
         renderedQuestionCount,
         isLimited
       } = await buildExamProblemPayloadFromSlots(urlBucket, options);
-      const layoutMeta = buildLayoutPages(settings, problems);
+      const layoutMeta = buildLayoutPages(settings, problems, { repeatHeaderEveryPage: false });
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");
       container.innerHTML = rawMarkup;
