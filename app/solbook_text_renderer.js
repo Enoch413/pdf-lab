@@ -499,6 +499,7 @@
   function render(problem, fallbackBlocks) {
     // Only runtime pagination creates this field; library records remain intact.
     if (typeof problem.textFragmentHtml === "string") return problem.textFragmentHtml;
+    if (root.PDFLabCanonical?.has(problem)) return root.PDFLabCanonical.render(problem);
     const question = toQuestion(problem, fallbackBlocks);
     const hasContent = question.stem || question.body || question.choices.length;
     const stem = question.stem ? '<p class="solbook-stem">' + renderStemText(question.stem, question.type) + '</p>' : "";
@@ -543,7 +544,13 @@
     '.solbook-text-question .solbook-choice-marker { font-weight:400; }',
     '.solbook-text-question .solbook-choice-text { min-width:0; white-space:normal; overflow-wrap:anywhere; word-break:normal; }',
     '.solbook-text-question .solbook-choices.is-order .solbook-choice-text { white-space:nowrap; }',
-    '.problem-continuation-badge { font-family:"PDF Lab Solbook",sans-serif; font-size:8pt; font-weight:600; color:#555; }'
+    '.problem-continuation-badge { font-family:"PDF Lab Solbook",sans-serif; font-size:8pt; font-weight:600; color:#555; }',
+    '.is-canonical .solbook-stem,.is-canonical .solbook-choice-text,.answer-key-answer,.answer-key-explanation{white-space:pre-wrap;overflow-wrap:anywhere}',
+    '.is-canonical .solbook-body + .solbook-body{margin-top:2mm}',
+    '.is-canonical .choice-box{white-space:pre-wrap;display:inline}',
+    '.canonical-group-reference{font-size:8pt;font-weight:700;margin:0 0 1mm;color:#333;overflow-wrap:anywhere}',
+    '.canonical-token-warning{font-size:7pt;color:#8b3516;white-space:pre-wrap;overflow-wrap:anywhere}',
+    '.canonical-given{border:1px solid #999;padding:1mm}.canonical-summary{border-top:1px solid #bbb;padding-top:1mm}'
   ].join("\n");
 
   let measurementRoot = null;

@@ -628,6 +628,7 @@
     </section>
   </div>
 
+  <script src="./hanbujang_canonical.js"></script>
   <script src="./solbook_text_renderer.js?v=20260914-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2257,6 +2258,7 @@
     }
 
     function isLibraryTextEditorDirty() {
+      if (PDFLabCanonical.has(getActiveLibraryEditorTarget()) && state.libraryReview.editorRawChanged) return true;
       return (
         state.libraryReview.editorDraftText !== state.libraryReview.editorBaseText ||
         serializeTailSetDraftForDirtyCheck(state.libraryReview.editorTailSetDraft) !== state.libraryReview.editorBaseTailSetText ||
@@ -2391,6 +2393,7 @@
     }
 
     function isTailProblemRecord(record) {
+      if (PDFLabCanonical.has(record)) return Boolean(PDFLabCanonical.groupKey(record));
       return record?.kind === "problem" && (
         record.problemType === PROBLEM_TYPE_TAIL ||
         Boolean(normalizeProblemText(record.groupLabel || ""))
@@ -2495,6 +2498,7 @@
     }
 
     function getTailSetContextForEditor(scope, target) {
+      if (PDFLabCanonical.has(target)) return null;
       return scope === "stored"
         ? getStoredTailSetContext(target)
         : getCurrentTailSetContext(target);
@@ -3045,7 +3049,7 @@
         elements.libraryTextEditorTemplateSummary,
         getLibraryTextEditorTemplateSummary(editorProblemType || target?.problemType || PROBLEM_TYPE_OTHER, activeTemplateKey)
       );
-      if (elements.libraryTextEditorStructuredFields) {
+      if (elements.libraryTextEditorStructuredFields && !PDFLabCanonical.has(target)) {
         elements.libraryTextEditorStructuredFields.innerHTML = buildLibraryTextEditorStructuredFieldsMarkup(
           getProblemTypeFromSelection(editorProblemType, state.libraryReview.editorDraftText || ""),
           isSubjectiveProblemTypeSelection(editorProblemType),
@@ -3132,6 +3136,7 @@
           elements.libraryTextEditorImageList.innerHTML = `<p class="library-text-editor-image-empty">${escapeHtml(emptyCopy)}</p>`;
         }
       }
+      renderCanonicalEditor(target);
     }
 
     async function loadLibraryTextEditorImages(scope, targetId) {
@@ -3335,6 +3340,7 @@
       state.libraryReview.editorImages = [];
       state.libraryReview.editorImageStatus = "loading";
       state.libraryReview.editorImageError = "";
+      elements.libraryTextEditorStructuredFields.dataset.canonicalEditorKey = "";
       renderLibraryTextEditor();
       setTimeout(() => {
         loadLibraryTextEditorImages(normalizedScope, normalizedTargetId);
@@ -3393,6 +3399,7 @@
       if (!target) {
         throw new Error("삭제할 현재 추출 문항을 찾지 못했습니다.");
       }
+      PDFLabCanonical.guardDelete(target);
       state.problems = (state.problems || []).filter((problem) => String(problem?.id || "") !== normalizedProblemId);
       refreshProblemStats(state.problems);
       if (state.libraryReview.editorScope === "current" && state.libraryReview.editorTargetId === normalizedProblemId) {
@@ -3615,6 +3622,7 @@
       if (!targetRecord) {
         throw new Error("삭제할 저장 문제를 찾지 못했습니다.");
       }
+      PDFLabCanonical.guardDelete(targetRecord);
       const usageCount = getExamItems().filter((item) => item.problemRecordId === normalizedRecordId).length;
       const confirmed = window.confirm([
         `${targetRecord.textbookName || "교재"} / ${targetRecord.number || "-"}번 문제를 삭제할까요?`,
@@ -3813,6 +3821,7 @@
     }
 
     async function saveLibraryTextEditorChanges() {
+      if (PDFLabCanonical.has(getActiveLibraryEditorTarget())) return saveCanonicalEditorChanges();
       const scope = state.libraryReview.editorScope;
       const targetId = state.libraryReview.editorTargetId;
       const nextText = normalizeProblemText(state.libraryReview.editorDraftText || "");
@@ -3949,10 +3958,12 @@
     }
 
     function getEditableAnswerText(problem) {
+      if (PDFLabCanonical.has(problem)) return problem.canonical.answerText;
       return normalizeProblemText(problem?.answerText || "");
     }
 
     function getEditableExplanationText(problem) {
+      if (PDFLabCanonical.has(problem)) return problem.canonical.explanationText;
       return normalizeAnswerExplanationText(problem?.explanationText || "");
     }
 
@@ -4708,7 +4719,135 @@
       });
     }
 
+    function applyCanonicalJsonPayload(payload, fileName) {
+      const C = PDFLabCanonical;
+      C.validate(payload);
+      const textbookName = getSelectedTextbookName();
+      if (!textbookName) throw new Error("JSON을 등록하려면 먼저 새 교재명을 입력하거나 기존 교재를 선택해주세요.");
+      const isNew = !state.problems.length;
+      if (!isNew) C.guardOverlay(payload, state.problems, state.fileName);
+      const sourceKey = getSelectedLibrarySourceKey();
+      const documentId = createLibrarySourceId(sourceKey, textbookName, isNew ? fileName : state.fileName);
+      const byNumber = new Map(state.problems.filter(p => p.kind === "problem").map(p => [p.number, p]));
+      const problems = payload.problems.map(p => C.create(p, payload, documentId, fileName, isNew ? {
+        id: `json-problem-${p.number}`, kind: "problem", number: p.number,
+        worksheetFamily: textbookName, librarySourceKey: sourceKey, librarySourceName: getLibrarySourceLabel(sourceKey),
+        segments: [], segmentImages: [], answerSegments: [], answerSegmentImages: [],
+        pageSignature: "", pageCount: 0, textOnly: true, contentMode: "text", renderContentMode: "text", manualSquashPercent: null
+      } : { ...byNumber.get(p.number) }));
+      if (!isNew) {
+        state.problems.filter(p => p.kind === "shared").forEach(shared => {
+          const child = payload.problems.find(p => p.questionGroupId && byNumber.get(p.number)?.groupLabel === shared.groupLabel);
+          if (child) problems.push({ ...shared, canonicalSharedFor: JSON.stringify([documentId, child.questionGroupId]) });
+        });
+      }
+      // Validation and overlay correspondence finish before any import state changes.
+      if (isNew) {
+        cleanupObjectUrls();
+        state.pdfDoc = null;
+        state.fileName = fileName;
+        state.pages = [];
+        state.stats = { pageCount: 0 };
+        state.loadedRepackWorkId = "";
+        state.lastExportName = slugifyFileName(fileName);
+        state.layoutPages = [];
+        state.renderedSheetIndices = new Set();
+        state.previewSheetCount = 0;
+      }
+      state.problems = problems;
+      state.visibleProblems = null;
+      state.selectedTextbookName = textbookName;
+      state.selectedLibrarySourceKey = sourceKey;
+      state.libraryExtractionMode = LIBRARY_EXTRACTION_MODE_TEXT;
+      applyExamContentModeToUi(EXAM_CONTENT_MODE_TEXT);
+      updateLoadedFileLabel();
+      updateLibraryExtractionModeUi();
+      refreshProblemStats(problems);
+      renderPreview();
+      if (isLibraryWorkspaceMode()) renderLibraryWorkspaceDashboard();
+      const mismatch = payload.textbookName !== textbookName ? ` JSON 교재명 '${payload.textbookName}'은 별도 보존하며 화면 교재 '${textbookName}'으로 저장합니다.` : "";
+      const warnings = payload.problems.flatMap(C.warnings);
+      setOptionalText(elements.problemJsonSummary, `${fileName}: canonical-16 ${problems.length}문항 적용. 원본 PDF: ${payload.sourceName}.${mismatch}${warnings.length ? ` 표기 경고 ${warnings.length}건: ${warnings.join(" / ")}` : ""}`);
+      setOptionalText(elements.librarySaveSummary, `${textbookName} / ${state.fileName} · 아직 라이브러리에 저장되지 않았습니다.${mismatch}`);
+      setStatus(`${problems.length}문항에 canonical JSON을 적용했습니다.`, "idle", "JSON 적용");
+      updatePreviewActionRow();
+    }
+
+    function renderCanonicalEditor(target) {
+      const C = PDFLabCanonical;
+      const canonical = C.has(target);
+      elements.libraryTextEditorTextarea.readOnly = canonical;
+      elements.libraryTextEditorReparseButton.disabled = canonical;
+      elements.libraryTextEditorInsertBlankButton.disabled = canonical;
+      if (!canonical) { elements.libraryTextEditorStructuredFields.oninput = null; return; }
+      elements.libraryTextEditorProblemTypeSelect.disabled = true;
+      const p = target.canonical;
+      const fields = elements.libraryTextEditorStructuredFields;
+      const editorKey = `${state.libraryReview.editorScope}/${state.libraryReview.editorTargetId}`;
+      if (fields.dataset.canonicalEditorKey === editorKey) return;
+      fields.dataset.canonicalEditorKey = editorKey;
+      fields.innerHTML = ["passageLabel", ...C.textFields].map(key =>
+        `<label>${key}${key === "bodyText" && p.questionGroupId ? " (그룹 전체 공통 편집)" : ""}<textarea data-canonical-edit="${key}" rows="4">${escapeHtml(p[key])}</textarea></label>`).join("") +
+        `<label>choices (marker·순서를 보존하는 JSON)<textarea data-canonical-edit="choices" rows="8">${escapeHtml(JSON.stringify(p.choices, null, 2))}</textarea></label>` +
+        `<label>${p.questionGroupId ? "tailSubType" : "problemType"}<select data-canonical-edit="${p.questionGroupId ? "tailSubType" : "problemType"}">${C.types.filter(t => t !== "꼬리").map(t => `<option ${t === C.effectiveType(target) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` +
+        `<label><input type="checkbox" data-canonical-edit="isSubjective" ${p.isSubjective ? "checked" : ""}>주관식</label>`;
+      fields.oninput = () => { state.libraryReview.editorRawChanged = true; };
+      elements.libraryTextEditorTextarea.value = p.rawText;
+      setOptionalText(elements.libraryTextEditorTemplateBadge, "canonical-16");
+      setOptionalText(elements.libraryTextEditorTemplateSummary, "각 필드는 독립 저장됩니다. 아래 원문(rawText)은 읽기 전용 증거이며 편집 내용으로 재작성하지 않습니다.");
+    }
+
+    async function saveCanonicalEditorChanges() {
+      const C = PDFLabCanonical;
+      const target = getActiveLibraryEditorTarget();
+      const scope = state.libraryReview.editorScope;
+      const updates = {};
+      elements.libraryTextEditorStructuredFields.querySelectorAll("[data-canonical-edit]").forEach(input => {
+        const field = input.dataset.canonicalEdit;
+        if (field === "choices") {
+          try { updates.choices = JSON.parse(input.value); }
+          catch { throw new Error(`${target.number}번 choices: 올바른 JSON 배열을 입력해주세요.`); }
+        } else updates[field] = field === "isSubjective" ? input.checked : input.value;
+      });
+      updates.answerText = elements.libraryTextEditorAnswerTextarea.value;
+      updates.explanationText = elements.libraryTextEditorExplanationTextarea.value;
+      const records = scope === "current" ? state.problems : state.libraryCache.problemRecords;
+      const changed = C.editedRecords(records, target, updates).map(r => ({ ...r, updatedAt: Date.now() }));
+      const id = r => scope === "current" ? r.id : r.recordId;
+      const changes = new Map(changed.map(r => [id(r), r]));
+      setBusy(true);
+      try {
+        if (scope === "stored") {
+          // One Firestore batch and one IndexedDB transaction per group, never partial member writes.
+          const access = getSharedFirebaseLibraryAccessState();
+          if (access.enabled) {
+            if (changed.length > 500) throw new Error("그룹이 Firestore 원자적 저장 한도(500문항)를 초과합니다.");
+            const batch = state.firebaseSchoolBridge.db.batch();
+            for (const record of changed) {
+              const { metadataRecord } = splitProblemRecordStorage(record);
+              batch.set(state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId), metadataRecord, { merge: true });
+            }
+            await batch.commit();
+          }
+          const db = await openLibraryDb();
+          const tx = db.transaction([LIBRARY_PROBLEM_STORE], "readwrite");
+          changed.forEach(r => tx.objectStore(LIBRARY_PROBLEM_STORE).put(r));
+          await idbTransactionDone(tx);
+          state.libraryCache.problemRecords = records.map(r => changes.get(id(r)) || r);
+          await syncLibraryFolderFromStateIfConnected();
+          await refreshLibrarySummary({ loadShared: false, skipDashboard: true, skipEditor: true });
+        } else {
+          state.problems = records.map(r => changes.get(id(r)) || r);
+          refreshProblemStats(state.problems);
+          renderPreview();
+        }
+        openLibraryTextEditor(scope, id(target), { forceDiscard: true });
+        setStatus(`canonical ${changed.length}문항을 저장했습니다. rawText는 보존했습니다.`, "idle", "문항 수정");
+      } finally { setBusy(false); }
+    }
+
     function applyAiProblemJsonPayload(payload, fileName = "AI JSON") {
+      if (PDFLabCanonical.candidate(extractAiProblemJsonItems(payload))) return applyCanonicalJsonPayload(payload, fileName);
       const items = extractAiProblemJsonItems(payload);
       if (!items.length) {
         throw new Error("JSON에서 문항 배열을 찾지 못했습니다. 배열 또는 problems/items/questions 키를 사용해주세요.");
@@ -4831,6 +4970,7 @@
     }
 
     function getLibraryProblemStructuredText(problem) {
+      if (PDFLabCanonical.has(problem)) return PDFLabCanonical.structure(problem);
       if (!problem || problem.kind === "shared") {
         return null;
       }
@@ -4973,6 +5113,7 @@
     }
 
     function applyEditedProblemTextToProblem(problem, nextText, options = {}) {
+      if (PDFLabCanonical.has(problem)) throw new Error("canonical 문항은 16필드 편집창에서 수정해주세요.");
       if (!problem || problem.kind === "shared") {
         return problem;
       }
@@ -5036,6 +5177,7 @@
     }
 
     function applyEditedAnswerFieldsToProblem(problem, nextAnswerText, nextExplanationText) {
+      if (PDFLabCanonical.has(problem)) { problem.canonical = { ...problem.canonical, answerText: nextAnswerText, explanationText: nextExplanationText }; PDFLabCanonical.derive(problem); return; }
       if (!problem || problem.kind === "shared") {
         return problem;
       }
@@ -5131,6 +5273,7 @@
     }
 
     function normalizeParsedAnswerTextForProblem(problem, value, explanationText = "") {
+      if (PDFLabCanonical.has(problem)) return problem.canonical.answerText;
       if (problem?.textOnly === true && problem?.isSubjective) return normalizeProblemText(value);
       return problem?.isSubjective
         ? normalizeParsedAnswerText(value)
@@ -5302,6 +5445,7 @@
     }
 
     function repairOcrStolenInitialAnswerFields(target) {
+      if (PDFLabCanonical.has(target)) return false;
       if (!target || target.kind === "shared" || target.textOnly === true) {
         return false;
       }
@@ -7328,6 +7472,9 @@
           const existingRecord = existingMap.get(metadataRecord.recordId);
           const nextRemoteRecord = {
             ...metadataRecord,
+            // A same-source legacy re-registration must not inherit a previous canonical object through merge.
+            ...(PDFLabCanonical.has(existingRecord) && !PDFLabCanonical.has(metadataRecord)
+              ? { canonical: null, canonicalDocumentId: "", canonicalSource: null, canonicalDisplay: "" } : {}),
             segmentStoragePaths,
             answerSegmentStoragePaths,
             updatedAt: Number(metadataRecord.updatedAt || sourceRecord?.importedAt || Date.now())
@@ -7345,6 +7492,7 @@
         }
         const nextSourceRecord = {
           ...(sourceRecord && typeof sourceRecord === "object" ? sourceRecord : {}),
+          ...(existingRecords.some(PDFLabCanonical.has) && !problemRecords.some(PDFLabCanonical.has) ? { canonicalSource: null } : {}),
           sourceId: normalizeProblemText(sourceRecord?.sourceId || ""),
           updatedAt: Date.now()
         };
@@ -8784,6 +8932,7 @@
     }
 
     function getPassageReferenceKey(source) {
+      if (PDFLabCanonical.has(source)) return PDFLabCanonical.passageKey(source);
       const textbookName = normalizeTextbookName(source?.worksheetFamily || source?.textbookName || state.selectedTextbookName || "");
       const rawReference = normalizeProblemText(source?.worksheetRef || source?.groupLabel || source?.pageSignature || source?.id || "unassigned");
       return `${textbookName}::${normalizeProblemTypeToken(rawReference || "unassigned")}`;
@@ -10594,6 +10743,7 @@
     }
 
     async function serializeProblemForLibrary(problem, sourceRecord) {
+      problem = PDFLabCanonical.bindSource(problem, sourceRecord);
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -10612,6 +10762,7 @@
       );
       const basePassageKey = getPassageReferenceKey(problem);
       return {
+        ...PDFLabCanonical.metadata(problem),
         recordId: `${sourceRecord.sourceId}::${problem.id}`,
         sourceId: sourceRecord.sourceId,
         librarySourceKey: sourceRecord.librarySourceKey,
@@ -10649,6 +10800,14 @@
     }
 
     async function serializeProblemForSavedWork(problem) {
+      if (PDFLabCanonical.has(problem) || problem.canonicalSharedFor) {
+        const librarySourceKey = normalizeLibrarySourceKey(state.selectedLibrarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+        const textbookName = state.selectedTextbookName || problem.worksheetFamily || "";
+        problem = PDFLabCanonical.bindSource(problem, {
+          sourceId: createLibrarySourceId(librarySourceKey, textbookName, state.fileName || state.lastExportName),
+          librarySourceKey, librarySourceName: getLibrarySourceLabel(librarySourceKey), textbookName
+        });
+      }
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -10666,6 +10825,7 @@
         })
       );
       return {
+        ...PDFLabCanonical.metadata(problem),
         id: problem.id,
         kind: problem.kind,
         number: problem.number,
@@ -10708,6 +10868,10 @@
     }
 
     function hydrateProblemFromSavedWork(snapshot) {
+      if (PDFLabCanonical.has(snapshot)) return PDFLabCanonical.attach({ ...snapshot,
+        segmentImages: (snapshot.segments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.segmentBlobs?.[i], s)),
+        answerSegmentImages: (snapshot.answerSegments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.answerSegmentBlobs?.[i], s))
+      }, snapshot);
       const segments = Array.isArray(snapshot.segments) ? snapshot.segments.map((segment) => ({ ...segment })) : [];
       const segmentBlobs = Array.isArray(snapshot.segmentBlobs) ? snapshot.segmentBlobs : [];
       const answerSegments = Array.isArray(snapshot.answerSegments) ? snapshot.answerSegments.map((segment) => ({ ...segment })) : [];
@@ -10724,6 +10888,7 @@
         : "";
       return {
         id: snapshot.id,
+        ...PDFLabCanonical.metadata(snapshot),
         kind: snapshot.kind,
         number: snapshot.number ?? null,
         librarySourceKey: normalizeLibrarySourceKey(snapshot.librarySourceKey || snapshot.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY),
@@ -10816,6 +10981,7 @@
         state.selectedTextbookName = registerTextbookName(state.selectedTextbookName);
         const sourceRecord = {
           sourceId: createLibrarySourceId(librarySourceKey, state.selectedTextbookName, state.fileName || state.lastExportName),
+          ...(state.problems.some(PDFLabCanonical.has) ? { canonicalSource: PDFLabCanonical.clone(state.problems.find(PDFLabCanonical.has).canonicalSource) } : {}),
           librarySourceKey,
           librarySourceName: getLibrarySourceLabel(librarySourceKey),
           textbookName: state.selectedTextbookName,
@@ -10828,6 +10994,7 @@
           explanationCount: getExplanationCount(state.problems)
         };
 
+        state.problems = state.problems.map(problem => PDFLabCanonical.bindSource(problem, sourceRecord));
         const problemRecords = [];
         const totalProblemCount = Math.max(state.problems.length, 1);
         for (const [index, problem] of state.problems.entries()) {
@@ -11038,6 +11205,7 @@
     }
 
     function createTailPackKey(record) {
+      if (PDFLabCanonical.has(record)) return PDFLabCanonical.groupKey(record);
       return `${getRecordSourceKey(record)}::${record.textbookName}::${record.sourceName}::${record.groupLabel || "tail"}`;
     }
 
@@ -11056,6 +11224,10 @@
         return [];
       }
       const firstRecord = tailProblems[0];
+      if (PDFLabCanonical.has(firstRecord)) return [
+        ...getSharedRecordsOnly().filter(r => PDFLabCanonical.sharedKey(r) === tailPackKey),
+        ...tailProblems.sort((a, b) => a.canonical.groupOrder - b.canonical.groupOrder)
+      ];
       const sharedRecord = getSharedRecordsOnly().find((record) =>
         getRecordSourceKey(record) === getRecordSourceKey(firstRecord) &&
         record.textbookName === firstRecord.textbookName &&
@@ -16089,6 +16261,7 @@
     }
 
     function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
+      if (PDFLabCanonical.has(record) && renderContentMode === EXAM_CONTENT_MODE_TEXT) return PDFLabCanonical.textRuntime(record, examNumber);
       const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
@@ -16131,6 +16304,7 @@
           })();
       return {
         id: `exam-${record.recordId}`,
+        ...PDFLabCanonical.metadata(record),
         kind: record.kind || "problem",
         number: examNumber,
         displayNumber: examNumber,
@@ -16178,7 +16352,7 @@
           </header>
           <div class="answer-key-list">
             ${entries.map((problem) => {
-              const answerText = problem.isSubjective
+              const answerText = PDFLabCanonical.has(problem) ? problem.canonical.answerText : problem.isSubjective
                 ? normalizeProblemText(problem.answerText || "")
                 : formatAnswerLabelForExport(problem.answerText || "");
               return `
@@ -16199,7 +16373,8 @@
       const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
-      const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
+      const limitedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
+      const selectedEntries = renderContentMode === EXAM_CONTENT_MODE_TEXT ? PDFLabCanonical.prepareEntries(limitedEntries) : limitedEntries;
       const renderedQuestionCount = countQuestionEntries(selectedEntries);
       const hydratedRecords = renderContentMode === EXAM_CONTENT_MODE_TEXT
         ? selectedEntries.map((entry) => ({ ...entry.record }))
@@ -18858,6 +19033,7 @@
     }
 
     function buildLayoutPages(settings, problems, options = {}) {
+      problems = PDFLabCanonical.prepareEntries(problems.map(record => ({ record }))).map(entry => entry.record);
       const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
       const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
       const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
@@ -20023,6 +20199,7 @@
       }
       if (elements.libraryTextEditorStructuredFields) {
         elements.libraryTextEditorStructuredFields.addEventListener("input", (event) => {
+          if (PDFLabCanonical.has(getActiveLibraryEditorTarget())) return;
           const target = event.target;
           if (!(target instanceof HTMLTextAreaElement)) {
             return;

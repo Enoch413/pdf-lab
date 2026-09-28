@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hanbujang-canonical-16-v1",
+  "title": "HANBUJANG PDF LAB Canonical JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceName",
+    "textbookName",
+    "problems"
+  ],
+  "properties": {
+    "sourceName": {
+      "type": "string"
+    },
+    "textbookName": {
+      "type": "string"
+    },
+    "problems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "passageLabel",
+          "questionGroupId",
+          "groupOrder",
+          "groupSize",
+          "problemType",
+          "tailSubType",
+          "isSubjective",
+          "questionText",
+          "bodyText",
+          "summaryText",
+          "givenText",
+          "choices",
+          "answerText",
+          "explanationText",
+          "rawText"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "passageLabel": {
+            "type": "string"
+          },
+          "questionGroupId": {
+            "type": "string"
+          },
+          "groupOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "groupSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "problemType": {
+            "type": "string",
+            "enum": [
+              "삽입",
+              "순서",
+              "요약",
+              "선택어법",
+              "선택어휘",
+              "연결사",
+              "밑줄어법",
+              "밑줄어휘",
+              "무관",
+              "지칭",
+              "빈칸",
+              "함축의미",
+              "내용",
+              "제목",
+              "주제",
+              "요지",
+              "주장",
+              "목적",
+              "심경",
+              "기타",
+              "꼬리"
+            ]
+          },
+          "tailSubType": {
+            "type": "string"
+          },
+          "isSubjective": {
+            "type": "boolean"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "bodyText": {
+            "type": "string"
+          },
+          "summaryText": {
+            "type": "string"
+          },
+          "givenText": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "marker",
+                "text"
+              ],
+              "properties": {
+                "marker": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "explanationText": {
+            "type": "string"
+          },
+          "rawText": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

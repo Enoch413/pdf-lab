@@ -1,0 +1,237 @@
+{
+  "sourceName": "SYNTHETIC_영어_문제.pdf",
+  "textbookName": "합성 검토 교재",
+  "problems": [
+    {
+      "number": 1,
+      "passageLabel": "[17-1]",
+      "questionGroupId": "",
+      "groupOrder": 0,
+      "groupSize": 1,
+      "problemType": "제목",
+      "tailSubType": "",
+      "isSubjective": false,
+      "questionText": "다음 글의 제목으로 가장 적절한 것은?",
+      "bodyText": "Small daily choices can ____ a community over time.",
+      "summaryText": "",
+      "givenText": "",
+      "choices": [
+        {
+          "marker": "①",
+          "text": "The Power of Daily Choices"
+        },
+        {
+          "marker": "②",
+          "text": "A Journey Without Change"
+        },
+        {
+          "marker": "③",
+          "text": "Rules for Buying Machines"
+        },
+        {
+          "marker": "④",
+          "text": "The End of Cooperation"
+        },
+        {
+          "marker": "⑤",
+          "text": "Silence in Modern Cities"
+        }
+      ],
+      "answerText": "①",
+      "explanationText": "작은 선택이 공동체에 미치는 영향을 설명한다.",
+      "rawText": "[17-1] 다음 글의 제목으로 가장 적절한 것은?\nSmall daily choices can ____ a community over time."
+    },
+    {
+      "number": 2,
+      "passageLabel": "[17-2]",
+      "questionGroupId": "",
+      "groupOrder": 0,
+      "groupSize": 1,
+      "problemType": "기타",
+      "tailSubType": "",
+      "isSubjective": true,
+      "questionText": "다음 질문에 두 부분으로 답하시오.",
+      "bodyText": "A student planned a project and then explained the result.",
+      "summaryText": "",
+      "givenText": "",
+      "choices": [],
+      "answerText": "(1) She planned the project.\n(2) She explained the result.",
+      "explanationText": "두 문장을 순서대로 쓴다.",
+      "rawText": "[17-2] 다음 질문에 두 부분으로 답하시오.\n(1) 계획한 일\n(2) 설명한 결과"
+    },
+    {
+      "number": 3,
+      "passageLabel": "[17-3]",
+      "questionGroupId": "",
+      "groupOrder": 0,
+      "groupSize": 1,
+      "problemType": "요약",
+      "tailSubType": "",
+      "isSubjective": false,
+      "questionText": "다음 글을 한 문장으로 요약한 것으로 가장 적절한 것은?",
+      "bodyText": "Practice improves skill, while patience helps people continue.",
+      "summaryText": "Both (A) ____ and (B) [patience / speed] support learning.",
+      "givenText": "",
+      "choices": [
+        {
+          "marker": "①",
+          "text": "practice / patience"
+        },
+        {
+          "marker": "②",
+          "text": "silence / speed"
+        },
+        {
+          "marker": "③",
+          "text": "fear / distance"
+        },
+        {
+          "marker": "④",
+          "text": "money / anger"
+        },
+        {
+          "marker": "⑤",
+          "text": "rest / noise"
+        }
+      ],
+      "answerText": "①",
+      "explanationText": "연습과 인내가 핵심이다.",
+      "rawText": "[17-3] Practice improves skill, while patience helps people continue.\nBoth (A) ____ and (B) [patience / speed] support learning."
+    },
+    {
+      "number": 4,
+      "passageLabel": "[17-4]",
+      "questionGroupId": "",
+      "groupOrder": 0,
+      "groupSize": 1,
+      "problemType": "삽입",
+      "tailSubType": "",
+      "isSubjective": false,
+      "questionText": "주어진 문장이 들어가기에 가장 적절한 곳은?",
+      "bodyText": "The street was quiet. ① A festival began. ② Music filled the air. ③ People gathered together.",
+      "summaryText": "",
+      "givenText": "However, the situation soon changed.",
+      "choices": [],
+      "answerText": "①",
+      "explanationText": "상황이 바뀌는 첫 위치가 적절하다.",
+      "rawText": "[17-4] 주어진 문장이 들어가기에 가장 적절한 곳은?\nHowever, the situation soon changed.\nThe street was quiet. ( ① ) A festival began."
+    },
+    {
+      "number": 5,
+      "passageLabel": "[17-5]",
+      "questionGroupId": "",
+      "groupOrder": 0,
+      "groupSize": 1,
+      "problemType": "선택어법",
+      "tailSubType": "",
+      "isSubjective": false,
+      "questionText": "각 네모 안에서 어법에 맞는 표현을 고르시오.",
+      "bodyText": "They [[box:A:is|are]] ready and [work / works] together. The result [[u:shows]] their effort.",
+      "summaryText": "",
+      "givenText": "",
+      "choices": [
+        {
+          "marker": "①",
+          "text": "are / work"
+        },
+        {
+          "marker": "②",
+          "text": "is / work"
+        },
+        {
+          "marker": "③",
+          "text": "are / works"
+        },
+        {
+          "marker": "④",
+          "text": "is / works"
+        },
+        {
+          "marker": "⑤",
+          "text": "are / working"
+        }
+      ],
+      "answerText": "①",
+      "explanationText": "복수 주어와 동사 형태를 확인한다.",
+      "rawText": "[17-5] They [is / are] ready and [work / works] together."
+    },
+    {
+      "number": 6,
+      "passageLabel": "[18-19]",
+      "questionGroupId": "SYN-GROUP-18-19",
+      "groupOrder": 1,
+      "groupSize": 2,
+      "problemType": "꼬리",
+      "tailSubType": "제목",
+      "isSubjective": false,
+      "questionText": "윗글의 제목으로 가장 적절한 것은?",
+      "bodyText": "People learn more effectively when they exchange ideas. A respectful conversation allows them to notice different perspectives.",
+      "summaryText": "",
+      "givenText": "",
+      "choices": [
+        {
+          "marker": "①",
+          "text": "Learning Through Conversation"
+        },
+        {
+          "marker": "②",
+          "text": "Avoiding Every Difference"
+        },
+        {
+          "marker": "③",
+          "text": "Working Without Others"
+        },
+        {
+          "marker": "④",
+          "text": "The Cost of New Machines"
+        },
+        {
+          "marker": "⑤",
+          "text": "A Silent Classroom"
+        }
+      ],
+      "answerText": "①",
+      "explanationText": "대화를 통한 학습이 중심이다.",
+      "rawText": "[18-19] People learn more effectively when they exchange ideas.\n18. 윗글의 제목으로 가장 적절한 것은?"
+    },
+    {
+      "number": 7,
+      "passageLabel": "[18-19]",
+      "questionGroupId": "SYN-GROUP-18-19",
+      "groupOrder": 2,
+      "groupSize": 2,
+      "problemType": "꼬리",
+      "tailSubType": "내용",
+      "isSubjective": false,
+      "questionText": "윗글의 내용과 일치하는 것은?",
+      "bodyText": "People learn more effectively when they exchange ideas. A respectful conversation allows them to notice different perspectives.",
+      "summaryText": "",
+      "givenText": "",
+      "choices": [
+        {
+          "marker": "①",
+          "text": "대화는 서로 다른 관점을 알아차리게 한다."
+        },
+        {
+          "marker": "②",
+          "text": "사람은 혼자일 때만 효과적으로 배운다."
+        },
+        {
+          "marker": "③",
+          "text": "존중하는 대화는 학습을 방해한다."
+        },
+        {
+          "marker": "④",
+          "text": "생각을 나누면 모든 차이가 사라진다."
+        },
+        {
+          "marker": "⑤",
+          "text": "글은 기계 사용법을 설명한다."
+        }
+      ],
+      "answerText": "①",
+      "explanationText": "서로 다른 관점을 알게 된다는 내용이 명시되어 있다.",
+      "rawText": "[18-19] People learn more effectively when they exchange ideas.\n19. 윗글의 내용과 일치하는 것은?"
+    }
+  ]
+}

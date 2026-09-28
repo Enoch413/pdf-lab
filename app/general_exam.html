@@ -546,6 +546,8 @@
     </section>
   </div>
 
+  <script src="./hanbujang_canonical.js"></script>
+  <script src="./solbook_text_renderer.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -1492,6 +1494,7 @@
     }
 
     function repairOcrStolenInitialAnswerFields(target) {
+      if (PDFLabCanonical.has(target)) return false;
       if (!target || target.kind === "shared") {
         return false;
       }
@@ -2421,6 +2424,7 @@
     }
 
     function getPassageReferenceKey(source) {
+      if (PDFLabCanonical.has(source)) return PDFLabCanonical.passageKey(source);
       const textbookName = normalizeTextbookName(source?.worksheetFamily || source?.textbookName || state.selectedTextbookName || "");
       const rawReference = normalizeProblemText(source?.worksheetRef || source?.groupLabel || source?.pageSignature || source?.id || "unassigned");
       return `${textbookName}::${normalizeProblemTypeToken(rawReference || "unassigned")}`;
@@ -3572,6 +3576,7 @@
     }
 
     async function serializeProblemForLibrary(problem, sourceRecord) {
+      problem = PDFLabCanonical.bindSource(problem, sourceRecord);
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -3590,6 +3595,7 @@
       );
       const basePassageKey = getPassageReferenceKey(problem);
       return {
+        ...PDFLabCanonical.metadata(problem),
         recordId: `${sourceRecord.sourceId}::${problem.id}`,
         sourceId: sourceRecord.sourceId,
         librarySourceKey: sourceRecord.librarySourceKey,
@@ -3624,6 +3630,14 @@
     }
 
     async function serializeProblemForSavedWork(problem) {
+      if (PDFLabCanonical.has(problem) || problem.canonicalSharedFor) {
+        const librarySourceKey = normalizeLibrarySourceKey(state.selectedLibrarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+        const textbookName = state.selectedTextbookName || problem.worksheetFamily || "";
+        problem = PDFLabCanonical.bindSource(problem, {
+          sourceId: createLibrarySourceId(librarySourceKey, textbookName, state.fileName || state.lastExportName),
+          librarySourceKey, librarySourceName: getLibrarySourceLabel(librarySourceKey), textbookName
+        });
+      }
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -3641,6 +3655,7 @@
         })
       );
       return {
+        ...PDFLabCanonical.metadata(problem),
         id: problem.id,
         kind: problem.kind,
         number: problem.number,
@@ -3680,6 +3695,10 @@
     }
 
     function hydrateProblemFromSavedWork(snapshot) {
+      if (PDFLabCanonical.has(snapshot)) return PDFLabCanonical.attach({ ...snapshot,
+        segmentImages: (snapshot.segments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.segmentBlobs?.[i], s)),
+        answerSegmentImages: (snapshot.answerSegments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.answerSegmentBlobs?.[i], s))
+      }, snapshot);
       const segments = Array.isArray(snapshot.segments) ? snapshot.segments.map((segment) => ({ ...segment })) : [];
       const segmentBlobs = Array.isArray(snapshot.segmentBlobs) ? snapshot.segmentBlobs : [];
       const answerSegments = Array.isArray(snapshot.answerSegments) ? snapshot.answerSegments.map((segment) => ({ ...segment })) : [];
@@ -3696,6 +3715,7 @@
         : "";
       return {
         id: snapshot.id,
+        ...PDFLabCanonical.metadata(snapshot),
         kind: snapshot.kind,
         number: snapshot.number ?? null,
         librarySourceKey: normalizeLibrarySourceKey(snapshot.librarySourceKey || snapshot.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY),
@@ -3792,6 +3812,7 @@
         explanationCount: getExplanationCount(state.problems)
       };
 
+      state.problems = state.problems.map(problem => PDFLabCanonical.bindSource(problem, sourceRecord));
       const problemRecords = [];
       const totalProblemCount = Math.max(state.problems.length, 1);
       for (const [index, problem] of state.problems.entries()) {
@@ -3941,6 +3962,7 @@
     }
 
     function createTailPackKey(record) {
+      if (PDFLabCanonical.has(record)) return PDFLabCanonical.groupKey(record);
       return `${getRecordSourceKey(record)}::${record.textbookName}::${record.sourceName}::${record.groupLabel || "tail"}`;
     }
 
@@ -3959,6 +3981,10 @@
         return [];
       }
       const firstRecord = tailProblems[0];
+      if (PDFLabCanonical.has(firstRecord)) return [
+        ...getSharedRecordsOnly().filter(r => PDFLabCanonical.sharedKey(r) === tailPackKey),
+        ...tailProblems.sort((a, b) => a.canonical.groupOrder - b.canonical.groupOrder)
+      ];
       const sharedRecord = getSharedRecordsOnly().find((record) =>
         getRecordSourceKey(record) === getRecordSourceKey(firstRecord) &&
         record.textbookName === firstRecord.textbookName &&
@@ -7018,6 +7044,7 @@
     }
 
     function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
+      if (PDFLabCanonical.has(record)) return PDFLabCanonical.textRuntime(record, examNumber);
       if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
       throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
       }
@@ -7037,6 +7064,7 @@
       });
       return {
         id: `exam-${record.recordId}`,
+        ...PDFLabCanonical.metadata(record),
         kind: record.kind || "problem",
         number: examNumber,
         displayNumber: examNumber,
@@ -7079,7 +7107,7 @@
           </header>
           <div class="answer-key-list">
             ${entries.map((problem) => {
-              const answerText = problem.isSubjective
+              const answerText = PDFLabCanonical.has(problem) ? problem.canonical.answerText : problem.isSubjective
                 ? normalizeProblemText(problem.answerText || "")
                 : formatAnswerLabelForExport(problem.answerText || "");
               return `
@@ -7099,9 +7127,9 @@
       cleanupExamUrls(urlBucket);
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
-      const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
+      const selectedEntries = PDFLabCanonical.prepareEntries(limitExamEntriesByQuestionCount(entries, options.maxQuestionCount));
       const renderedQuestionCount = countQuestionEntries(selectedEntries);
-      const hydratedRecords = await hydrateProblemRecordsWithAssets(selectedEntries.map((entry) => entry.record));
+      const hydratedRecords = await hydrateProblemRecordsWithAssets(selectedEntries.filter((entry) => !PDFLabCanonical.has(entry.record)).map((entry) => entry.record));
       const hydratedRecordMap = new Map(hydratedRecords.map((record) => [record.recordId, record]));
       let problemNumber = 1;
       const problems = selectedEntries.map((entry) => {
@@ -7158,7 +7186,7 @@
     }
 
     function buildStandaloneHtmlDocument(previewMarkup, titleText, extraCss = "") {
-      const cssText = getCssTextForStandaloneDocument();
+      const cssText = getCssTextForStandaloneDocument() + "\n" + (window.PDFLabSolbookText?.cssText || "");
       const stylesheetHref = cssText ? "" : getStandaloneStylesheetHref();
       const baseHref = new URL(window.location.href).toString();
       return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="${escapeHtml(baseHref)}"><title>${escapeHtml(titleText)}</title>${stylesheetHref ? `<link rel="stylesheet" href="${escapeHtml(stylesheetHref)}">` : ""}<style>${cssText} :root{--preview-zoom:1} html,body{background:#f4f0e8}.preview-panel{padding:20px 0 40px}.preview-root{padding:0;justify-content:center}${extraCss}@media print{.preview-panel{padding:0}.preview-root{display:block}.problem-squash-control{display:none !important}}</style></head><body><main class="preview-panel"><div class="preview-root">${previewMarkup}</div></main></body></html>`;
@@ -7177,6 +7205,7 @@
     }
 
     async function buildExamPreviewDocument(urlBucket = "exportUrls", options = {}) {
+      await window.PDFLabSolbookText.ready();
       const settings = readExamExportSettings();
       const {
         problems,
@@ -7185,6 +7214,7 @@
         isLimited
       } = await buildExamProblemPayloadFromSlots(urlBucket, options);
       const layoutMeta = buildLayoutPages(settings, problems, { repeatHeaderEveryPage: false });
+      window.PDFLabSolbookText.assertFits(layoutMeta.sheets);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
       const container = document.createElement("div");
       container.innerHTML = rawMarkup;
@@ -8765,7 +8795,20 @@
       return { width, height };
     }
 
+    function isTextRenderProblem(problem) { return problem?.renderContentMode === "text"; }
+
+    function buildProblemTextMarkup(problem) { return window.PDFLabSolbookText.render(problem); }
+
     function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
+      if (isTextRenderProblem(problem)) {
+        const measuredHeight = window.PDFLabSolbookText?.measureCard(
+          createProblemCardMarkup({ problem, fitScale: 1, appliedSquashPercent: 0 }), columnWidthMm
+        );
+        if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+          return { scalableHeightMm: 0, fixedHeightMm: measuredHeight, supportsFitScale: false };
+        }
+        throw new Error("텍스트 문항 높이를 측정하지 못했습니다. 글꼴과 텍스트 렌더러 로딩을 확인해주세요.");
+      }
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const segments = Array.isArray(problem?.segments) && problem.segments.length
         ? problem.segments
@@ -8777,7 +8820,8 @@
       const fixedHeightMm = CARD_FIXED_HEIGHT_MM + Math.max(0, segments.length - 1) * SEGMENT_GAP_MM;
       return {
         scalableHeightMm: Number.isFinite(scalableHeightMm) ? Math.max(1, scalableHeightMm) : columnWidthMm,
-        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM
+        fixedHeightMm: Number.isFinite(fixedHeightMm) ? fixedHeightMm : CARD_FIXED_HEIGHT_MM,
+        supportsFitScale: true
       };
     }
 
@@ -8790,6 +8834,9 @@
     }
 
     function buildBalancedSquashCandidates(firstProblem, secondProblem) {
+      if (isTextRenderProblem(firstProblem) || isTextRenderProblem(secondProblem)) {
+        return [[0, 0]];
+      }
       const firstManual = getManualSquashPercent(firstProblem);
       const secondManual = getManualSquashPercent(secondProblem);
       const candidates = [];
@@ -8851,6 +8898,7 @@
     }
 
     function buildLayoutPages(settings, problems, options = {}) {
+      problems = PDFLabCanonical.prepareEntries(problems.map(record => ({ record }))).map(entry => entry.record);
       const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
       const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
       const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
@@ -8881,7 +8929,13 @@
         columnIndex = 0;
       }
 
-      for (const problem of problems) {
+      const layoutProblems = problems.flatMap((problem) => isTextRenderProblem(problem) && window.PDFLabSolbookText?.paginateProblem
+        ? window.PDFLabSolbookText.paginateProblem(problem, {
+            columnWidthMm, columnHeightMm: firstSheetColumnHeightMm,
+            renderCard: (fragment) => createProblemCardMarkup({ problem: fragment, fitScale: 1, appliedSquashPercent: 0 })
+          })
+        : [problem]);
+      for (const problem of layoutProblems) {
         const baseSquashPercent = getProblemSquashPercent(problem);
         const metrics = calculateProblemMetrics(problem, columnWidthMm, baseSquashPercent);
         let placed = false;
@@ -8892,6 +8946,7 @@
           const gapBefore = currentColumn.items.length ? settings.cardGap : 0;
           const fullHeightMm = estimateHeightMm(metrics, 1);
           const remainingMm = columnHeightMm - currentColumn.usedHeightMm - gapBefore;
+          const supportsFitScale = metrics.supportsFitScale !== false;
           if (currentColumn.items.length < settings.maxPerColumn && fullHeightMm <= remainingMm) {
             currentColumn.items.push({ problem, fitScale: 1, appliedSquashPercent: baseSquashPercent });
             currentColumn.usedHeightMm += gapBefore + fullHeightMm;
@@ -8915,7 +8970,7 @@
               continue;
             }
           }
-          if (!currentColumn.items.length && remainingMm > metrics.fixedHeightMm + 18) {
+          if (!currentColumn.items.length && supportsFitScale && remainingMm > metrics.fixedHeightMm + 18) {
             const fitScale = Math.min(1, Math.max(MIN_FIT_SCALE, (remainingMm - metrics.fixedHeightMm) / Math.max(1, metrics.scalableHeightMm)));
             if (estimateHeightMm(metrics, fitScale) <= remainingMm + 0.4) {
               currentColumn.items.push({ problem, fitScale, appliedSquashPercent: baseSquashPercent });
@@ -8925,7 +8980,7 @@
             }
           }
           if (!currentColumn.items.length) {
-            const fallbackFitScale = MIN_FIT_SCALE;
+            const fallbackFitScale = supportsFitScale ? MIN_FIT_SCALE : 1;
             currentColumn.items.push({
               problem,
               fitScale: fallbackFitScale,
@@ -9034,6 +9089,7 @@
 
     function createProblemCardMarkup(entry) {
       const { problem, fitScale } = entry;
+      const isTextRender = isTextRenderProblem(problem);
       const squashPercent = getEntryAppliedSquashPercent(entry);
       const squashRatio = getSquashRatioFromPercent(squashPercent);
       const squashLabel = `압축 ${squashPercent}%`;
@@ -9041,31 +9097,38 @@
       const typeBadges = getEntryTypeBadges(problem)
         .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
         .join("");
-      const availableImages = problem.segmentImages.filter(Boolean);
-      const images = availableImages.length
-        ? availableImages
-            .map((image, index) => {
-              const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
-              return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
-            })
-            .join("")
-        : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+      const bodyMarkup = isTextRender
+        ? `<div class="problem-text-body">${buildProblemTextMarkup(problem)}</div>`
+        : (() => {
+            const availableImages = problem.segmentImages.filter(Boolean);
+            return availableImages.length
+              ? availableImages
+                  .map((image, index) => {
+                    const squeezedHeight = Math.max(1, Math.round(image.height * squashRatio * 100) / 100);
+                    return `<div class="problem-segment-frame" style="aspect-ratio:${image.width} / ${squeezedHeight};"><img class="problem-image" src="${image.url}" alt="${escapeHtml(entryBadge)} 원본 조각 ${index + 1}"></div>`;
+                  })
+                  .join("")
+              : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
+          })();
       return `
-        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""}">
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}">
           <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
+                ${problem.textContinuation ? '<span class="problem-continuation-badge">계속</span>' : ""}
                 ${typeBadges}
               </div>
-              <label class="problem-squash-control">
-                <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
-                <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
-                  ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
-                </select>
-              </label>
+              ${isTextRender ? "" : `
+                <label class="problem-squash-control">
+                  <span class="problem-squash-text">${escapeHtml(squashLabel)}</span>
+                  <select class="problem-squash-select" data-problem-id="${problem.id}" aria-label="${escapeHtml(entryBadge)} 세로 압축 비율">
+                    ${buildProblemSquashOptions(getProblemSquashSelectionValue(problem))}
+                  </select>
+                </label>
+              `}
             </header>
-            <div class="problem-segments">${images}</div>
+            <div class="problem-segments${isTextRender ? " is-text" : ""}">${bodyMarkup}</div>
           </div>
         </article>
       `;

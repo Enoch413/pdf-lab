@@ -1,6 +1,8 @@
 # Knowledge: PDF 영어 문제 JSON 추출 규칙 v9
 
-이 문서는 GPT Instructions를 짧게 유지하기 위해 사용하는 Knowledge 파일이다. 영어 문제 PDF를 PDF LAB 업로드용 JSON으로 변환할 때 실제 작동 로직은 이 문서를 따른다.
+> **범위: 기존 legacy 12필드 추출 전용 문서.** 아래의 필드·유형·라벨·5개 선지 규칙은 legacy 추출 지침이며 한부장 canonical-16의 입력/저장 계약이 아니다. canonical은 [별도 안내](hanbujang-canonical-import.md)와 [계약 스키마](hanbujang-contract/CANONICAL_SCHEMA.json), [필드 의미](hanbujang-contract/FIELD_SEMANTICS.md), [유형 규칙](hanbujang-contract/PROBLEM_TYPE_RULES.md)를 우선한다. canonical은 대괄호 라벨·원문 공백·marker·실제 선지 수·16필드를 그대로 보존한다. `꼬리`와 `tailSubType`을 분리하며 `기타`도 `isSubjective=true`일 수 있다.
+
+이 문서는 기존 GPT Instructions용 legacy Knowledge 파일이다. 아래 내용은 기존 형식 추출에만 적용한다. 앱이 모든 추출 지침을 강제 검증한다는 뜻은 아니다.
 
 ---
 

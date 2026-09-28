@@ -491,6 +491,7 @@
     </section>
   </div>
 
+  <script src="./hanbujang_canonical.js"></script>
   <script src="./solbook_text_renderer.js?v=20260914-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -1606,6 +1607,7 @@
     }
 
     function repairOcrStolenInitialAnswerFields(target) {
+      if (PDFLabCanonical.has(target)) return false;
       if (!target || target.kind === "shared" || target.textOnly === true) {
         return false;
       }
@@ -2896,6 +2898,7 @@
     }
 
     function getPassageReferenceKey(source) {
+      if (PDFLabCanonical.has(source)) return PDFLabCanonical.passageKey(source);
       const textbookName = normalizeTextbookName(source?.worksheetFamily || source?.textbookName || state.selectedTextbookName || "");
       const rawReference = normalizeProblemText(source?.worksheetRef || source?.groupLabel || source?.pageSignature || source?.id || "unassigned");
       return `${textbookName}::${normalizeProblemTypeToken(rawReference || "unassigned")}`;
@@ -4229,6 +4232,7 @@
     }
 
     async function serializeProblemForLibrary(problem, sourceRecord) {
+      problem = PDFLabCanonical.bindSource(problem, sourceRecord);
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -4247,6 +4251,7 @@
       );
       const basePassageKey = getPassageReferenceKey(problem);
       return {
+        ...PDFLabCanonical.metadata(problem),
         recordId: `${sourceRecord.sourceId}::${problem.id}`,
         sourceId: sourceRecord.sourceId,
         librarySourceKey: sourceRecord.librarySourceKey,
@@ -4282,6 +4287,14 @@
     }
 
     async function serializeProblemForSavedWork(problem) {
+      if (PDFLabCanonical.has(problem) || problem.canonicalSharedFor) {
+        const librarySourceKey = normalizeLibrarySourceKey(state.selectedLibrarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+        const textbookName = state.selectedTextbookName || problem.worksheetFamily || "";
+        problem = PDFLabCanonical.bindSource(problem, {
+          sourceId: createLibrarySourceId(librarySourceKey, textbookName, state.fileName || state.lastExportName),
+          librarySourceKey, librarySourceName: getLibrarySourceLabel(librarySourceKey), textbookName
+        });
+      }
       const segmentBlobs = await Promise.all(
         problem.segmentImages.map(async (image) => {
           if (!image?.url) {
@@ -4299,6 +4312,7 @@
         })
       );
       return {
+        ...PDFLabCanonical.metadata(problem),
         id: problem.id,
         kind: problem.kind,
         number: problem.number,
@@ -4339,6 +4353,10 @@
     }
 
     function hydrateProblemFromSavedWork(snapshot) {
+      if (PDFLabCanonical.has(snapshot)) return PDFLabCanonical.attach({ ...snapshot,
+        segmentImages: (snapshot.segments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.segmentBlobs?.[i], s)),
+        answerSegmentImages: (snapshot.answerSegments || []).map((s, i) => buildSegmentImageFromSnapshot(snapshot.answerSegmentBlobs?.[i], s))
+      }, snapshot);
       const segments = Array.isArray(snapshot.segments) ? snapshot.segments.map((segment) => ({ ...segment })) : [];
       const segmentBlobs = Array.isArray(snapshot.segmentBlobs) ? snapshot.segmentBlobs : [];
       const answerSegments = Array.isArray(snapshot.answerSegments) ? snapshot.answerSegments.map((segment) => ({ ...segment })) : [];
@@ -4355,6 +4373,7 @@
         : "";
       return {
         id: snapshot.id,
+        ...PDFLabCanonical.metadata(snapshot),
         kind: snapshot.kind,
         number: snapshot.number ?? null,
         librarySourceKey: normalizeLibrarySourceKey(snapshot.librarySourceKey || snapshot.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY),
@@ -4452,6 +4471,7 @@
         explanationCount: getExplanationCount(state.problems)
       };
 
+      state.problems = state.problems.map(problem => PDFLabCanonical.bindSource(problem, sourceRecord));
       const problemRecords = [];
       const totalProblemCount = Math.max(state.problems.length, 1);
       for (const [index, problem] of state.problems.entries()) {
@@ -4563,6 +4583,7 @@
     }
 
     function createTailPackKey(record) {
+      if (PDFLabCanonical.has(record)) return PDFLabCanonical.groupKey(record);
       return `${getRecordSourceKey(record)}::${record.textbookName}::${record.sourceName}::${record.groupLabel || "tail"}`;
     }
 
@@ -4581,6 +4602,10 @@
         return [];
       }
       const firstRecord = tailProblems[0];
+      if (PDFLabCanonical.has(firstRecord)) return [
+        ...getSharedRecordsOnly().filter(r => PDFLabCanonical.sharedKey(r) === tailPackKey),
+        ...tailProblems.sort((a, b) => a.canonical.groupOrder - b.canonical.groupOrder)
+      ];
       const sharedRecord = getSharedRecordsOnly().find((record) =>
         getRecordSourceKey(record) === getRecordSourceKey(firstRecord) &&
         record.textbookName === firstRecord.textbookName &&
@@ -7927,6 +7952,7 @@
     }
 
     function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
+      if (PDFLabCanonical.has(record) && renderContentMode === EXAM_CONTENT_MODE_TEXT) return PDFLabCanonical.textRuntime(record, examNumber);
       const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT
         ? []
@@ -7968,6 +7994,7 @@
           })();
       return {
         id: `exam-${record.recordId}`,
+        ...PDFLabCanonical.metadata(record),
         kind: record.kind || "problem",
         number: examNumber,
         displayNumber: examNumber,
@@ -8013,7 +8040,7 @@
           </header>
           <div class="answer-key-list">
             ${entries.map((problem) => {
-              const answerText = problem.isSubjective
+              const answerText = PDFLabCanonical.has(problem) ? problem.canonical.answerText : problem.isSubjective
                 ? normalizeProblemText(problem.answerText || "")
                 : formatAnswerLabelForExport(problem.answerText || "");
               return `
@@ -8034,7 +8061,8 @@
       const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
-      const selectedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
+      const limitedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
+      const selectedEntries = renderContentMode === EXAM_CONTENT_MODE_TEXT ? PDFLabCanonical.prepareEntries(limitedEntries) : limitedEntries;
       const renderedQuestionCount = countQuestionEntries(selectedEntries);
       const hydratedRecords = renderContentMode === EXAM_CONTENT_MODE_TEXT
         ? selectedEntries.map((entry) => ({ ...entry.record }))
@@ -10216,6 +10244,7 @@
     }
 
     function buildLayoutPages(settings, problems, options = {}) {
+      problems = PDFLabCanonical.prepareEntries(problems.map(record => ({ record }))).map(entry => entry.record);
       const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
       const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
       const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
