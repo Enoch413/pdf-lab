@@ -547,6 +547,7 @@
   </div>
 
   <script src="./hanbujang_canonical.js"></script>
+  <script src="./problem_page_layout.js"></script>
   <script src="./solbook_text_renderer.js"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
@@ -8123,12 +8124,12 @@
 
     function getEntryBadge(problem) {
       const displayNumber = problem.displayNumber ?? problem.number;
-      return problem.kind === "shared" ? `${problem.groupLabel} 공통 지문` : `문항 ${displayNumber}`;
+      return problem.kind === "shared" ? (problem.textContinuation ? "지문 (계속)" : "다음 글을 읽고 물음에 답하시오.") : `문항 ${displayNumber}`;
     }
 
     function getEntryTypeBadges(problem) {
       if (problem.kind === "shared") {
-        return [{ label: "공통지문", className: " is-shared" }];
+        return [];
       }
       const badges = [{ label: problem.problemType || PROBLEM_TYPE_OTHER, className: "" }];
       if (problem.isSubjective && problem.subjectiveType) {
@@ -8898,6 +8899,14 @@
     }
 
     function buildLayoutPages(settings, problems, options = {}) {
+      return PDFLabPageLayout.build(settings, problems, options, {
+        width: SHEET_WIDTH_MM, height: SHEET_HEIGHT_MM, header: HEADER_HEIGHT_MM,
+        footer: FOOTER_HEIGHT_MM, binding: BINDING_MARGIN_MM,
+        isText: isTextRenderProblem, squash: getProblemSquashPercent, render: createProblemCardMarkup, sheet: createSheetMarkup
+      });
+    }
+
+    function buildAnswerLayoutPages(settings, problems, options = {}) {
       problems = PDFLabCanonical.prepareEntries(problems.map(record => ({ record }))).map(entry => entry.record);
       const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
       const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
@@ -9097,7 +9106,7 @@
       const typeBadges = getEntryTypeBadges(problem)
         .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
         .join("");
-      const bodyMarkup = isTextRender
+      let bodyMarkup = isTextRender
         ? `<div class="problem-text-body">${buildProblemTextMarkup(problem)}</div>`
         : (() => {
             const availableImages = problem.segmentImages.filter(Boolean);
@@ -9110,13 +9119,16 @@
                   .join("")
               : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
           })();
+      if (!isTextRender && problem.imageSlice) {
+        bodyMarkup = `<div class="problem-image-slice" style="height:${problem.imageSlice.heightMm}mm;overflow:hidden"><div style="transform:translateY(-${problem.imageSlice.offsetMm}mm)">${bodyMarkup}</div></div>`;
+      }
       return `
-        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}">
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}" data-question-number="${problem.kind === "shared" ? "" : escapeHtml(String(problem.displayNumber ?? problem.number ?? ""))}">
           <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
-                ${problem.textContinuation ? '<span class="problem-continuation-badge">계속</span>' : ""}
+                ${problem.kind !== "shared" && (problem.textContinuation || problem.groupContinuation) ? '<span class="problem-continuation-badge">계속</span>' : ""}
                 ${typeBadges}
               </div>
               ${isTextRender ? "" : `
@@ -9161,7 +9173,7 @@
       const logoMarkup = logoSrc
         ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
-      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(cardRenderer).join("")}</section>`).join("");
+      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column${sheet.questionLayout ? " is-question-column" : ""}${column.alignEnds ? " is-two-questions" : ""}">${column.items.map(cardRenderer).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
         ? `
           <header class="sheet-header">
@@ -9267,7 +9279,7 @@
         title: "답지",
         subtitle: "선택한 문항의 답지만 이미지로 정리했습니다."
       };
-      const answerLayoutMeta = buildLayoutPages(answerSettings, answerProblems, { repeatHeaderEveryPage: false });
+      const answerLayoutMeta = buildAnswerLayoutPages(answerSettings, answerProblems, { repeatHeaderEveryPage: false });
       return answerLayoutMeta.sheets
         .map((sheet, index) => createSheetMarkup(sheet, answerSettings, index, answerLayoutMeta, {
           cardRenderer: createAnswerImageCardMarkup,

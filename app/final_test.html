@@ -492,6 +492,7 @@
   </div>
 
   <script src="./hanbujang_canonical.js"></script>
+  <script src="./problem_page_layout.js"></script>
   <script src="./solbook_text_renderer.js?v=20260914-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -9078,12 +9079,12 @@
 
     function getEntryBadge(problem) {
       const displayNumber = problem.displayNumber ?? problem.number;
-      return problem.kind === "shared" ? `${problem.groupLabel} 공통 지문` : `문항 ${displayNumber}`;
+      return problem.kind === "shared" ? (problem.textContinuation ? "지문 (계속)" : "다음 글을 읽고 물음에 답하시오.") : `문항 ${displayNumber}`;
     }
 
     function getEntryTypeBadges(problem) {
       if (problem.kind === "shared") {
-        return [{ label: "공통지문", className: " is-shared" }];
+        return [];
       }
       const badges = [{ label: problem.problemType || PROBLEM_TYPE_OTHER, className: "" }];
       if (problem.isSubjective && problem.subjectiveType) {
@@ -10244,109 +10245,11 @@
     }
 
     function buildLayoutPages(settings, problems, options = {}) {
-      problems = PDFLabCanonical.prepareEntries(problems.map(record => ({ record }))).map(entry => entry.record);
-      const repeatHeaderEveryPage = options.repeatHeaderEveryPage ?? true;
-      const innerWidthMm = SHEET_WIDTH_MM - settings.pagePadding * 2 - BINDING_MARGIN_MM;
-      const innerHeightMm = SHEET_HEIGHT_MM - settings.pagePadding * 2;
-      const firstSheetColumnHeightMm = innerHeightMm - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM;
-      const continuationSheetColumnHeightMm = innerHeightMm - FOOTER_HEIGHT_MM;
-      const columnWidthMm = (innerWidthMm - settings.columnGap) / 2;
-      const createColumn = () => ({ items: [], usedHeightMm: 0 });
-      const createSheet = (index) => {
-        const hasHeader = repeatHeaderEveryPage || index === 0;
-        return {
-          hasHeader,
-          headerHeightMm: hasHeader ? HEADER_HEIGHT_MM : 0,
-          columnHeightMm: hasHeader ? firstSheetColumnHeightMm : continuationSheetColumnHeightMm,
-          columns: [createColumn(), createColumn()]
-        };
-      };
-      const sheets = [createSheet(0)];
-      let sheetIndex = 0;
-      let columnIndex = 0;
-
-      function advanceSlot() {
-        if (columnIndex === 0) {
-          columnIndex = 1;
-          return;
-        }
-        sheets.push(createSheet(sheets.length));
-        sheetIndex += 1;
-        columnIndex = 0;
-      }
-
-      const layoutProblems = problems.flatMap((problem) => isTextRenderProblem(problem) && window.PDFLabSolbookText?.paginateProblem
-        ? window.PDFLabSolbookText.paginateProblem(problem, {
-            columnWidthMm, columnHeightMm: firstSheetColumnHeightMm,
-            renderCard: (fragment) => createProblemCardMarkup({ problem: fragment, fitScale: 1, appliedSquashPercent: 0 })
-          })
-        : [problem]);
-      for (const problem of layoutProblems) {
-        const baseSquashPercent = getProblemSquashPercent(problem);
-        const metrics = calculateProblemMetrics(problem, columnWidthMm, baseSquashPercent);
-        let placed = false;
-        while (!placed) {
-          const currentSheet = sheets[sheetIndex];
-          const currentColumn = currentSheet.columns[columnIndex];
-          const columnHeightMm = currentSheet.columnHeightMm;
-          const gapBefore = currentColumn.items.length ? settings.cardGap : 0;
-          const fullHeightMm = estimateHeightMm(metrics, 1);
-          const remainingMm = columnHeightMm - currentColumn.usedHeightMm - gapBefore;
-          const supportsFitScale = metrics.supportsFitScale !== false;
-          if (currentColumn.items.length < settings.maxPerColumn && fullHeightMm <= remainingMm) {
-            currentColumn.items.push({ problem, fitScale: 1, appliedSquashPercent: baseSquashPercent });
-            currentColumn.usedHeightMm += gapBefore + fullHeightMm;
-            placed = true;
-            continue;
-          }
-          if (currentColumn.items.length === 1 && settings.maxPerColumn >= 2) {
-            const pairPlacement = findBalancedPairPlacement(currentColumn.items[0], problem, settings, columnWidthMm, columnHeightMm);
-            if (pairPlacement) {
-              currentColumn.items[0] = {
-                ...currentColumn.items[0],
-                appliedSquashPercent: pairPlacement.firstSquashPercent
-              };
-              currentColumn.items.push({
-                problem,
-                fitScale: 1,
-                appliedSquashPercent: pairPlacement.secondSquashPercent
-              });
-              currentColumn.usedHeightMm = pairPlacement.totalHeightMm;
-              placed = true;
-              continue;
-            }
-          }
-          if (!currentColumn.items.length && supportsFitScale && remainingMm > metrics.fixedHeightMm + 18) {
-            const fitScale = Math.min(1, Math.max(MIN_FIT_SCALE, (remainingMm - metrics.fixedHeightMm) / Math.max(1, metrics.scalableHeightMm)));
-            if (estimateHeightMm(metrics, fitScale) <= remainingMm + 0.4) {
-              currentColumn.items.push({ problem, fitScale, appliedSquashPercent: baseSquashPercent });
-              currentColumn.usedHeightMm += estimateHeightMm(metrics, fitScale);
-              placed = true;
-              continue;
-            }
-          }
-          if (!currentColumn.items.length) {
-            const fallbackFitScale = supportsFitScale ? MIN_FIT_SCALE : 1;
-            currentColumn.items.push({
-              problem,
-              fitScale: fallbackFitScale,
-              appliedSquashPercent: baseSquashPercent,
-              isOverflow: true
-            });
-            currentColumn.usedHeightMm += estimateHeightMm(metrics, fallbackFitScale);
-            placed = true;
-            continue;
-          }
-          advanceSlot();
-        }
-      }
-      return {
-        sheets,
-        columnWidthMm,
-        firstSheetColumnHeightMm,
-        continuationSheetColumnHeightMm,
-        repeatHeaderEveryPage
-      };
+      return PDFLabPageLayout.build(settings, problems, options, {
+        width: SHEET_WIDTH_MM, height: SHEET_HEIGHT_MM, header: HEADER_HEIGHT_MM,
+        footer: FOOTER_HEIGHT_MM, binding: BINDING_MARGIN_MM,
+        isText: isTextRenderProblem, squash: getProblemSquashPercent, render: createProblemCardMarkup, sheet: createSheetMarkup
+      });
     }
 
     function getInitialSheetTarget(totalSheets) {
@@ -10443,7 +10346,7 @@
       const typeBadges = getEntryTypeBadges(problem)
         .map((badge) => `<span class="problem-type-badge${badge.className}">${escapeHtml(badge.label)}</span>`)
         .join("");
-      const bodyMarkup = isTextRender
+      let bodyMarkup = isTextRender
         ? `<div class="problem-text-body">${buildProblemTextMarkup(problem)}</div>`
         : (() => {
             const availableImages = problem.segmentImages.filter(Boolean);
@@ -10456,13 +10359,16 @@
                   .join("")
               : `<div class="problem-placeholder">이 시트는 아직 렌더되지 않았습니다.<br>상단 버튼으로 이어서 생성할 수 있습니다.</div>`;
           })();
+      if (!isTextRender && problem.imageSlice) {
+        bodyMarkup = `<div class="problem-image-slice" style="height:${problem.imageSlice.heightMm}mm;overflow:hidden"><div style="transform:translateY(-${problem.imageSlice.offsetMm}mm)">${bodyMarkup}</div></div>`;
+      }
       return `
-        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}">
+        <article class="problem-card ${fitScale < 0.999 ? "is-scaled" : ""} ${squashPercent > 0 ? "is-squeezed" : ""} ${isTextRender ? "is-text-render" : ""}" data-question-number="${problem.kind === "shared" ? "" : escapeHtml(String(problem.displayNumber ?? problem.number ?? ""))}">
           <div class="problem-card-inner" style="--fit-width:${Math.round(fitScale * 1000) / 10}%;">
             <header class="problem-card-header">
               <div class="problem-heading-stack">
                 <span class="problem-badge">${escapeHtml(entryBadge)}</span>
-                ${problem.textContinuation ? '<span class="problem-continuation-badge">계속</span>' : ""}
+                ${problem.kind !== "shared" && (problem.textContinuation || problem.groupContinuation) ? '<span class="problem-continuation-badge">계속</span>' : ""}
                 ${typeBadges}
               </div>
               ${isTextRender ? "" : `
@@ -10505,7 +10411,7 @@
       const logoMarkup = logoSrc
         ? `<img class="sheet-logo-image" src="${escapeHtml(logoSrc)}" alt="학원 로고">`
         : "";
-      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
+      const columnsMarkup = sheet.columns.map((column) => `<section class="sheet-column${sheet.questionLayout ? " is-question-column" : ""}${column.alignEnds ? " is-two-questions" : ""}">${column.items.map(createProblemCardMarkup).join("")}</section>`).join("");
       const headerMarkup = sheet.hasHeader
         ? `
           <header class="sheet-header">

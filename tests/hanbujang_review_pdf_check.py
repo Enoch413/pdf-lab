@@ -23,9 +23,13 @@ for name in ('index', 'final_test', 'general_exam'):
     assert positions == (['①', '①', '②'] if before else ['①', '②', '③']), (name, positions)
     answers = [(i, re.search(r'195번\s+답:\s*([①-⑳])', text)) for i, text in pages]
     answers = [(i, match.group(1)) for i, match in answers if match]
-    assert answers == [(75, '①')], (name, answers)
+    assert len(answers) == 1 and answers[0][1] == '①', (name, answers)
     assert positions.count(answers[0][1]) == (2 if before else 1)
-    assert page == 57 and '문항 195' in text
+    assert '문항 195' in text
+    if not before:
+        for group in ((134, 135), (141, 142)):
+            locations = [{i for i, t in pages if re.search(rf'문항\s*{n}(?!\d)', t)} for n in group]
+            assert all(len(found) == 1 for found in locations) and locations[0] == locations[1], (name, group, locations)
     cases.append(dict(screen=name, pages=len(reader.pages), questionPage=page, outputNumber=195,
         positions=positions, answerPage=answers[0][0], answer=answers[0][1],
         answerTargets=positions.count(answers[0][1]), extractedBody=body,

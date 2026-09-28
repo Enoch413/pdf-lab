@@ -281,8 +281,8 @@
     const shared = record.canonicalDisplay === "shared", child = record.canonicalDisplay === "child";
     const rendered = inlineProblem(shared && record.canonicalInsertionProblem ? record.canonicalInsertionProblem : p);
     const field = (key, className) => p[key] === "" ? "" : `<p class="${className}" data-canonical-field="${key}">${rendered.fields[key]}</p>`;
-    const reference = record.canonicalGroupReference || (p.questionGroupId ? `공통지문 · ${p.passageLabel} · ${p.questionGroupId}` : "");
-    const heading = reference ? `<p class="canonical-group-reference">${escape(reference)}${shared ? "" : ` · ${escape(effectiveType(record))}`}</p>` : "";
+    // Group provenance stays in records; student output contains only the source text.
+    const heading = "";
     const choiceMarkup = !shared && p.choices.length ? '<ol class="solbook-choices">' + p.choices.map((c, i) =>
       `<li><span class="solbook-choice-marker">${escape(c.marker)}</span><span class="solbook-choice-text">${rendered.choices[i]}</span></li>`).join("") + '</ol>' : "";
     const warningList = rendered.warnings.map(message => `${p.number}번: ${message}`);

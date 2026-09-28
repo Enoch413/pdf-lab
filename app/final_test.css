@@ -830,6 +830,20 @@ button:disabled {
   min-height: var(--column-height, 245mm);
 }
 
+/* Capacity is assigned in JS; alignment is applied only to the finished column. */
+.sheet-column.is-question-column {
+  height: var(--column-height);
+  min-height: var(--column-height);
+  justify-content: flex-start;
+}
+.sheet-column.is-question-column > .problem-card { flex: 0 0 auto; }
+.sheet-column.is-two-questions { justify-content: space-between; }
+.sheet:has(.is-question-column) { align-content: start; gap: 0; }
+.problem-image-slice > div { display: flex; flex-direction: column; gap: 1.8mm; }
+@media print {
+  .sheet:has(.is-question-column) { display: block; break-before: page; page-break-before: always; }
+}
+
 .problem-card {
   position: relative;
   border-radius: 18px;

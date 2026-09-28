@@ -13,8 +13,7 @@ for screen in ('index', 'final_test', 'general_exam'):
     file = out / f'{screen}-r1-bare.pdf'
     reader = PdfReader(file)
     pages = [(i + 1, p.extract_text()) for i, p in enumerate(reader.pages)]
-    questions = [(n, re.search(r'The street was quiet\.[\s\S]*?People gathered together\.', text)) for n, text in pages]
-    questions = [(n, match.group()) for n, match in questions if match]
+    questions = [(n, match.group()) for n, text in pages for match in re.finditer(r'The street was quiet\.[\s\S]*?People gathered together\.', text)]
     assert len(questions) == 3
     checks = []
     evidence_pages = set()

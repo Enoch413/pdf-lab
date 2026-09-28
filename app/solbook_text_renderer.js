@@ -548,7 +548,6 @@
     '.is-canonical .solbook-stem,.is-canonical .solbook-choice-text,.answer-key-answer,.answer-key-explanation{white-space:pre-wrap;overflow-wrap:anywhere}',
     '.is-canonical .solbook-body + .solbook-body{margin-top:2mm}',
     '.is-canonical .choice-box{white-space:pre-wrap;display:inline}',
-    '.canonical-group-reference{font-size:8pt;font-weight:700;margin:0 0 1mm;color:#333;overflow-wrap:anywhere}',
     '.canonical-token-warning{font-size:7pt;color:#8b3516;white-space:pre-wrap;overflow-wrap:anywhere}',
     '.canonical-given{border:1px solid #999;padding:1mm}.canonical-summary{border-top:1px solid #bbb;padding-top:1mm}'
   ].join("\n");
@@ -586,11 +585,11 @@
 
   // Split rendered paragraphs/choices, preserving inline markup and original
   // choice numbers. The fragments are layout-only and never become new questions.
-  function paginateProblem(problem, { columnWidthMm, columnHeightMm, renderCard }) {
+  function paginateProblem(problem, { columnWidthMm, columnHeightMm, firstColumnHeightMm = columnHeightMm, renderCard }) {
     if (!root.document?.body || problem.textFragmentHtml != null) return [problem];
     const originalMarkup = renderCard(problem);
-    if (measureCard(originalMarkup, columnWidthMm) <= columnHeightMm) return [problem];
-    const cacheKey = columnWidthMm + "|" + columnHeightMm + "|" + originalMarkup;
+    if (measureCard(originalMarkup, columnWidthMm) <= firstColumnHeightMm) return [problem];
+    const cacheKey = columnWidthMm + "|" + columnHeightMm + "|" + firstColumnHeightMm + "|" + originalMarkup;
     const makeProblem = (html, index) => ({ ...problem, textFragmentHtml: html, textContinuation: index > 0 });
     if (paginationCache.has(cacheKey)) return paginationCache.get(cacheKey).map(makeProblem);
     const template = root.document.createElement("template");
@@ -654,7 +653,7 @@
     }
     const fragments = [];
     let current = [];
-    const fits = parts => measureCard(renderCard(makeProblem(fragmentMarkup(parts), fragments.length)), columnWidthMm) <= columnHeightMm;
+    const fits = parts => measureCard(renderCard(makeProblem(fragmentMarkup(parts), fragments.length)), columnWidthMm) <= (fragments.length ? columnHeightMm : firstColumnHeightMm);
     const flush = () => { fragments.push(fragmentMarkup(current)); current = []; };
     const remaining = blocks.slice();
     while (remaining.length) {
