@@ -42,6 +42,9 @@ async function mockFirebase(page){
     const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
     const goto=async(name='index')=>{await page.goto(origin+'/app/'+name+'.html?workspace=library');await page.waitForFunction(()=>document.body.dataset.appReady==='true');};
     await goto();
+    // Source is optional now; explicitly choose A for this source-move regression.
+    await page.getByText('기존 PDF / 출처 참고정보 (선택)', {exact:true}).click();
+    await page.locator('#librarySourceSelect').selectOption('neoreunteo');
     await page.locator('#newTextbookInput').fill('R2 격리 교재');
     await page.locator('#problemJsonInput').setInputFiles({name:'source-change.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(input))});
     await page.waitForFunction(()=>!state.isBusy&&state.problems.length===7);

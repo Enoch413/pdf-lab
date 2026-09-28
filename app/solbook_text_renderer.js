@@ -712,7 +712,14 @@
     }
   }
 
-  root.PDFLabSolbookText = Object.freeze({ toQuestion, render, measureCard, ready, paginateProblem, assertFits, cssText, normalizeQuestionType, normalizeSolbookMarkers, normalizeChoiceText, renderInlineText });
+  function assertTextAvailable(record) {
+    if (root.PDFLabCanonical?.has(record)) return;
+    const q = toQuestion(record);
+    if ([q.stem, q.body, ...(q.choices || []), record.promptText, record.analysisText].some(value => String(value || "").trim())) return;
+    throw new Error("문항 " + (record.number ?? "-") + "에 텍스트가 없습니다. 해당 교재에 AI JSON을 등록해주세요. 기존 이미지 자료는 보존됩니다.");
+  }
+
+  root.PDFLabSolbookText = Object.freeze({ toQuestion, render, measureCard, ready, paginateProblem, assertFits, assertTextAvailable, cssText, normalizeQuestionType, normalizeSolbookMarkers, normalizeChoiceText, renderInlineText });
   if (root.document?.head) {
     const style = root.document.createElement("style");
     style.id = "pdflab-solbook-text-style";

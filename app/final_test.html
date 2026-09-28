@@ -39,13 +39,18 @@
       <section class="panel-card">
         <h2 class="panel-title">1. PDF 불러오기</h2>
         <div class="field-grid compact-field-grid">
+          <details>
+            <summary>기존 PDF / 출처 참고정보 (선택)</summary>
           <label class="field-row">
-            <span class="field-label">문제 출처</span>
+            <span class="field-label">출처 메모</span>
             <select class="select-input" id="librarySourceSelect">
+              <option value="unspecified" selected>미지정</option>
               <option value="neoreunteo">너른터</option>
               <option value="thelab4you">더랩포유</option>
             </select>
           </label>
+            <p class="small-note">JSON 형식과 출제는 출처에 관계없이 같습니다. 기존 PDF 가져오기와 자료 관리에만 참고합니다.</p>
+          </details>
           <div class="field-row">
             <span class="field-label">교재 등록 방식</span>
             <div class="choice-chip-row">
@@ -323,13 +328,7 @@
                   <option value="question-answer" selected="">문제+답안 뽑기</option>
                 </select>
               </label>
-              <label class="field-row">
-                <span class="field-label">문제 렌더링</span>
-                <select class="select-input" id="examContentModeSelect">
-                  <option value="image" selected="">이미지 출제</option>
-                  <option value="text">텍스트 출제</option>
-                </select>
-              </label>
+              <p class="small-note">텍스트 출제 · 등록한 JSON의 본문과 답안을 사용합니다.</p>
               <div class="field-row">
                 <span class="field-label">우측 로고</span>
                 <div class="action-row compact-action-row">
@@ -416,14 +415,7 @@
               </div>
             </div>
             <div class="field-grid compact-field-grid">
-              <label class="field-row">
-                <span class="field-label">문제 출처</span>
-                <select class="select-input" id="schoolSourceFilterSelect">
-                  <option value="all">전체</option>
-                  <option value="neoreunteo">너른터</option>
-                  <option value="thelab4you">더랩포유</option>
-                </select>
-              </label>
+              <p class="small-note">출처 구분 없이 선택한 교재의 문항을 출제합니다.</p>
               <label class="field-row">
                 <span class="field-label">교재 선택</span>
                 <select class="select-input" id="schoolPassageTextbookSelect" disabled=""><option value="">저장된 교재 없음</option></select>
@@ -856,6 +848,7 @@
     const EXAM_CONTENT_MODE_IMAGE = "image";
     const EXAM_CONTENT_MODE_TEXT = "text";
     const LIBRARY_SOURCE_OPTIONS = Object.freeze([
+      { key: "unspecified", label: "미지정", aliases: [] },
       { key: DEFAULT_LIBRARY_SOURCE_KEY, label: "너른터", aliases: [] },
       { key: "thelab4you", label: "더랩포유", aliases: ["exam4you", "이그잼포유"] }
     ]);
@@ -936,7 +929,7 @@
     }
 
     function getSchoolSourceFilterKey() {
-      return normalizeSchoolSourceFilterKey(state?.schoolWorkflow?.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
+      return LIBRARY_SOURCE_FILTER_ALL;
     }
 
     function getRecordSourceKey(record) {
@@ -993,15 +986,12 @@
     }
 
     function getSelectedExamContentMode() {
-      return normalizeExamContentMode(
-        elements?.examContentModeSelect?.value ||
-        state?.examBuilder?.contentRenderMode ||
-        EXAM_CONTENT_MODE_IMAGE
-      );
+      return EXAM_CONTENT_MODE_TEXT;
     }
 
     function applyExamContentModeToUi(value) {
-      const normalized = normalizeExamContentMode(value);
+      // Saved image-mode drafts now open in the text-only workflow. Assets are kept.
+      const normalized = EXAM_CONTENT_MODE_TEXT;
       state.examBuilder.contentRenderMode = normalized;
       if (elements.examContentModeSelect) {
         elements.examContentModeSelect.value = normalized;
@@ -1110,7 +1100,7 @@
       logoLabel: DEFAULT_LOGO_LABEL,
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
-      selectedLibrarySourceKey: DEFAULT_LIBRARY_SOURCE_KEY,
+      selectedLibrarySourceKey: "unspecified",
       activeTab: INITIAL_WORKSPACE_MODE === WORKSPACE_MODE_LIBRARY ? "repack" : "exam",
       workspaceMode: INITIAL_WORKSPACE_MODE,
       libraryDirectoryHandle: null,
@@ -1152,7 +1142,7 @@
         loadedWorkId: "",
         activeRoundIndex: 0,
         answerOutputMode: EXAM_ANSWER_MODE_WITH_ANSWER_KEY,
-        contentRenderMode: EXAM_CONTENT_MODE_IMAGE,
+        contentRenderMode: EXAM_CONTENT_MODE_TEXT,
         answerEditSlotId: "",
         answerEditBaseText: "",
         answerEditDraftText: "",
@@ -4631,7 +4621,7 @@
     function getExamSetsForSelectedSchool() {
       const schoolKey = normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
       const sourceKey = getSchoolSourceFilterKey();
-      const matchesSource = (examSet) => normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey;
+      const matchesSource = (examSet) => (sourceKey === LIBRARY_SOURCE_FILTER_ALL || normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey);
       if (!schoolKey) {
         return getExamSets().filter(matchesSource);
       }
@@ -4650,7 +4640,7 @@
       const sourceKey = getSchoolSourceFilterKey();
       return getExamItems().filter((item) =>
         targetExamIds.has(item.examId) &&
-        normalizeLibrarySourceKey(item.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey
+        (sourceKey === LIBRARY_SOURCE_FILTER_ALL || normalizeLibrarySourceKey(item.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey)
       );
     }
 
@@ -7952,7 +7942,8 @@
       return limited;
     }
 
-    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_IMAGE) {
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = EXAM_CONTENT_MODE_TEXT) {
+      if (renderContentMode === EXAM_CONTENT_MODE_TEXT) PDFLabSolbookText.assertTextAvailable(record);
       if (PDFLabCanonical.has(record) && renderContentMode === EXAM_CONTENT_MODE_TEXT) return PDFLabCanonical.textRuntime(record, examNumber);
       const normalizedRenderMode = normalizeExamContentMode(renderContentMode);
       const segmentImages = normalizedRenderMode === EXAM_CONTENT_MODE_TEXT

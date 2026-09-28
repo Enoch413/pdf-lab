@@ -60,13 +60,18 @@
       <section class="panel-card">
         <h2 class="panel-title">1. PDF 불러오기</h2>
         <div class="field-grid compact-field-grid">
+          <details>
+            <summary>기존 PDF / 출처 참고정보 (선택)</summary>
           <label class="field-row">
-            <span class="field-label">문제 출처</span>
+            <span class="field-label">출처 메모</span>
             <select class="select-input" id="librarySourceSelect">
+              <option value="unspecified" selected>미지정</option>
               <option value="neoreunteo">너른터</option>
               <option value="thelab4you">더랩포유</option>
             </select>
           </label>
+            <p class="small-note">JSON 형식과 출제는 출처에 관계없이 같습니다. 기존 PDF 가져오기와 자료 관리에만 참고합니다.</p>
+          </details>
           <div class="field-row">
             <span class="field-label">교재 등록 방식</span>
             <div class="choice-chip-row">
@@ -291,13 +296,7 @@
           <section class="panel-card">
             <h2 class="panel-title">2. 출제 규칙</h2>
             <div class="field-grid">
-              <label class="field-row">
-                <span class="field-label">문제 출처</span>
-                <select class="select-input" id="schoolSourceFilterSelect">
-                  <option value="neoreunteo">너른터</option>
-                  <option value="thelab4you">더랩포유</option>
-                </select>
-              </label>
+              <p class="small-note">출처 구분 없이 선택한 교재의 문항을 출제합니다.</p>
               <div class="field-row">
                 <span class="field-label">출제 모드</span>
                 <div class="choice-chip-row">
@@ -887,7 +886,9 @@
     const REPACK_ANSWER_MODE_WITH_ANSWER = "problem-answer";
     const EXAM_ANSWER_MODE_QUESTION_ONLY = "question-only";
     const EXAM_ANSWER_MODE_WITH_ANSWER_KEY = "question-answer";
+    const LIBRARY_SOURCE_FILTER_ALL = "all";
     const LIBRARY_SOURCE_OPTIONS = Object.freeze([
+      { key: "unspecified", label: "미지정", aliases: [] },
       { key: DEFAULT_LIBRARY_SOURCE_KEY, label: "너른터", aliases: [] },
       { key: "thelab4you", label: "더랩포유", aliases: ["exam4you", "이그잼포유"] }
     ]);
@@ -946,6 +947,7 @@
     }
 
     function getLibrarySourceLabel(sourceKey) {
+      if (sourceKey === LIBRARY_SOURCE_FILTER_ALL) return "전체 출처";
       return LIBRARY_SOURCE_OPTIONS.find((option) => option.key === normalizeLibrarySourceKey(sourceKey))?.label
         || LIBRARY_SOURCE_OPTIONS[0].label;
     }
@@ -955,7 +957,7 @@
     }
 
     function getSchoolSourceFilterKey() {
-      return normalizeLibrarySourceKey(state?.schoolWorkflow?.sourceFilterKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      return LIBRARY_SOURCE_FILTER_ALL;
     }
 
     function getRecordSourceKey(record) {
@@ -1058,7 +1060,7 @@
       logoLabel: DEFAULT_LOGO_LABEL,
       storedTextbooks: readStoredTextbooks(),
       selectedTextbookName: "",
-      selectedLibrarySourceKey: DEFAULT_LIBRARY_SOURCE_KEY,
+      selectedLibrarySourceKey: "unspecified",
       answerOutputMode: REPACK_ANSWER_MODE_PROBLEM_ONLY,
       activeTab: INITIAL_WORKSPACE_MODE === WORKSPACE_MODE_LIBRARY ? "repack" : "exam",
       workspaceMode: INITIAL_WORKSPACE_MODE,
@@ -3876,7 +3878,7 @@
     }
 
     function recordMatchesSchoolSource(record) {
-      return getRecordSourceKey(record) === getSchoolSourceFilterKey();
+      return getSchoolSourceFilterKey() === LIBRARY_SOURCE_FILTER_ALL || getRecordSourceKey(record) === getSchoolSourceFilterKey();
     }
 
     function getSchoolProblemRecordsOnly() {
@@ -4012,7 +4014,7 @@
       const sourceKey = getSchoolSourceFilterKey();
       const matchesSource = (examSet) =>
         getExamSetHistoryScope(examSet) === scope &&
-        normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey;
+        (sourceKey === LIBRARY_SOURCE_FILTER_ALL || normalizeLibrarySourceKey(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey);
       if (!schoolKey) {
         return getExamSets().filter(matchesSource);
       }
@@ -4035,7 +4037,7 @@
       const sourceKey = getSchoolSourceFilterKey();
       return getExamItems().filter((item) =>
         targetExamIds.has(item.examId) &&
-        normalizeLibrarySourceKey(item.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey
+        (sourceKey === LIBRARY_SOURCE_FILTER_ALL || normalizeLibrarySourceKey(item.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey)
       );
     }
 
@@ -4077,7 +4079,7 @@
       return (state.studentRetry.sessions || [])
         .filter((session) =>
           normalizeSchoolKey(session.schoolKey || "") === schoolKey &&
-          normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey
+          (sourceKey === LIBRARY_SOURCE_FILTER_ALL || normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY) === sourceKey)
         )
         .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
     }
@@ -4182,7 +4184,7 @@
     function findNextRetryCandidateForItem(item, usedProblemIds) {
       const sourceKey = getStudentRetrySourceKey();
       const candidates = getProblemRecordsOnly()
-        .filter((record) => getRecordSourceKey(record) === sourceKey)
+        .filter((record) => sourceKey === LIBRARY_SOURCE_FILTER_ALL || getRecordSourceKey(record) === sourceKey)
         .filter((record) => record.problemType !== PROBLEM_TYPE_TAIL)
         .filter((record) => record.passageKey === item.passageKey)
         .filter((record) => (record.selectableType || record.problemType || PROBLEM_TYPE_OTHER) === item.typeLabel)
@@ -6458,7 +6460,8 @@
         title: elements.examTitleInput.value.trim() || "파이널 테스트",
         subtitle: elements.examSubtitleInput.value.trim(),
         answerOutputMode,
-        includeAnswerKey: answerOutputMode === EXAM_ANSWER_MODE_WITH_ANSWER_KEY
+        includeAnswerKey: answerOutputMode === EXAM_ANSWER_MODE_WITH_ANSWER_KEY,
+        contentRenderMode: "text"
       };
     }
 
@@ -7044,7 +7047,19 @@
       return limited;
     }
 
-    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls") {
+    function createExamRuntimeProblemFromRecord(record, examNumber, urlBucket = "previewUrls", renderContentMode = "text") {
+      if (renderContentMode === "text") {
+        PDFLabSolbookText.assertTextAvailable(record);
+        if (PDFLabCanonical.has(record)) return PDFLabCanonical.textRuntime(record, examNumber);
+        return {
+          ...record, id: `exam-${record.recordId}`,
+          number: examNumber, displayNumber: examNumber, originalNumber: record.number,
+          worksheetFamily: record.worksheetFamily || record.textbookName,
+          passageGroupKey: record.passageKey, renderContentMode: "text",
+          textStructure: record.textStructure || { bodyText: record.analysisText || record.promptText || "" },
+          segments: [], segmentImages: [], answerSegmentImages: []
+        };
+      }
       if (PDFLabCanonical.has(record)) return PDFLabCanonical.textRuntime(record, examNumber);
       if (!Array.isArray(record.segmentBlobs) || !record.segmentBlobs.length) {
       throw new Error(`문항 ${record.number || "-"} 이미지 조각이 없어 시험지를 만들 수 없습니다. 문제 라이브러리에서 다시 저장해주세요.`);
@@ -7128,15 +7143,18 @@
       cleanupExamUrls(urlBucket);
       const entries = getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
+      const renderContentMode = options.renderContentMode || "text";
       const selectedEntries = PDFLabCanonical.prepareEntries(limitExamEntriesByQuestionCount(entries, options.maxQuestionCount));
       const renderedQuestionCount = countQuestionEntries(selectedEntries);
-      const hydratedRecords = await hydrateProblemRecordsWithAssets(selectedEntries.filter((entry) => !PDFLabCanonical.has(entry.record)).map((entry) => entry.record));
+      const hydratedRecords = renderContentMode === "text"
+        ? selectedEntries.map((entry) => ({ ...entry.record }))
+        : await hydrateProblemRecordsWithAssets(selectedEntries.filter((entry) => !PDFLabCanonical.has(entry.record)).map((entry) => entry.record));
       const hydratedRecordMap = new Map(hydratedRecords.map((record) => [record.recordId, record]));
       let problemNumber = 1;
       const problems = selectedEntries.map((entry) => {
         const runtimeRecord = hydratedRecordMap.get(entry.record.recordId) || entry.record;
         repairOcrStolenInitialAnswerFields(runtimeRecord);
-        const runtimeProblem = createExamRuntimeProblemFromRecord(runtimeRecord, runtimeRecord.kind === "shared" ? null : problemNumber, urlBucket);
+        const runtimeProblem = createExamRuntimeProblemFromRecord(runtimeRecord, runtimeRecord.kind === "shared" ? null : problemNumber, urlBucket, renderContentMode);
         if (entry.record.kind !== "shared") {
           problemNumber += 1;
         }
@@ -7213,7 +7231,7 @@
         totalQuestionCount,
         renderedQuestionCount,
         isLimited
-      } = await buildExamProblemPayloadFromSlots(urlBucket, options);
+      } = await buildExamProblemPayloadFromSlots(urlBucket, { ...options, renderContentMode: settings.contentRenderMode });
       const layoutMeta = buildLayoutPages(settings, problems, { repeatHeaderEveryPage: false });
       window.PDFLabSolbookText.assertFits(layoutMeta.sheets);
       const rawMarkup = layoutMeta.sheets.map((sheet, index) => createSheetMarkup(sheet, settings, index, layoutMeta)).join("");
@@ -7281,14 +7299,15 @@
       }
     }
 
-    function openStandaloneHtmlPreview(htmlText) {
-      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      state.examBuilder.exportUrls.push(url);
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
+    function openStandaloneHtmlPreview(htmlText, popup = null) {
+      popup = popup || window.open("", "_blank");
       if (!popup) {
         throw new Error("미리보기 창을 열지 못했습니다. 팝업 차단 설정을 확인해주세요.");
       }
+      popup.opener = null;
+      popup.document.open();
+      popup.document.write(htmlText);
+      popup.document.close();
     }
 
     function printStandaloneHtml(htmlText) {
@@ -7578,6 +7597,8 @@
 
     async function previewExamLayout() {
       validateExamBuilderForExport();
+      const previewWindow = window.open("", "_blank");
+      if (previewWindow) previewWindow.document.body.textContent = "HTML 미리보기를 준비하는 중입니다...";
       setBusy(true);
       setStatus("시험지 HTML 미리보기를 준비하는 중입니다...", "working", "시험지");
       try {
@@ -7585,9 +7606,15 @@
         const { settings, html, isLimited, renderedQuestionCount, totalQuestionCount } = await buildExamPreviewDocument("exportUrls", {
           maxQuestionCount: EXAM_HTML_PREVIEW_PROBLEM_LIMIT
         });
-        openStandaloneHtmlPreview(html);
+        openStandaloneHtmlPreview(html, previewWindow);
         setStatus("시험지 미리보기를 열었습니다.", "idle", settings.title);
         setOptionalText(elements.examExportSummary, `${settings.title} · ${getExamAnswerModeLabel(settings.answerOutputMode)} 미리보기를 새 창에서 열었습니다.`);
+      } catch (error) {
+        if (previewWindow && !previewWindow.closed) {
+          previewWindow.document.title = "PDF LAB 미리보기 오류";
+          previewWindow.document.body.textContent = error.message || "미리보기를 만들지 못했습니다.";
+        }
+        throw error;
       } finally {
         setBusy(false);
       }
@@ -8798,7 +8825,9 @@
 
     function isTextRenderProblem(problem) { return problem?.renderContentMode === "text"; }
 
-    function buildProblemTextMarkup(problem) { return window.PDFLabSolbookText.render(problem); }
+    function buildProblemTextMarkup(problem) {
+      return window.PDFLabSolbookText.render(problem, () => [{ type: "body", text: problem.analysisText || problem.promptText || "" }]);
+    }
 
     function calculateProblemMetrics(problem, columnWidthMm, squashPercent = 0) {
       if (isTextRenderProblem(problem)) {
