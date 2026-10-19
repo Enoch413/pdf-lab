@@ -15,7 +15,8 @@ module.exports = async function () {
   fs.mkdirSync(sandbox,{recursive:true});
   const sourceStates=[];
   for(const file of expected.files){
-    const original=fs.readFileSync(path.join(path.dirname(codeLabSource),file.file));
+    // Compare Git's LF content; Windows checkouts may use CRLF without changing the source.
+    const original=Buffer.from(fs.readFileSync(path.join(path.dirname(codeLabSource),file.file),'utf8').replace(/\r\n/g,'\n'));
     const hash=crypto.createHash('sha256').update(original).digest('hex');
     assert.ok(hash===file.sha256 || hash===file.patchedSha256,'CODE LAB changed: review and refresh the compatibility patch before testing');
     sourceStates.push(hash===file.sha256?'original':'patched');
