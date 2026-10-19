@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css?v=20261020-1">
   <style>
     .legacy-library-controls {
       display: block !important;
@@ -31,22 +31,12 @@
       pointer-events: none;
     }
   </style>
+  <link rel="stylesheet" href="./workspace_shell.css?v=20261020-1">
 </head>
-<body class="general-exam-standalone">
+<body class="general-exam-standalone" data-lab-page="general" data-lab-root="../">
   <div class="app-page-shell">
-    <header class="app-topbar">
-      <div class="app-topbar-copy">
-        <h1 class="app-topbar-title">PDF LAB</h1>
-      </div>
-      <div class="app-topbar-badge">WORKSPACE</div>
-      <nav class="app-topbar-actions" aria-label="작업 화면 이동">
-        <a class="app-topbar-link" href="./index.html?workspace=exam">반별 출제</a>
-        <a class="app-topbar-link" href="./final_test.html">파이널테스트</a>
-        <a class="app-topbar-link" href="./index.html?workspace=library">문제 라이브러리</a>
-        <a class="app-topbar-link is-active" id="openExamWorkspaceLink" href="./general_exam.html?workspace=exam">일반 출제</a>
-        <a class="app-topbar-link app-topbar-tab" href="../dist/solbook_question_maker_portable/app/solbook_question_maker.html">쏠북메이커</a>
-      </nav>
-    </header>
+    <header class="app-topbar" data-workspace-shell></header>
+    <script src="./workspace_shell.js?v=20261020-1"></script>
 
     <div class="app-tab-shell">
       <div class="app-tab-row" role="tablist" aria-label="작업 영역">
@@ -269,7 +259,7 @@
 
       <div class="preview-root" id="previewRoot">
         <section class="empty-state empty-state-build">
-          <div class="empty-kicker">READY TO IMPORT</div>
+          <div class="empty-kicker">PDF를 불러오면 문제 미리보기가 표시됩니다.</div>
         </section>
       </div>
     </main>
@@ -546,7 +536,7 @@
     </section>
   </div>
 
-  <script src="./workspace_ui.js"></script>
+  <script src="./workspace_ui.js?v=20261020-1"></script>
   <script src="./hanbujang_canonical.js"></script>
   <script src="./answer_editor.js"></script>
   <script src="./problem_page_layout.js"></script>
@@ -9265,7 +9255,7 @@
         );
         elements.previewRoot.innerHTML = `
           <section class="empty-state empty-state-build">
-            <div class="empty-kicker">READY TO IMPORT</div>
+            <div class="empty-kicker">PDF를 불러오면 문제 미리보기가 표시됩니다.</div>
           </section>
         `;
         elements.printButton.disabled = true;
@@ -10212,7 +10202,8 @@
         elements.statusBar.setAttribute("role", "status");
         elements.statusBar.setAttribute("aria-atomic", "true");
         elements.statusBar.classList.add("workspace-status");
-        document.querySelector(".app-topbar").after(elements.statusBar);
+        document.querySelector(".workspace-status-slot").replaceChildren(elements.statusBar);
+        if (elements.statusBar.dataset.tone === "idle") elements.statusCopy.textContent = "PDF를 선택해 추출 결과를 확인하고 인쇄/PDF로 저장하세요.";
         document.body.dataset.appReady = "true";
       })
       .catch(handleError);

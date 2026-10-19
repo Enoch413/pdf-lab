@@ -10,11 +10,11 @@ for (const file of ['app/index.html', 'app/final_test.html', 'app/general_exam.h
     if (!/\bsrc=/.test(match[1]) && match[2].trim()) new vm.Script(match[2], { filename: file });
   }
 }
-for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/workspace_ui.js','app/hanbujang_canonical.js','app/solbook_text_renderer.js','app/problem_page_layout.js']) {
+for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/workspace_ui.js','app/workspace_shell.js','app/hanbujang_canonical.js','app/solbook_text_renderer.js','app/problem_page_layout.js']) {
   new vm.Script(fs.readFileSync(file,'utf8'), {filename:file});
 }
 console.log('PASS: authored JavaScript syntax');
-for (const file of ['dependency_integrity', 'firebase_helpers', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui',
+for (const file of ['dependency_integrity', 'firebase_helpers', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui', 'workspace_shell',
   'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'jspdf_output']) {
   const result = spawnSync(process.execPath, [`tests/${file}.test.cjs`], { stdio: 'inherit' });
   if (result.error) throw result.error;

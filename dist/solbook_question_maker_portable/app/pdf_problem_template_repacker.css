@@ -2441,11 +2441,11 @@ body[data-workspace-mode] .app-tab-shell {
 .exam-sidebar .textarea-input,
 .exam-sidebar textarea,
 .exam-sidebar .color-input {
-  border-radius: 16px !important;
-  border: 1px solid rgba(24, 71, 72, 0.1) !important;
-  background: #faf8f4 !important;
-  color: #203638 !important;
-  box-shadow: none !important;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 71, 72, 0.1);
+  background: #faf8f4;
+  color: #203638;
+  box-shadow: none;
 }
 
 .controls-panel .text-input:focus,

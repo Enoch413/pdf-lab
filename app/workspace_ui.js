@@ -10,7 +10,7 @@
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }
       const link = event.target.closest?.('a[href]');
-      if (!link || link.target === '_blank' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      if (!link || link.hasAttribute('download') || link.target === '_blank' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const url = new URL(link.href, location.href);
       if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
       if (!confirmDiscard()) { event.preventDefault(); event.stopImmediatePropagation(); }

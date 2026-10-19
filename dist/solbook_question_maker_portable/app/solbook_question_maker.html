@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./pdf_problem_template_repacker.css">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css?v=20261020-1">
   <style>
     /* Static outlines are also used by the HTML-capture ZIP fallback. */
     @font-face {
@@ -678,21 +678,13 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="./workspace_shell.css?v=20261020-1">
 </head>
-<body>
+<body data-lab-page="solbook" data-lab-root="../../../">
   <div class="app-page-shell">
     <div class="general2-shell">
-      <header class="app-topbar">
-        <div class="app-topbar-copy">
-          <h1 class="app-topbar-title">쏠북용 문제제작</h1>
-        </div>
-        <div class="app-topbar-badge">WORKSPACE</div>
-        <nav class="app-topbar-actions" aria-label="작업 화면 이동">
-          <a class="app-topbar-link app-topbar-tab" href="../../../app/index.html?workspace=exam">반별 출제</a>
-          <a class="app-topbar-link app-topbar-tab" href="../../../app/final_test.html">파이널테스트</a>
-          <a class="app-topbar-link app-topbar-tab" href="../../../app/index.html?workspace=library">문제 라이브러리</a>
-        </nav>
-      </header>
+      <header class="app-topbar" data-workspace-shell></header>
+    <script src="./workspace_shell.js?v=20261020-1"></script>
 
       <main class="general2-layout">
         <aside class="general2-panel">

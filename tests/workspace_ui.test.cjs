@@ -6,8 +6,11 @@ vm.runInNewContext(fs.readFileSync('app/workspace_ui.js','utf8'),{window,documen
 const ui=window.PDFLabWorkspaceUI.install({signature:()=>({...value}),editorDirty:()=>editorDirty,dialogs:[]});
 assert(!ui.dirty());value.repack='draft';assert(ui.dirty());
 let cancelled=false;
-pageEvents.click({target:{closest:selector=>selector==='a[href]'?{href:'http://local/app/final_test.html'}:null},preventDefault:()=>{cancelled=true;},stopImmediatePropagation(){}});
+pageEvents.click({target:{closest:selector=>selector==='a[href]'?{href:'http://local/app/final_test.html',hasAttribute:()=>false}:null},preventDefault:()=>{cancelled=true;},stopImmediatePropagation(){}});
 assert(cancelled,'Cancelling navigation must retain the page');
+cancelled=false;
+pageEvents.click({target:{closest:selector=>selector==='a[href]'?{href:'blob:http://local/export',hasAttribute:name=>name==='download'}:null},preventDefault:()=>{cancelled=true;},stopImmediatePropagation(){}});
+assert(!cancelled,'Downloading must not be treated as leaving an unsaved workspace');
 ui.markSaved('exam');assert(ui.dirty(),'Saving an exam must not mark imported questions as saved');
 ui.markSaved('repack');assert(!ui.dirty());editorDirty=true;assert(!ui.confirmDiscard());
 allow=true;assert(ui.confirmDiscard());
@@ -15,4 +18,4 @@ let prevented=false;events.beforeunload({preventDefault:()=>{prevented=true;}});
 const load=require('./app_vm.cjs');const app=load();
 app.context.state={problems:[{id:'unsaved'}],workspaceUi:{confirmDiscard:()=>false}};
 app.run('clearAll()');assert.equal(app.context.state.problems.length,1,'Cancelled reset must preserve current questions');
-console.log('PASS: navigation/reset cancellation, scoped saved baselines, editor dirty state, unload protection');
+console.log('PASS: navigation/reset cancellation, download without discard warning, scoped saved baselines, editor dirty state, unload protection');

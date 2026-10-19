@@ -32,4 +32,4 @@ EXE는 app/build_exe.ps1에서 하나의 spec 목록으로 빌드한다. 빌드 
 
 GitHub Pages는 현재 main 푸시로 자동 배포된다. 공개 검사 실행은 배포를 하지 않는다. analysis 변경을 main에 반영하는 작업은 배포 범위를 확인한 후 별도로 수행한다.
 
-17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·실제 jsPDF 출력 검사까지 포함한다(11개 Node suite + 5개 Python test). Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. security/firestore.rules는 운영에 미배포된 수정안이며 운영 적용 완료로 해석하면 안 된다.
+17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·공통 화면 메뉴·실제 jsPDF 출력 검사까지 포함한다(12개 Node suite + 5개 Python test). Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. 운영 규칙 적용 결과와 검증 범위는 security/HARDENING_20261020.md의 운영 검증 기록을 확인한다. UI 통일 및 추가 검증은 docs/ui-unification.md에 기록한다.
