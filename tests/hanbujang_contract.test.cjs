@@ -18,7 +18,13 @@ function check(value, rule, location = '$') {
   if (rule.minimum !== undefined) assert(value >= rule.minimum,location);
   if (rule.enum) assert(rule.enum.includes(value),location);
 }
-for (const name of ['P05_CANONICAL_ACTUAL','HANBUJANG_SYNTHETIC_7']) {
+const fixtureNames = ['HANBUJANG_SYNTHETIC_7'];
+if (process.argv.includes('--with-private')) {
+  const privatePath = path.join(__dirname, 'fixtures/hanbujang/P05_CANONICAL_ACTUAL.json');
+  if (!fs.existsSync(privatePath)) throw new Error('Private review requires tests/fixtures/hanbujang/P05_CANONICAL_ACTUAL.json. Run without --with-private for public synthetic checks.');
+  fixtureNames.unshift('P05_CANONICAL_ACTUAL');
+}
+for (const name of fixtureNames) {
   const input=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/hanbujang',name+'.json'),'utf8'));
   check(input,schema); C.validate(input);
   const before=JSON.stringify(input);C.validate(input);assert.equal(JSON.stringify(input),before);

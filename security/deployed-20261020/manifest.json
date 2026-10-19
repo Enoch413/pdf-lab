@@ -1,0 +1,14 @@
+[
+  {
+    "release": "projects/code-lab-2584c/releases/cloud.firestore",
+    "ruleset": "projects/code-lab-2584c/rulesets/e5842767-759f-42ec-ad63-253db55443bd",
+    "updatedAt": "2026-10-07T07:34:23.704573Z",
+    "file": "firestore-firestore.rules"
+  },
+  {
+    "release": "projects/code-lab-2584c/releases/firebase.storage/code-lab-2584c.firebasestorage.app",
+    "ruleset": "projects/code-lab-2584c/rulesets/c9fc1c15-5196-43cb-a871-8f334ca8df31",
+    "updatedAt": "2026-07-22T06:09:51.974359Z",
+    "file": "storage-storage.rules"
+  }
+]

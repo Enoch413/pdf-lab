@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const events={},pageEvents={};let value={repack:'',exam:''},editorDirty=false,allow=false;
+const window={confirm:()=>allow,setTimeout:()=>{},addEventListener:(name,fn)=>{events[name]=fn;}};
+const document={addEventListener:(name,fn)=>{pageEvents[name]=fn;}};
+vm.runInNewContext(fs.readFileSync('app/workspace_ui.js','utf8'),{window,document,URL,location:{href:'http://local/app/index.html?workspace=library',origin:'http://local',pathname:'/app/index.html',search:'?workspace=library'}});
+const ui=window.PDFLabWorkspaceUI.install({signature:()=>({...value}),editorDirty:()=>editorDirty,dialogs:[]});
+assert(!ui.dirty());value.repack='draft';assert(ui.dirty());
+let cancelled=false;
+pageEvents.click({target:{closest:selector=>selector==='a[href]'?{href:'http://local/app/final_test.html'}:null},preventDefault:()=>{cancelled=true;},stopImmediatePropagation(){}});
+assert(cancelled,'Cancelling navigation must retain the page');
+ui.markSaved('exam');assert(ui.dirty(),'Saving an exam must not mark imported questions as saved');
+ui.markSaved('repack');assert(!ui.dirty());editorDirty=true;assert(!ui.confirmDiscard());
+allow=true;assert(ui.confirmDiscard());
+let prevented=false;events.beforeunload({preventDefault:()=>{prevented=true;}});assert(prevented);
+const load=require('./app_vm.cjs');const app=load();
+app.context.state={problems:[{id:'unsaved'}],workspaceUi:{confirmDiscard:()=>false}};
+app.run('clearAll()');assert.equal(app.context.state.problems.length,1,'Cancelled reset must preserve current questions');
+console.log('PASS: navigation/reset cancellation, scoped saved baselines, editor dirty state, unload protection');

@@ -1,0 +1,104 @@
+--- a/rotation_portal_enhancements.js
++++ b/rotation_portal_enhancements.js
+@@ -5840,13 +5840,26 @@
+   updateAdminUploadStatus()
+ }
+ 
++async function fetchScopedPortalUserDocs(){
++  const profile = portalState.currentProfile || {}
++  const users = portalState.db.collection('users')
++  if(normalizeAdminScopeValue(profile.adminScope) === 'all') return (await users.get()).docs
++  const ids = Array.from(new Set((profile.classIds || []).filter(Boolean)))
++  const docs = new Map()
++  for(let start = 0; start < ids.length; start += 30){
++    const snapshot = await users.where('classIds', 'array-contains-any', ids.slice(start, start + 30)).get()
++    snapshot.docs.forEach(function(doc){ docs.set(doc.id, doc) })
++  }
++  return Array.from(docs.values())
++}
++
+ async function fetchAdminStudentProfiles(){
+   let rows = []
+   if(portalState.firebaseEnabled && portalState.db){
+     try{
+-      const snapshot = await portalState.db.collection('users').get()
+-      rows = snapshot.docs.map(function(doc){
+-        return normalizeUserProfile(Object.assign({ uid: doc.id }, doc.data() || {}))
++      const docs = await fetchScopedPortalUserDocs()
++      rows = docs.map(function(doc){
++        return normalizeUserProfile(Object.assign({}, doc.data() || {}, { uid: doc.id }))
+       })
+     }catch(error){
+       console.warn('users admin read fallback:', error && error.message ? error.message : error)
+@@ -11394,7 +11407,7 @@
+ async function fetchOrCreateUserProfile(user){
+   const snapshot = await getFirebaseUserProfileSnapshot(user.uid)
+   if(snapshot.exists){
+-    return normalizeUserProfile(Object.assign({ uid: user.uid }, snapshot.data()))
++    return normalizeUserProfile(Object.assign({}, snapshot.data(), { uid: user.uid }))
+   }
+ 
+   const fallbackClassId = prepClasses[0] ? prepClasses[0].id : ''
+@@ -11810,9 +11823,9 @@
+   let rows = []
+   if(portalState.firebaseEnabled && portalState.db){
+     try{
+-      const snapshot = await portalState.db.collection('users').get()
+-      rows = snapshot.docs.map(function(doc){
+-        return normalizeUserProfile(Object.assign({ uid: doc.id }, doc.data() || {}))
++      const docs = await fetchScopedPortalUserDocs()
++      rows = docs.map(function(doc){
++        return normalizeUserProfile(Object.assign({}, doc.data() || {}, { uid: doc.id }))
+       })
+     }catch(error){
+       console.warn('users superadmin read failed:', error && error.message ? error.message : error)
+@@ -12329,7 +12342,6 @@
+   const secondaryApp = firebase.initializeApp(window.ROTATION_FIREBASE_CONFIG, appName)
+   try{
+     const secondaryAuth = secondaryApp.auth()
+-    const secondaryDb = secondaryApp.firestore()
+     const credential = await secondaryAuth.createUserWithEmailAndPassword(record.email, SUPERADMIN_DEFAULT_PASSWORD)
+     const user = credential && credential.user ? credential.user : secondaryAuth.currentUser
+     if(!user) throw new Error('학생 계정을 생성하지 못했습니다.')
+@@ -12338,7 +12350,7 @@
+         await user.updateProfile({ displayName: record.name })
+       }catch(error){}
+     }
+-    await secondaryDb.collection('users').doc(user.uid).set(Object.assign({}, record, {
++    await portalState.db.collection('users').doc(user.uid).set(Object.assign({}, record, {
+       uid: user.uid
+     }), { merge: true })
+     await secondaryAuth.signOut()
+@@ -12984,10 +12996,9 @@
+ async function fetchOrCreateUserProfile(user){
+   const snapshot = await getFirebaseUserProfileSnapshot(user.uid)
+   if(snapshot.exists){
+-    return normalizeUserProfile(Object.assign({ uid: user.uid }, snapshot.data()))
+-  }
+-
+-  const fallbackClassId = prepClasses[0] ? prepClasses[0].id : ''
++    return normalizeUserProfile(Object.assign({}, snapshot.data(), { uid: user.uid }))
++  }
++
+   const loginId = derivePortalLoginId({ email: user.email || '' })
+   const profile = {
+     uid: user.uid,
+@@ -12995,7 +13006,7 @@
+     email: user.email || '',
+     name: user.displayName || '',
+     studentId: loginId,
+-    classIds: fallbackClassId ? [fallbackClassId] : [],
++    classIds: [],
+     role: 'student',
+     adminScope: 'assigned',
+     loginDisabled: false,
+--- a/index.html
++++ b/index.html
+@@ -993,6 +993,6 @@
+ <script src="./rotation_prep_ui.js?v=20260721-current-class-02"></script>
+ <script src="./rotation_portal.js?v=20261007-grammar-only-class-01"></script>
+ <script src="./grammar_catalog.js?v=20260722-grammar-progress-07"></script>
+-<script src="./rotation_portal_enhancements.js?v=20261007-grammar-only-class-01"></script>
++<script src="./rotation_portal_enhancements.js?v=20261020-firebase-scope-01"></script>
+ </body>
+ </html>

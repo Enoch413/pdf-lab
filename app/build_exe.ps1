@@ -10,6 +10,9 @@ Set-Location $projectRoot
 if ($Clean) {
     $buildTarget = Join-Path $projectRoot "build"
     if (Test-Path $buildTarget) {
+        if ((Resolve-Path -LiteralPath $buildTarget).Path -ne [System.IO.Path]::GetFullPath((Join-Path $projectRoot 'build'))) {
+            throw "Unexpected build output path: $buildTarget"
+        }
         Remove-Item -LiteralPath $buildTarget -Recurse -Force
     }
 
@@ -28,14 +31,7 @@ $args = @(
     "PyInstaller",
     "--noconfirm",
     "--clean",
-    "--windowed",
-    "--onefile",
-    "--name", "PdfProblemTemplateRepacker",
-    "--add-data", "index.html;.",
-    "--add-data", "pdf_problem_template_repacker.css;.",
-    "--add-data", "assets;assets",
-    "--add-data", "vendor;vendor",
-    "desktop_launcher.py"
+    "PdfProblemTemplateRepacker.spec"
 )
 
 & py @args

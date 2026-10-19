@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().data.role == 'admin';
+    }
+
+    function isFullAdmin() {
+      return isAdmin() && userDoc().data.get('adminScope', '') == 'all';
+    }
+
+    function canReadUser() {
+      return isFullAdmin() || (isAdmin()
+        && resource.data.get('classIds', []).hasAny(userDoc().data.get('classIds', [])));
+    }
+
+    function ownsRetryData() {
+      return isAdmin() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    function retryIdBelongsToOwner(docId) {
+      return docId.split('__')[0] == request.auth.uid.lower();
+    }
+
+    function canUseRegularPortal() {
+      return signedIn() && (
+        userDoc().data.get('role', 'student') == 'admin'
+        || !userDoc().data.get('classIds', []).hasAny(['class-grammar-only'])
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || canReadUser();
+      allow create: if isFullAdmin() || (isOwner(userId)
+        && request.resource.data.role == 'student'
+        && request.resource.data.get('uid', request.auth.uid) == request.auth.uid
+        && request.resource.data.get('adminScope', '') in ['', 'assigned']
+        && request.resource.data.get('classIds', []) == []
+        && request.resource.data.get('grammarAccessMode', 'none') == 'none'
+        && request.resource.data.get('grammarObjectPaths', []) == []);
+      allow update: if isFullAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passwordResetRequired', 'updatedAt']) &&
+        request.resource.data.passwordResetRequired is bool &&
+        request.resource.data.updatedAt is string
+      );
+      allow delete: if false;
+    }
+
+    match /checkResponses/{responseId} {
+      allow read: if canUseRegularPortal() && (isAdmin()
+        || (signedIn() && responseId.matches('^' + request.auth.uid + '__.*$'))
+        || (signedIn() && resource.data.userId == request.auth.uid));
+      allow create, update: if canUseRegularPortal() && (isAdmin() || (
+        signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && responseId.matches('^' + request.auth.uid + '__.*$')
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /prepVideoProgress/{progressId} {
+      allow read: if canUseRegularPortal() && (isAdmin()
+        || (signedIn() && progressId.matches('^' + request.auth.uid + '__.*$'))
+        || (signedIn() && resource.data.userId == request.auth.uid));
+      allow create, update: if canUseRegularPortal()
+        && request.resource.data.userId == request.auth.uid
+        && progressId.matches('^' + request.auth.uid + '__.*$');
+      allow delete: if isAdmin();
+    }
+
+    match /grammarVideoProgress/{progressId} {
+      allow read: if isAdmin()
+        || (signedIn() && progressId.matches('^' + request.auth.uid + '__.*$'))
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && progressId.matches('^' + request.auth.uid + '__.*$');
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /counselRequests/{requestId} {
+      allow read: if canUseRegularPortal() && (isAdmin()
+        || (signedIn() && requestId.matches('^' + request.auth.uid + '__.*$'))
+        || (signedIn() && resource.data.userId == request.auth.uid));
+      allow create: if canUseRegularPortal()
+        && request.resource.data.userId == request.auth.uid
+        && requestId.matches('^' + request.auth.uid + '__.*$');
+      allow update: if canUseRegularPortal() && (isAdmin() || (
+        signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && requestId.matches('^' + request.auth.uid + '__.*$')
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /counselSlots/{slotId} {
+      allow read: if canUseRegularPortal();
+      allow create: if canUseRegularPortal()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'open';
+      allow update: if canUseRegularPortal() && (isAdmin()
+        || (
+          signedIn()
+          && (
+            resource.data.status == 'completed'
+            || resource.data.status == 'canceled'
+            || resource.data.status == 'cancelled'
+          )
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'open'
+        )
+        || (
+          signedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid
+          && (request.resource.data.status == 'completed' || request.resource.data.status == 'canceled')
+        ));
+      allow delete: if canUseRegularPortal() && (isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid));
+    }
+
+    match /portalContent/{docId} {
+      allow read: if signedIn() && (!(docId in ['prep-session', 'check-data']) || canUseRegularPortal());
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /portalPrepSets/{docId} {
+      allow read: if canUseRegularPortal();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /portalCheckSets/{docId} {
+      allow read: if canUseRegularPortal();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /pdfLabSharedLibraryImports/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /pdfLabSharedLibraryProblems/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /pdfLabStudentRetryPrefs/{docId} {
+      allow get: if isAdmin() && ((docId == request.auth.uid && !exists(/databases/$(database)/documents/pdfLabStudentRetryPrefs/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && docId == request.auth.uid && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetryStudents/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetryStudents/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetrySessions/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetrySessions/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetryStudentStates/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetryStudentStates/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetryExamSets/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetryExamSets/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetryExamItems/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetryExamItems/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /pdfLabStudentRetryWorks/{docId} {
+      allow get: if isAdmin() && ((retryIdBelongsToOwner(docId) && !exists(/databases/$(database)/documents/pdfLabStudentRetryWorks/$(docId))) || resource.data.ownerUid == request.auth.uid);
+      allow list, delete: if ownsRetryData();
+      allow create: if isAdmin() && retryIdBelongsToOwner(docId) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if ownsRetryData() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /questionIssues/{issueId} {
+      allow read: if canUseRegularPortal() && (isAdmin() || (signedIn() && resource.data.userId == request.auth.uid));
+      allow create: if canUseRegularPortal() && request.resource.data.userId == request.auth.uid;
+      allow update: if canUseRegularPortal() && (isAdmin() || (signedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+  }
+}

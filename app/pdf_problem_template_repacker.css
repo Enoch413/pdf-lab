@@ -1,6 +1,6 @@
 ﻿:root {
   --ink: #182126;
-  --muted: #62727c;
+  --muted: #52615d;
   --panel: rgba(255, 252, 247, 0.92);
   --page: #fffdf7;
   --accent: #186b63;
@@ -33,7 +33,7 @@ body {
 }
 
 body {
-  min-width: 1240px;
+  min-width: 0;
 }
 
 .app-topbar-copy {
@@ -2798,7 +2798,7 @@ button:disabled {
 
 :root {
   --ink: #203638;
-  --muted: #6f7975;
+  --muted: #52615d;
   --panel: rgba(255, 255, 255, 0.92);
   --page: #fffdf8;
   --accent: #1f6b61;
@@ -3138,7 +3138,7 @@ body[data-workspace-mode] .app-tab-shell {
 .file-name,
 .small-note,
 .status-copy {
-  color: #85908c;
+  color: var(--muted);
 }
 
 .status-copy {
@@ -3503,7 +3503,7 @@ body[data-workspace-mode] .app-tab-shell {
   color: #97452f;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1239px) {
   body {
     min-width: 0;
   }
@@ -3697,4 +3697,13 @@ body[data-workspace-mode] .app-tab-shell {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.choice-chip-input:focus-visible + .choice-chip-label {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.workspace-status {
+  width: min(1440px, calc(100% - 40px));
+  margin: 12px auto;
 }

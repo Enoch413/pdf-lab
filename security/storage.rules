@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().data.role == 'admin';
+    }
+
+    function canManagePrepClass(classId) {
+      return isAdmin() && (
+        userDoc().data.adminScope == 'all' ||
+        (userDoc().data.classIds != null && classId in userDoc().data.classIds)
+      );
+    }
+
+    function canManageGrammar() {
+      return isAdmin() && (
+        request.auth.token.email == 'superadmin@prep.local' ||
+        request.auth.token.email == 'passion413@prep.local' ||
+        request.auth.token.email == 'khe2016@prep.local'
+      );
+    }
+
+    function hasAllGrammarAccess() {
+      return canManageGrammar() || (
+        signedIn() &&
+        userDoc().data.get('grammarAccessMode', 'none') == 'all'
+      );
+    }
+
+    function canReadGrammarObject(objectPath) {
+      return hasAllGrammarAccess() || (
+        signedIn() &&
+        userDoc().data.get('grammarAccessMode', 'none') == 'units' &&
+        objectPath in userDoc().data.get('grammarObjectPaths', [])
+      );
+    }
+
+    function isPdfLabImageUpload() {
+      return request.resource != null
+        && request.resource.size < 50 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType == 'application/octet-stream'
+        );
+    }
+
+    match /prep-videos/{classId}/{allPaths=**} {
+      allow read: if signedIn();
+
+      allow create, update: if canManagePrepClass(classId)
+        && request.resource != null
+        && request.resource.size < 500 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+
+      allow delete: if canManagePrepClass(classId);
+    }
+
+    match /pdf-lab/shared-library/{allPaths=**} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && isPdfLabImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    match /videos/grammar/{fileName} {
+      allow read: if canReadGrammarObject('videos/grammar/' + fileName);
+
+      allow create, update: if canManageGrammar()
+        && request.resource != null
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType == 'video/mp4';
+
+      allow delete: if canManageGrammar();
+    }
+
+    match /materials/grammar/{fileName} {
+      allow read: if canReadGrammarObject('materials/grammar/' + fileName);
+
+      allow create, update: if canManageGrammar()
+        && request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+
+      allow delete: if canManageGrammar();
+    }
+  }
+}

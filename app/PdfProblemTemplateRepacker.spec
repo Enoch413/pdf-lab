@@ -1,11 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
+
+app_root = Path(SPECPATH)
+project_root = app_root.parent
+runtime_files = [(str(path), 'app') for pattern in ('*.html', '*.css', '*.js') for path in app_root.glob(pattern)]
+runtime_files += [(str(project_root / 'index.html'), '.'), (str(project_root / 'shared'), 'shared'),
+                 (str(app_root / 'assets'), 'app/assets'), (str(app_root / 'vendor'), 'app/vendor'),
+                 (str(project_root / 'dist/solbook_question_maker_portable/app'), 'dist/solbook_question_maker_portable/app')]
 
 
 a = Analysis(
     ['desktop_launcher.py'],
-    pathex=[],
+    pathex=[str(project_root)],
     binaries=[],
-    datas=[('index.html', '.'), ('pdf_problem_template_repacker.css', '.'), ('assets', 'assets'), ('vendor', 'vendor')],
+    datas=runtime_files,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

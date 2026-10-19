@@ -1,0 +1,2 @@
+# Verified JSON-only local server. OCR dependencies remain optional in requirements.txt.
+pillow==13.0.0

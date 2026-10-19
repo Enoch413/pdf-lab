@@ -1,0 +1,30 @@
+const assert = require('node:assert/strict');
+const load = require('./app_vm.cjs');
+const storage = new Map();
+const { context: c, run, constant } = load(undefined, { window: { localStorage: {
+  getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value)
+}, clearTimeout() {} } });
+constant('STUDENT_RETRY_STORAGE_KEY'); constant('DEFAULT_LIBRARY_SOURCE_KEY');
+const student = (id, uid, name = 'Kim') => ({ studentId: id, firebaseUid: uid, name, schoolKey: 'class1', createdAt: 1, updatedAt: 1 });
+c.a = student('a', 'uid-a'); c.b = student('b', 'uid-b');
+assert.equal(run('mergeStudentRetryStudents([a],[b]).students.length'), 2, 'Distinct UIDs must not merge by name');
+assert.equal(run('doesRetryStudentMatchCheckResponse({name:"Kim",userId:"uid-b"},a)'), false);
+assert.equal(run('doesRetryStudentMatchCheckSetRecord({targetStudentName:"Kim",targetFirebaseUid:"uid-b"},a)'), false);
+assert.equal(run('mergeStudentRetryStudents([a],[{...a,studentId:"other",name:"Renamed"}]).students.length'), 1);
+c.manual = student('manual', '');
+assert.equal(run('mergeStudentRetryStudents([manual],[a,b]).students.length'), 3, 'Ambiguous names must not bind a manual student');
+assert.equal(run('mergeStudentRetryStudents([manual],[a]).students.length'), 1, 'Unique manual name can acquire identity');
+c.state = {studentRetry:{students:[],sessions:[]},firebaseSchoolBridge:{studentCatalog:[]}};
+run('upsertRetryStudentFromFirebaseStudent({uid:"uid-a",name:"Kim"},"class1");upsertRetryStudentFromFirebaseStudent({uid:"uid-b",name:"Kim"},"class1")');
+assert.equal(c.state.studentRetry.students.length,2,'Catalog import must use the same stable identity rule');
+run('var removed=state.studentRetry.students[0];state.studentRetry.deletedStudents={[removed.studentId]:2};state.studentRetry.deletedStudentKeys={[removed.studentId]:[getRetryStudentDeletionKey(removed)]};state.studentRetry.students=state.studentRetry.students.slice(1)');
+assert.equal(run('upsertRetryStudentFromFirebaseStudent({uid:"uid-a",name:"Kim"},"class1")'),null,'Catalog refresh must not recreate a deleted student');
+c.state = { studentRetry: { students: [c.a], sessions: [] }, studentRetryOwnerUid: 'admin-a', firebaseSchoolBridge: {} };
+run('switchStudentRetryOwner("admin-b")');
+assert.equal(c.state.studentRetry.students.length, 0);
+run('switchStudentRetryOwner("admin-a")');
+assert.equal(c.state.studentRetry.students[0].firebaseUid, 'uid-a');
+run('switchStudentRetryOwner("")');
+assert.equal(c.state.studentRetry.students.length, 0, 'Logout must hide account data');
+assert.ok(storage.get(run('getStudentRetryStorageKey("admin-a")')).includes('uid-a'));
+console.log('PASS: stable identity, ambiguous names, account-scoped state and logout preservation');

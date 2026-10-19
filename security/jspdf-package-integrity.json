@@ -1,0 +1,9 @@
+{
+  "package": "jspdf",
+  "version": "4.2.1",
+  "registry": "https://registry.npmjs.org/jspdf/4.2.1",
+  "tarball": "https://registry.npmjs.org/jspdf/-/jspdf-4.2.1.tgz",
+  "integrity": "sha512-YyAXyvnmjTbR4bHQRLzex3CuINCDlQnBqoSYyjJwTP2x9jDLuKDzy7aKUl0hgx3uhcl7xzg32agn5vlie6HIlQ==",
+  "bundleSha256": "e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54",
+  "source": "package/dist/jspdf.umd.min.js"
+}

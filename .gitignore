@@ -1,5 +1,9 @@
 app/generated/
 app/hybrid_samples/
+tmp/
+firestore-debug.log
+firebase-debug.log
+storage-debug.log
 __pycache__/
 *.pyc
 .edge-headless-*/

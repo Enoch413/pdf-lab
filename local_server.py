@@ -6,10 +6,12 @@ import io
 import json
 import os
 import shutil
+import socket
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from PIL import Image, ImageFilter, ImageOps
 
@@ -35,6 +37,10 @@ DEFAULT_PORT = 8762
 OCR_LANGUAGE = "kor+eng"
 OCR_CONFIG = "--oem 3 --psm 6 preserve_interword_spaces=1"
 OCR_STATUS_CACHE: dict[str, Any] | None = None
+MAX_OCR_REQUEST_BYTES = 32 * 1024 * 1024
+MAX_OCR_IMAGES = 40
+OCR_IMAGE_TIMEOUT = 20
+OCR_REQUEST_TIMEOUT = 120
 
 
 def resolve_tesseract_cmd() -> str | None:
@@ -144,9 +150,20 @@ def preprocess_image(image: Image.Image) -> Image.Image:
 
 def run_ocr_for_data_url(data_url: str) -> str:
     image = Image.open(io.BytesIO(decode_data_url(data_url)))
+    if image.width * image.height > 12_000_000:
+        raise ValueError("OCR 이미지는 1,200만 픽셀 이하여야 합니다.")
     processed = preprocess_image(image)
-    text = pytesseract.image_to_string(processed, lang=OCR_LANGUAGE, config=OCR_CONFIG)
+    text = pytesseract.image_to_string(processed, lang=OCR_LANGUAGE, config=OCR_CONFIG, timeout=OCR_IMAGE_TIMEOUT)
     return str(text or "").strip()
+
+
+class PdfLabHTTPServer(ThreadingHTTPServer):
+    def server_bind(self) -> None:
+        if os.name == "nt":
+            # Windows SO_REUSEADDR can send requests to another, older listener.
+            self.allow_reuse_address = False
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class PdfLabRequestHandler(SimpleHTTPRequestHandler):
@@ -154,6 +171,42 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, *args: Any, directory: str | None = None, **kwargs: Any) -> None:
         super().__init__(*args, directory=directory or str(PROJECT_ROOT), **kwargs)
+
+    def trusted_host(self, value: str) -> bool:
+        try:
+            host = urlparse("//" + value).hostname
+        except ValueError:
+            return False
+        return host in {"localhost", "127.0.0.1", "::1", self.server.server_address[0]}
+
+    def send_head(self):
+        if not self.trusted_host(self.headers.get("Host", "")):
+            self.send_error(403, "Untrusted host")
+            return None
+        root = Path(self.directory).resolve()
+        path = unquote(urlparse(self.path).path)
+        target = (root / path.lstrip("/")).resolve()
+        try:
+            parts = target.relative_to(root).parts
+        except ValueError:
+            parts = ()
+        if target == root:
+            target = root / "index.html"
+            parts = ("index.html",)
+        web_root = parts == ("index.html",) or (
+            len(parts) >= 2 and parts[0] in {"app", "shared"} and
+            (len(parts) == 2 or parts[1] in {"assets", "vendor"})
+        ) or (len(parts) >= 4 and parts[:3] == ("dist", "solbook_question_maker_portable", "app"))
+        if not web_root or any(part.startswith(".") for part in parts) or not target.is_file() or target.suffix.lower() not in {
+            ".html", ".css", ".js", ".mjs", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".ico", ".ttf", ".woff", ".woff2"
+        }:
+            self.send_error(404, "Not found")
+            return None
+        return super().send_head()
+
+    def list_directory(self, path):
+        self.send_error(404, "Directory listing is disabled")
+        return None
 
     def end_headers(self) -> None:
         parsed = urlparse(self.path)
@@ -166,14 +219,22 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
 
     def send_json(self, status_code: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        if status_code >= 400:
+            # Rejected requests may still have an unread body on HTTP/1.1.
+            self.close_connection = True
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self.trusted_host(self.headers.get("Host", "")):
+            self.send_json(403, {"ok": False, "error": "허용하지 않은 호스트입니다."})
+            return
         parsed = urlparse(self.path)
         if parsed.path == "/api/ocr-status":
             self.send_json(200, get_ocr_status())
@@ -181,6 +242,20 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self.trusted_host(self.headers.get("Host", "")):
+            self.send_json(403, {"ok": False, "error": "허용하지 않은 호스트입니다."})
+            return
+        origin = self.headers.get("Origin")
+        if origin:
+            parsed_origin = urlparse(origin)
+            try:
+                trusted_origin = self.trusted_host(parsed_origin.netloc) and parsed_origin.scheme == "http" and (
+                    parsed_origin.port or 80) == self.server.server_address[1]
+            except ValueError:
+                trusted_origin = False
+            if not trusted_origin:
+                self.send_json(403, {"ok": False, "error": "다른 사이트의 OCR 요청은 허용하지 않습니다."})
+                return
         parsed = urlparse(self.path)
         if parsed.path != "/api/ocr-answer-blocks":
             self.send_json(404, {"ok": False, "error": "지원하지 않는 API 경로입니다."})
@@ -191,19 +266,36 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
             self.send_json(503, {"ok": False, "error": status.get("error") or "로컬 OCR을 사용할 수 없습니다."})
             return
 
-        length = int(self.headers.get("Content-Length", "0") or 0)
         try:
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            if length <= 0:
+                raise ValueError("유효한 Content-Length가 필요합니다.")
+            if length > MAX_OCR_REQUEST_BYTES:
+                self.close_connection = True
+                self.send_json(413, {"ok": False, "error": "OCR 요청은 32MiB 이하여야 합니다."})
+                return
+            self.connection.settimeout(OCR_IMAGE_TIMEOUT)
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
         except Exception as error:
             self.send_json(400, {"ok": False, "error": f"요청 JSON을 읽지 못했습니다: {error}"})
             return
 
-        items = payload.get("items")
+        items = payload.get("items") if isinstance(payload, dict) else None
         if not isinstance(items, list):
             self.send_json(400, {"ok": False, "error": "items 배열이 필요합니다."})
             return
 
+        if any(not isinstance(item, dict) or not isinstance(item.get("images"), list) or
+               any(not isinstance(image, str) or not image.startswith("data:image/") for image in item["images"])
+               for item in items):
+            self.send_json(400, {"ok": False, "error": "각 항목에는 이미지 data URL의 images 배열이 필요합니다."})
+            return
+        if len(items) > MAX_OCR_IMAGES or sum(len(item["images"]) for item in items) > MAX_OCR_IMAGES:
+            self.send_json(400, {"ok": False, "error": "OCR은 한 요청에 최대 40개 이미지를 처리합니다."})
+            return
+
         results = []
+        started = time.monotonic()
         for item in items:
             problem_id = str(item.get("problemId") or "")
             number = item.get("number")
@@ -220,6 +312,9 @@ class PdfLabRequestHandler(SimpleHTTPRequestHandler):
             texts = []
             error_message = ""
             for image_data_url in images:
+                if time.monotonic() - started > OCR_REQUEST_TIMEOUT:
+                    self.send_json(408, {"ok": False, "error": "OCR 처리 시간이 초과되었습니다. 더 적은 문항으로 다시 시도해주세요."})
+                    return
                 try:
                     text = run_ocr_for_data_url(str(image_data_url or ""))
                 except Exception as error:  # pragma: no cover - runtime environment dependent
@@ -247,7 +342,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), PdfLabRequestHandler)
+    server = PdfLabHTTPServer((args.host, args.port), PdfLabRequestHandler)
     try:
         print(f"PDF LAB local server running at http://{args.host}:{args.port}")
         ocr_status = get_ocr_status()

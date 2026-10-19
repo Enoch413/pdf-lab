@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,r1Final?'tmp/hanbujan
 fs.mkdirSync(out,{recursive:true});
 const commands=[];
 for(const script of ['hanbujang_contract.test.cjs','solbook_text_renderer.test.cjs','text_pagination_browser.cjs','solbook_text_browser.cjs','json_only_import_browser.cjs','hanbujang_canonical_browser.cjs','hanbujang_review_fixes_browser.cjs',...(r1Final?['hanbujang_r1_bare_browser.cjs']:[])]) {
-  const start=Date.now();const run=cp.spawnSync(process.execPath,[path.join('tests',script)],{cwd:root,encoding:'utf8',env:process.env,timeout:300000,maxBuffer:10*1024*1024});
+  const start=Date.now();const run=cp.spawnSync(process.execPath,[path.join('tests',script),...(script==='hanbujang_contract.test.cjs'?['--with-private']:[])],{cwd:root,encoding:'utf8',env:process.env,timeout:300000,maxBuffer:10*1024*1024});
   const log=(run.stdout||'')+(run.stderr||'')+(run.error?run.error.stack:'');
   fs.writeFileSync(path.join(out,script+'.log'),log);
   commands.push({command:'node tests/'+script,result:run.status===0?'PASS':'FAIL',exitCode:run.status,durationMs:Date.now()-start,log:'evidence/'+script+'.log'});

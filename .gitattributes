@@ -1,0 +1,5 @@
+# Keep verified vendor bytes unchanged across Windows and Unix checkouts.
+app/vendor/** -text
+dist/solbook_question_maker_portable/app/vendor/** -text
+# Unified patches require a space on blank context lines.
+security/*.patch -whitespace

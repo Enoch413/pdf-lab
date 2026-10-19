@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-10-20",
+  "pythonVersion": "3.14.7",
+  "pythonPackages": [
+    {
+      "name": "pillow",
+      "version": "13.0.0",
+      "runtimeRequires": []
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.4",
+      "runtimeRequires": []
+    },
+    {
+      "name": "pytesseract",
+      "installed": false,
+      "optionalForJson": true
+    },
+    {
+      "name": "opencv-python",
+      "installed": false,
+      "optionalForJson": true
+    }
+  ],
+  "vendored": [
+    {
+      "path": "app/vendor/html2canvas/html2canvas.min.js",
+      "version": "1.4.1",
+      "upstream": "https://github.com/niklasvh/html2canvas/tree/v1.4.1",
+      "sha256": "4917b15ac829f7546ab1c053b06499786b45a053169f31f436c16c8eb821414e"
+    },
+    {
+      "path": "app/vendor/jspdf/jspdf.umd.min.js",
+      "version": "4.2.1",
+      "upstream": "https://github.com/parallax/jsPDF/tree/v4.2.1",
+      "sha256": "e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54"
+    },
+    {
+      "path": "app/vendor/jszip/jszip.min.js",
+      "version": "3.10.1",
+      "upstream": "https://github.com/Stuk/jszip/tree/v3.10.1",
+      "sha256": "f12f367798e35ee2d9993dba6167fc61ddb52fb89880f5a99fbb606335188410"
+    },
+    {
+      "path": "app/vendor/pdfjs/pdf.min.js",
+      "version": "4.10.38",
+      "upstream": "https://github.com/mozilla/pdf.js/tree/v4.10.38",
+      "sha256": "091538129be08d38bea71f8acfce05c9775bb04164a062085ad250806cb593c6"
+    },
+    {
+      "path": "app/vendor/pdfjs/pdf.min.mjs",
+      "version": "4.10.38",
+      "upstream": "https://github.com/mozilla/pdf.js/tree/v4.10.38",
+      "sha256": "27fc2a057a00f92a4334ad06e17dbd7259912954e9fb7f76400bcca5fd190a9c"
+    },
+    {
+      "path": "app/vendor/pdfjs/pdf.worker.min.js",
+      "version": "4.10.38",
+      "upstream": "https://github.com/mozilla/pdf.js/tree/v4.10.38",
+      "sha256": "273332515c95bea293da6fc5b56de9850efd36c8ac98f16ce3c095f200016c7e"
+    },
+    {
+      "path": "app/vendor/pdfjs/pdf.worker.min.mjs",
+      "version": "4.10.38",
+      "upstream": "https://github.com/mozilla/pdf.js/tree/v4.10.38",
+      "sha256": "1baa1844c89c80a5b2797c916e75ab29254be46d8e9cb53cb6364d7aad84be36"
+    },
+    {
+      "path": "app/vendor/pdfjs/pdf.worker.viewer.js",
+      "version": "4.10.38",
+      "upstream": "https://github.com/mozilla/pdf.js/tree/v4.10.38",
+      "sha256": "b357b499008ec45b889a00c17e68508d2d28113c42288beed16d4fff2eafa551"
+    },
+    {
+      "path": "dist/solbook_question_maker_portable/app/vendor/html2canvas/html2canvas.min.js",
+      "version": "1.4.1",
+      "upstream": "https://github.com/niklasvh/html2canvas/tree/v1.4.1",
+      "sha256": "e87e550794322e574a1fda0c1549a3c70dae5a93d9113417a429016838eab8cb"
+    },
+    {
+      "path": "dist/solbook_question_maker_portable/app/vendor/jspdf/jspdf.umd.min.js",
+      "version": "4.2.1",
+      "upstream": "https://github.com/parallax/jsPDF/tree/v4.2.1",
+      "sha256": "e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54"
+    },
+    {
+      "path": "dist/solbook_question_maker_portable/app/vendor/jszip/jszip.min.js",
+      "version": "3.10.1",
+      "upstream": "https://github.com/Stuk/jszip/tree/v3.10.1",
+      "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+    }
+  ],
+  "cdn": [
+    {
+      "url": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js",
+      "version": "10.12.2",
+      "sha256": "24a1fd90a9424647636669f59013201ba385eff82a58f88c76a7d400d4d71139",
+      "integrity": "sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9"
+    },
+    {
+      "url": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js",
+      "version": "10.12.2",
+      "sha256": "277f6ef70525168247921e7a51fe995ecc66f9c3cf56c97f0d2bc262f74b5906",
+      "integrity": "sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1"
+    },
+    {
+      "url": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js",
+      "version": "10.12.2",
+      "sha256": "25133ac64bef210c19384ed72eafdec440c27c02a6b48e9d2b6b48bf7b00ad04",
+      "integrity": "sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC"
+    },
+    {
+      "url": "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js",
+      "version": "10.12.2",
+      "sha256": "ee9154a1c0f4c15cea65693f3e2beb2ee03dbee58a58f8f77282ccd47d54fd56",
+      "integrity": "sha384-6I0gWsz4FIAr30c0TxIxJnPQuJiZ1FfILdZrgJdjxTH3R8dgPGTvexbyqTvReV6Z"
+    }
+  ]
+}

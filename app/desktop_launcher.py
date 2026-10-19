@@ -1,16 +1,22 @@
 from __future__ import annotations
 
-import atexit
 import ctypes
 import sys
 import threading
 import webbrowser
 import winreg
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-import webview
+if not getattr(sys, "frozen", False):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from local_server import PdfLabHTTPServer, PdfLabRequestHandler
+
+try:
+    import webview
+except ImportError:
+    webview = None
 
 
 APP_FILE = "index.html"
@@ -32,7 +38,7 @@ IDYES = 6
 def get_app_root() -> Path:
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parents[1]
 
 
 def get_runtime_root() -> Path:
@@ -58,9 +64,9 @@ def ensure_portable_storage_root() -> Path:
 
 
 def create_server(root: Path) -> tuple[ThreadingHTTPServer, str]:
-    handler = partial(SimpleHTTPRequestHandler, directory=str(root))
+    handler = partial(PdfLabRequestHandler, directory=str(root))
     try:
-        server = ThreadingHTTPServer((APP_HOST, APP_PORT), handler)
+        server = PdfLabHTTPServer((APP_HOST, APP_PORT), handler)
     except OSError as error:
         raise RuntimeError(
             f"앱 내부 서버 포트 {APP_PORT}를 열지 못했습니다. "
@@ -68,7 +74,7 @@ def create_server(root: Path) -> tuple[ThreadingHTTPServer, str]:
         ) from error
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
-    url = f"http://{APP_HOST}:{APP_PORT}/{APP_FILE}"
+    url = f"http://{APP_HOST}:{server.server_address[1]}/{APP_FILE}"
     return server, url
 
 
@@ -143,11 +149,12 @@ def show_fallback_notice() -> None:
         "\ube0c\ub77c\uc6b0\uc800\uc5d0\uc11c\ub3c4 \uc0ac\uc6a9\uc740 \uac00\ub2a5\ud558\uc9c0\ub9cc, \uc778\uc1c4\u00b7PDF \ucd9c\ub825 \uacb0\uacfc\ub294 "
         "WebView2 \ud658\uacbd\uc5d0\uc11c \uac00\uc7a5 \uc815\ud655\ud569\ub2c8\ub2e4."
     )
+    message += "\n\n브라우저에서 작업하는 동안 이 창을 열어 두세요. 작업을 마친 뒤 확인을 누르면 PDF LAB 서버가 종료됩니다."
     show_message(message, MB_OK | MB_ICONWARNING)
 
 
 def main() -> None:
-    if not ensure_webview2_runtime():
+    if webview is not None and not ensure_webview2_runtime():
         return
 
     app_root = get_app_root()
@@ -157,10 +164,9 @@ def main() -> None:
         raise FileNotFoundError(f"Cannot find app entry: {entry_file}")
 
     server, url = create_server(app_root)
-    atexit.register(server.shutdown)
-    atexit.register(server.server_close)
-
     try:
+        if webview is None:
+            raise RuntimeError("pywebview is unavailable")
         webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
         webview.create_window(
             WINDOW_TITLE,
@@ -174,6 +180,9 @@ def main() -> None:
     except Exception:
         launch_fallback_browser(url)
         show_fallback_notice()
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 if __name__ == "__main__":

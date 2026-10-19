@@ -17,11 +17,12 @@
         <h1 class="app-topbar-title">PDF LAB</h1>
       </div>
       <div class="app-topbar-badge">WORKSPACE</div>
-      <nav class="app-topbar-actions" aria-label="Workspace navigation">
+      <nav class="app-topbar-actions" aria-label="작업 화면 이동">
         <a class="app-topbar-link app-topbar-tab" id="openExamWorkspaceLink" href="./index.html?workspace=exam">반별 출제</a>
         <a class="app-topbar-link app-topbar-tab" id="openFinalTestWorkspaceLink" href="./final_test.html">파이널테스트</a>
         <a class="app-topbar-link app-topbar-tab" id="openLibraryWorkspaceLink" href="./index.html?workspace=library">문제 라이브러리</a>
         <a class="app-topbar-link app-topbar-tab" href="./general_exam.html?workspace=exam">일반 출제</a>
+        <a class="app-topbar-link app-topbar-tab" href="../dist/solbook_question_maker_portable/app/solbook_question_maker.html">쏠북메이커</a>
       </nav>
     </header>
 
@@ -328,6 +329,7 @@
         <aside class="exam-sidebar">
           <section class="panel-card">
             <h2 class="panel-title">1. 반 선택</h2>
+            <p class="small-note">작업 순서: 반·출제 규칙 설정 → 지문·유형 선택 → 문제 초안 생성·검토 → 시험지 출력. 오답은 7단계에서 이어서 출제합니다.</p>
             <div class="field-grid">
               <div class="field-row">
                 <div class="action-row compact-action-row">
@@ -388,11 +390,12 @@
                 </span>
               </label>
             </div>
-            <p class="small-note" id="examBuilderSummary">반을 선택하고 지문을 고른 뒤 draft를 생성하면 요약과 경고를 여기서 보여줍니다.</p>
+            <p class="small-note" id="examBuilderSummary">반을 선택하고 지문을 고른 뒤 문제 초안을 생성하면 요약과 경고를 여기서 보여줍니다.</p>
           </section>
 
           <section class="panel-card">
             <h2 class="panel-title">3. 시험지 출력</h2>
+            <p class="small-note">먼저 4~6단계에서 문제 초안을 생성하고 검토한 뒤 출력하세요.</p>
             <div class="field-grid">
               <label class="field-row">
                 <span class="field-label">상단 라벨</span>
@@ -436,8 +439,8 @@
               </div>
               <button class="ghost-button" type="button" id="commitExamButton">출제 이력 저장 + PDF 출력</button>
               <div class="field-row exam-checkset-divider">
-                <span class="field-label">CHECK 세트 연동</span>
-                <p class="small-note">현재 draft를 학생별 개인 CHECK 세트로 저장하고, Firebase 관리자 로그인 상태면 CODE LAB CHECK에도 바로 올립니다.</p>
+                <span class="field-label">CHECK 세트 연동 (온라인 응시)</span>
+                <p class="small-note">현재 문제 초안을 학생별 개인 CHECK 세트로 저장하고, Firebase 관리자 로그인 상태면 CODE LAB CHECK에도 바로 올립니다.</p>
               </div>
               <label class="field-row">
                 <span class="field-label">CHECK 세트 제목</span>
@@ -459,16 +462,16 @@
                 <button class="ghost-button" type="button" id="saveExamCheckSetButton">CHECK 세트 저장</button>
                 <button class="solid-button" type="button" id="downloadExamCheckSetButton">CHECK JSON 다운로드</button>
               </div>
-              <p class="small-note" id="examCheckSetSummary">현재 draft를 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.</p>
+              <p class="small-note" id="examCheckSetSummary">현재 문제 초안을 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.</p>
             </div>
           </section>
 
           <section class="panel-card">
             <h2 class="panel-title">작업 저장</h2>
-            <p class="small-note" id="examWorkSummary">출제 이력 저장 + PDF 출력 시 현재 draft가 자동으로 함께 저장됩니다.</p>
+            <p class="small-note" id="examWorkSummary">출제 이력 저장 + PDF 출력 시 현재 문제 초안이 자동으로 함께 저장됩니다.</p>
             <div class="saved-work-empty" id="examWorkEmptyState">
-            <h3>저장된 반별 draft가 없습니다</h3>
-            <p>지문 선택과 draft 결과를 저장해두면 같은 반 흐름을 이어서 작업할 수 있습니다.</p>
+            <h3>저장된 반별 문제 초안이 없습니다</h3>
+            <p>지문 선택과 문제 초안 결과를 저장해두면 같은 반 흐름을 이어서 작업할 수 있습니다.</p>
             </div>
             <div class="saved-work-list" id="examWorkList"></div>
           </section>
@@ -536,10 +539,10 @@
 
           <section class="panel-card">
             <div class="school-section-header">
-              <h2 class="panel-title">5. 유형 선택과 draft 생성</h2>
+              <h2 class="panel-title">5. 유형 선택과 문제 초안 생성</h2>
               <div class="school-inline-actions">
-                <button class="solid-button" type="button" id="generateSchoolDraftButton">Draft 생성</button>
-                <button class="ghost-button" type="button" id="clearSchoolDraftButton">Draft 비우기</button>
+                <button class="solid-button" type="button" id="generateSchoolDraftButton">문제 초안 생성</button>
+                <button class="ghost-button" type="button" id="clearSchoolDraftButton">문제 초안 비우기</button>
               </div>
             </div>
             <p class="small-note" id="schoolTypeSummary">선택한 지문들에 존재하는 유형이 여기에 표시됩니다. 기본값은 전체 선택입니다.</p>
@@ -549,11 +552,11 @@
           <section class="panel-card">
             <h2 class="panel-title">6. 생성 결과</h2>
             <div class="exam-slot-empty" id="examSlotEmptyState">
-              <h3>아직 생성된 draft가 없습니다</h3>
-              <p>반 선택, 지문 선택, 유형 선택을 마치고 draft 생성 버튼을 누르면 결과가 여기에 표시됩니다.</p>
+              <h3>아직 생성된 문제 초안이 없습니다</h3>
+              <p>반 선택, 지문 선택, 유형 선택을 마치고 문제 초안 생성 버튼을 누르면 결과가 여기에 표시됩니다.</p>
             </div>
             <div class="exam-slot-list school-draft-list" id="examSlotList"></div>
-            <p class="small-note" id="examAnswerEditorSummary" hidden>생성 결과에서 틀린 정답이나 해설만 골라서 수정하면, 현재 draft와 공용 라이브러리 원본이 함께 갱신됩니다.</p>
+            <p class="small-note" id="examAnswerEditorSummary" hidden>생성 결과에서 틀린 정답이나 해설만 골라서 수정하면, 현재 문제 초안과 공용 라이브러리 원본이 함께 갱신됩니다.</p>
             <div class="exam-answer-editor-empty" id="examAnswerEditorEmptyState" hidden></div>
             <div class="exam-answer-editor-root" id="examAnswerEditorRoot" role="dialog" aria-modal="true" aria-label="답안 수정" hidden></div>
           </section>
@@ -562,7 +565,7 @@
             <div class="school-section-header">
               <h2 class="panel-title">7. 오답유형 다시 풀기</h2>
               <div class="school-inline-actions">
-                <button class="ghost-button" type="button" id="startStudentRetryButton">현재 draft를 1차 공통으로 시작</button>
+                <button class="ghost-button" type="button" id="startStudentRetryButton">현재 문제 초안을 1차 공통으로 시작</button>
                 <button class="solid-button" type="button" id="generateStudentRetryButton">다음 오답 차수 생성</button>
               </div>
             </div>
@@ -592,7 +595,7 @@
             <div class="student-retry-root" id="studentRetryRoot">
               <div class="exam-empty-state">
                 <h3>오답 재출제 세트가 없습니다</h3>
-                <p>먼저 각 지문별 유형당 1문제 draft를 만들고, 현재 draft를 1차 공통으로 시작하세요.</p>
+                <p>먼저 각 지문별 유형당 1문제 문제 초안을 만들고, 현재 문제 초안을 1차 공통으로 시작하세요.</p>
               </div>
             </div>
             <div class="student-retry-history-block">
@@ -600,7 +603,7 @@
               <p class="small-note">학생별 오답 재출제 출력은 반 공통 출제 이력과 분리되어, 공통 시험의 이전 출제 제외 규칙에 섞이지 않습니다.</p>
               <div class="exam-history-empty" id="studentRetryHistoryEmptyState">
                 <h3>저장된 학생별 출력 이력이 없습니다</h3>
-                <p>오답 재출제 draft에서 출제 이력 저장 + PDF 출력을 누르면 현재 학생 기준 출력 이력이 여기에 쌓입니다.</p>
+                <p>오답 재출제 문제 초안에서 출제 이력 저장 + PDF 출력을 누르면 현재 학생 기준 출력 이력이 여기에 쌓입니다.</p>
               </div>
               <div class="exam-history-list" id="studentRetryHistoryList"></div>
             </div>
@@ -610,7 +613,7 @@
             <h2 class="panel-title">CHECK 세트 기록</h2>
             <div class="exam-history-empty" id="examCheckSetEmptyState">
               <h3>저장된 CHECK 세트가 없습니다</h3>
-              <p>현재 draft에서 CHECK 세트 저장 또는 CHECK JSON 다운로드를 누르면, 학생별 개인 CHECK 기록이 여기에 쌓입니다.</p>
+              <p>현재 문제 초안에서 CHECK 세트 저장 또는 CHECK JSON 다운로드를 누르면, 학생별 개인 CHECK 기록이 여기에 쌓입니다.</p>
             </div>
             <div class="exam-history-list" id="examCheckSetList"></div>
           </section>
@@ -619,7 +622,7 @@
             <h2 class="panel-title">반 공통 출제 이력</h2>
             <div class="exam-history-empty" id="examHistoryEmptyState">
               <h3>저장된 공통 출제 이력이 없습니다</h3>
-              <p>반 공통 draft에서 출제 이력 저장 + PDF 출력을 누르면 현재 반 기준 공통 이력이 여기에 쌓입니다.</p>
+              <p>반 공통 문제 초안에서 출제 이력 저장 + PDF 출력을 누르면 현재 반 기준 공통 이력이 여기에 쌓입니다.</p>
             </div>
             <div class="exam-history-list" id="examHistoryList"></div>
           </section>
@@ -628,14 +631,17 @@
     </section>
   </div>
 
+  <script src="./workspace_ui.js"></script>
+  <script src="./firebase_helpers.js"></script>
   <script src="./hanbujang_canonical.js"></script>
+  <script src="./answer_editor.js"></script>
   <script src="./problem_page_layout.js"></script>
   <script src="./solbook_text_renderer.js?v=20260914-1"></script>
   <script src="./firebase-config.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" integrity="sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js" integrity="sha384-6I0gWsz4FIAr30c0TxIxJnPQuJiZ1FfILdZrgJdjxTH3R8dgPGTvexbyqTvReV6Z" crossorigin="anonymous"></script>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
   <script src="./vendor/pdfjs/pdf.worker.viewer.js"></script>
   <script>
@@ -1436,6 +1442,7 @@
         excludeUsedPassageTypes: false,
         warnings: []
       },
+      studentRetryOwnerUid: "",
       studentRetry: createStudentRetryState(),
       libraryReview: {
         currentRange: "",
@@ -3276,7 +3283,7 @@
       }
       if (
         state.libraryReview.editorScope &&
-        (state.libraryReview.editorScope !== normalizedScope || state.libraryReview.editorTargetId !== normalizedTargetId) &&
+        (options.forceReload || state.libraryReview.editorScope !== normalizedScope || state.libraryReview.editorTargetId !== normalizedTargetId) &&
         isLibraryTextEditorDirty() &&
         !options.forceDiscard
       ) {
@@ -6047,9 +6054,10 @@
       );
     }
 
-    function createStudentRetryState() {
+    function createStudentRetryState(ownerUid = "") {
       try {
-        const raw = window.localStorage.getItem(STUDENT_RETRY_STORAGE_KEY);
+        const raw = window.localStorage.getItem(getStudentRetryStorageKey(ownerUid)) ||
+          (!ownerUid ? window.localStorage.getItem(STUDENT_RETRY_STORAGE_KEY) : null);
         return normalizeStudentRetryState(raw ? JSON.parse(raw) : {});
       } catch (error) {
         console.warn("Failed to read student retry state", error);
@@ -6057,10 +6065,76 @@
       }
     }
 
+    function getStudentRetryStorageKey(ownerUid = state.studentRetryOwnerUid || "") {
+      return `${STUDENT_RETRY_STORAGE_KEY}:${ownerUid ? `uid:${encodeURIComponent(ownerUid)}` : "local"}`;
+    }
+
+    function switchStudentRetryOwner(ownerUid = "") {
+      const nextUid = String(ownerUid || "");
+      if ((state.studentRetryOwnerUid || "") === nextUid) return;
+      try {
+        window.localStorage.setItem(getStudentRetryStorageKey(), JSON.stringify(captureStudentRetryState()));
+      } catch (error) {
+        console.warn("Failed to preserve previous account retry state", error);
+      }
+      const bridge = getFirebaseStudentRetryBridge();
+      if (bridge.retryStateSaveTimerId) window.clearTimeout(bridge.retryStateSaveTimerId);
+      bridge.retryStateSaveTimerId = 0;
+      bridge.retryStateLoadPromise = null;
+      bridge.retryStateSavePromise = null;
+      bridge.retryStateSaveDirty = false;
+      bridge.retryStateSavedRows = {};
+      bridge.retryStateSavedPrefs = "";
+      state.studentRetryOwnerUid = nextUid;
+      state.studentRetry = createStudentRetryState(nextUid);
+    }
+
+    function compareRetryStudentIdentity(left = {}, right = {}) {
+      for (const field of ["firebaseUid", "firebaseStudentId", "firebaseLoginId", "firebaseEmail"]) {
+        const a = normalizeProblemText(left[field] || "");
+        const b = normalizeProblemText(right[field] || "");
+        if (a && b && field === "firebaseEmail") return a.toLowerCase() === b.toLowerCase();
+        if (a && b) return a === b;
+      }
+      const leftIds = [left.firebaseStudentId, left.firebaseLoginId].filter(Boolean);
+      const rightIds = [right.firebaseStudentId, right.firebaseLoginId].filter(Boolean);
+      if (leftIds.length && rightIds.length) return leftIds.some(id => rightIds.includes(id));
+      if (left.studentId && left.studentId === right.studentId) return true;
+      const hasIdentity = row => Boolean(row.firebaseUid || row.firebaseStudentId || row.firebaseLoginId || row.firebaseEmail);
+      if (hasIdentity(left) && hasIdentity(right)) return false;
+      return null;
+    }
+
+    function retryStudentNameMatches(left, right) {
+      if (normalizeSchoolName(left.name || "") !== normalizeSchoolName(right.name || "") || !left.name) return false;
+      if (left.schoolKey && right.schoolKey && normalizeSchoolKey(left.schoolKey) !== normalizeSchoolKey(right.schoolKey)) return false;
+      const names = (state.studentRetry?.students || []).filter(row =>
+        normalizeSchoolName(row.name) === normalizeSchoolName(right.name) && row.schoolKey === right.schoolKey);
+      return names.length <= 1;
+    }
+
+    function getRetryStudentDeletionKey(student) {
+      const value = student.firebaseUid || student.firebaseStudentId || student.firebaseLoginId || student.firebaseEmail;
+      const kind = student.firebaseUid ? "uid" : student.firebaseStudentId ? "student" : student.firebaseLoginId ? "login" : "email";
+      return value ? JSON.stringify([student.schoolKey, kind, kind === "email" ? value.toLowerCase() : value]) : "";
+    }
+
+    function mergeRetryDeletions(...maps) {
+      const result = Object.create(null);
+      maps.forEach(map => Object.entries(map || {}).forEach(([id, time]) => {
+        if (id && Number.isFinite(Number(time)) && Number(time) > 0) result[id] = Math.max(result[id] || 0, Number(time));
+      }));
+      return result;
+    }
+
     function normalizeStudentRetryState(rawState = {}) {
       const students = Array.isArray(rawState?.students) ? rawState.students : [];
       const sessions = Array.isArray(rawState?.sessions) ? rawState.sessions : [];
+      const deletedStudents = mergeRetryDeletions(rawState?.deletedStudents);
+      const deletedSessions = mergeRetryDeletions(rawState?.deletedSessions);
       return {
+        deletedStudents, deletedSessions,
+        deletedStudentKeys: Object.fromEntries(Object.entries(rawState?.deletedStudentKeys || {}).filter(([, keys]) => Array.isArray(keys)).map(([id, keys]) => [id, keys.filter(key => typeof key === "string")])),
         selectedStudentId: String(rawState?.selectedStudentId || ""),
         selectedSessionId: String(rawState?.selectedSessionId || ""),
         expandedRoundKeys: rawState?.expandedRoundKeys && typeof rawState.expandedRoundKeys === "object"
@@ -6070,7 +6144,7 @@
                 .filter(([key]) => Boolean(key))
             )
           : {},
-        students: students
+        students: students.filter(student => !deletedStudents[student?.studentId])
           .map((student) => {
             const name = normalizeProblemText(student?.name || "");
             const schoolKey = normalizeSchoolKey(student?.schoolKey || "");
@@ -6100,7 +6174,7 @@
             };
           })
           .filter(Boolean),
-        sessions: sessions
+        sessions: sessions.filter(session => !deletedSessions[session?.sessionId])
           .map((session) => {
             const schoolKey = normalizeSchoolKey(session?.schoolKey || "");
             const sourceKey = normalizeSchoolSourceFilterKey(session?.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
@@ -6109,7 +6183,7 @@
               return null;
             }
             const studentStates = session?.studentStates && typeof session.studentStates === "object"
-              ? Object.fromEntries(Object.entries(session.studentStates).map(([studentId, stateValue]) => [
+              ? Object.fromEntries(Object.entries(session.studentStates).filter(([id]) => !deletedStudents[id]).map(([studentId, stateValue]) => [
                   String(studentId),
                   {
                     rounds: (Array.isArray(stateValue?.rounds) ? stateValue.rounds : [])
@@ -6174,10 +6248,14 @@
       const mergedStudents = [];
       const keyToIndex = new Map();
       const incomingIdMap = new Map();
+      const incomingNameCounts = new Map();
+      const nameKey = student => JSON.stringify([student.schoolKey, normalizeSchoolName(student.name)]);
+      incomingStudents.forEach(student => incomingNameCounts.set(nameKey(student), (incomingNameCounts.get(nameKey(student)) || 0) + 1));
       const rememberStudentKeys = (student, index) => {
         getStudentRetryStudentMatchKeys(student).forEach((key) => {
-          if (key && !keyToIndex.has(key)) {
-            keyToIndex.set(key, index);
+          if (key) {
+            if (!keyToIndex.has(key)) keyToIndex.set(key, new Set());
+            keyToIndex.get(key).add(index);
           }
         });
       };
@@ -6188,9 +6266,16 @@
       });
       (Array.isArray(incomingStudents) ? incomingStudents : []).forEach((student) => {
         const incomingLocalId = normalizeProblemText(student.studentId || "");
-        const matchingIndex = getStudentRetryStudentMatchKeys(student)
-          .map((key) => keyToIndex.get(key))
-          .find((index) => Number.isInteger(index));
+        const candidates = Array.from(new Set(getStudentRetryStudentMatchKeys(student)
+          .flatMap(key => Array.from(keyToIndex.get(key) || []))));
+        const strong = candidates.filter(index => compareRetryStudentIdentity(mergedStudents[index], student) === true);
+        const sameNameCount = incomingNameCounts.get(nameKey(student));
+        const fallback = sameNameCount === 1 ? candidates.filter(index =>
+          compareRetryStudentIdentity(mergedStudents[index], student) === null &&
+          mergedStudents[index].schoolKey === student.schoolKey &&
+          normalizeSchoolName(mergedStudents[index].name) === normalizeSchoolName(student.name)) : [];
+        const matches = strong.length ? strong : fallback;
+        const matchingIndex = matches.length === 1 ? matches[0] : undefined;
         if (Number.isInteger(matchingIndex)) {
           const existing = mergedStudents[matchingIndex];
           const existingUpdatedAt = Number(existing.updatedAt || existing.createdAt || 0);
@@ -6294,6 +6379,9 @@
         "";
       const selectedSessionId = existing.selectedSessionId || incoming.selectedSessionId || "";
       return normalizeStudentRetryState({
+        deletedStudentKeys: { ...incoming.deletedStudentKeys, ...existing.deletedStudentKeys },
+        deletedStudents: mergeRetryDeletions(existing.deletedStudents, incoming.deletedStudents),
+        deletedSessions: mergeRetryDeletions(existing.deletedSessions, incoming.deletedSessions),
         selectedStudentId,
         selectedSessionId,
         expandedRoundKeys: {
@@ -6312,7 +6400,7 @@
     function writeStudentRetryState(options = {}) {
       const { syncFolder = true } = options;
       try {
-        window.localStorage.setItem(STUDENT_RETRY_STORAGE_KEY, JSON.stringify(captureStudentRetryState()));
+        window.localStorage.setItem(getStudentRetryStorageKey(), JSON.stringify(captureStudentRetryState()));
       } catch (error) {
         console.warn("Failed to write student retry state", error);
       }
@@ -6334,7 +6422,7 @@
         return;
       }
       try {
-        window.localStorage.setItem(STUDENT_RETRY_STORAGE_KEY, JSON.stringify(captureStudentRetryState()));
+        window.localStorage.setItem(getStudentRetryStorageKey(), JSON.stringify(captureStudentRetryState()));
       } catch (error) {
         console.warn("Failed to persist loaded student retry state", error);
       }
@@ -6399,70 +6487,47 @@
         normalized.selectedSessionId ||
         Object.keys(normalized.expandedRoundKeys || {}).length ||
         normalized.students.length ||
-        normalized.sessions.length
+        normalized.sessions.length ||
+        Object.keys(normalized.deletedStudents).length || Object.keys(normalized.deletedSessions).length
       );
     }
 
     async function commitFirestoreOperations(db, operations = []) {
-      const rows = Array.isArray(operations) ? operations.filter(Boolean) : [];
-      if (!rows.length || !db || typeof db.batch !== "function") {
-        return 0;
-      }
-      let committed = 0;
-      for (let start = 0; start < rows.length; start += 450) {
-        const batch = db.batch();
-        rows.slice(start, start + 450).forEach((operation) => {
-          if (operation.type === "delete") {
-            batch.delete(operation.ref);
-          } else {
-            batch.set(operation.ref, operation.data, operation.options || {});
-          }
-        });
-        await batch.commit();
-        committed += Math.min(450, rows.length - start);
-      }
-      return committed;
+      return PDFLabFirebase.commitOperations(db, operations);
     }
 
-    async function replaceFirebaseOwnerCollection(collectionName, rows = []) {
+    async function saveFirebaseOwnerCollection(collectionName, rows = [], owner = getFirebaseStudentRetryOwnerMeta()) {
       const bridge = getFirebaseStudentRetryBridge();
       const db = bridge.db;
-      const owner = getFirebaseStudentRetryOwnerMeta();
-      if (!owner.ownerUid || !db) {
-        return { saved: 0, deleted: 0 };
-      }
-      const snapshot = await db.collection(collectionName).where("ownerUid", "==", owner.ownerUid).get();
-      const nextIds = new Set(rows.map((row) => row.docId).filter(Boolean));
-      const operations = [];
-      snapshot.docs.forEach((doc) => {
-        if (!nextIds.has(doc.id)) {
-          operations.push({ type: "delete", ref: doc.ref });
+      const cache = (bridge.retryStateSavedRows ||= {})[collectionName] ||= new Map();
+      const changes = rows.filter(row => row.docId && cache.get(row.docId) !== JSON.stringify(row.data));
+      const assertOwner = () => {
+        if (owner.ownerUid !== getFirebaseStudentRetryOwnerUid() || owner.ownerUid !== state.studentRetryOwnerUid) {
+          throw new Error("계정이 변경되어 이전 계정의 저장을 중단했습니다.");
         }
-      });
-      const now = Date.now();
-      const nowIso = new Date(now).toISOString();
-      rows.forEach((row) => {
-        if (!row?.docId) {
-          return;
-        }
-        operations.push({
-          type: "set",
-          ref: db.collection(collectionName).doc(row.docId),
-          data: {
-            ...row.data,
-            ...owner,
-            docKey: row.docId,
-            savedAt: now,
-            savedAtIso: nowIso
-          },
-          options: { merge: false }
-        });
-      });
-      await commitFirestoreOperations(db, operations);
-      return {
-        saved: rows.length,
-        deleted: Math.max(0, snapshot.size - nextIds.size)
       };
+      for (let start = 0; start < changes.length; start += 100) {
+        assertOwner();
+        const chunk = changes.slice(start, start + 100);
+        await db.runTransaction(async transaction => {
+          const refs = chunk.map(row => db.collection(collectionName).doc(row.docId));
+          const current = await Promise.all(refs.map(ref => transaction.get(ref)));
+          assertOwner();
+          chunk.forEach((row, index) => {
+            const previous = current[index].exists ? stripFirebaseOwnerFields(current[index].data()) : {};
+            // A stale device may not resurrect an explicitly deleted record.
+            if (previous.deletedAt && !row.data.deletedAt) return;
+            let data = row.data;
+            if (previous.rounds && data.rounds) data = { ...data, rounds: mergeStudentRetryRounds(previous.rounds, data.rounds) };
+            else if (Number(previous.updatedAt || 0) > Number(data.updatedAt || 0)) return;
+            if (JSON.stringify(previous) === JSON.stringify(data)) return;
+            transaction.set(refs[index], { ...data, ...owner, docKey: row.docId, savedAt: Date.now() });
+          });
+        });
+        assertOwner();
+        chunk.forEach(row => cache.set(row.docId, JSON.stringify(row.data)));
+      }
+      return { saved: changes.length, deleted: 0 };
     }
 
     function flattenStudentRetryStateForFirebase(rawState = state.studentRetry) {
@@ -6499,6 +6564,12 @@
           });
         });
       });
+      Object.entries(normalized.deletedStudents).forEach(([studentId, deletedAt]) => students.push({
+        docId: createFirebaseRetryDocId(ownerUid, "student", studentId), data: { studentId, deletedAt, updatedAt: deletedAt, matchKeys: normalized.deletedStudentKeys[studentId] || [] }
+      }));
+      Object.entries(normalized.deletedSessions).forEach(([sessionId, deletedAt]) => sessions.push({
+        docId: createFirebaseRetryDocId(ownerUid, "session", sessionId), data: { sessionId, deletedAt, updatedAt: deletedAt }
+      }));
       return {
         prefs: {
           selectedStudentId: normalized.selectedStudentId,
@@ -6512,65 +6583,58 @@
     }
 
     async function saveStudentRetryStateToFirebase(options = {}) {
-      const { force = false, mergeRemote = true } = options;
       const bridge = getFirebaseStudentRetryBridge();
-      if (!canUseFirebaseStudentRetryStorage()) {
-        return { synced: false, reason: "unavailable" };
-      }
-      if (!force && bridge.retryStateSavePromise) {
+      if (!canUseFirebaseStudentRetryStorage()) return { synced: false, reason: "unavailable" };
+      if (bridge.retryStateSavePromise) {
+        bridge.retryStateSaveDirty = true;
         return bridge.retryStateSavePromise;
       }
+      const owner = getFirebaseStudentRetryOwnerMeta();
+      const sameOwner = () => owner.ownerUid === getFirebaseStudentRetryOwnerUid() && owner.ownerUid === state.studentRetryOwnerUid;
       const task = (async () => {
-        const db = bridge.db;
-        const owner = getFirebaseStudentRetryOwnerMeta();
-        if (!owner.ownerUid) {
-          return { synced: false, reason: "missing-owner" };
-        }
-        if (mergeRemote) {
-          try {
-            const remote = bridge.retryStateLoadPromise
-              ? await bridge.retryStateLoadPromise
-              : await loadStudentRetryStateFromFirebase();
-            if (remote?.hasRemote && remote.state) {
-              state.studentRetry = mergeStudentRetryStates(state.studentRetry, remote.state);
-            }
-          } catch (error) {
-            console.warn("Failed to merge remote student retry state before save", error);
+        do {
+          bridge.retryStateSaveDirty = false;
+          const localSnapshot = flattenStudentRetryStateForFirebase();
+          const collections = [FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION, FIREBASE_STUDENT_RETRY_SESSION_COLLECTION, FIREBASE_STUDENT_RETRY_STATE_COLLECTION];
+          const dataChanged = [localSnapshot.students, localSnapshot.sessions, localSnapshot.studentStates].some((rows, index) => {
+            const cache = bridge.retryStateSavedRows?.[collections[index]];
+            return !cache || rows.some(row => cache.get(row.docId) !== JSON.stringify(row.data));
+          });
+          if (options.mergeRemote !== false && dataChanged) {
+            const remote = await loadStudentRetryStateFromFirebase();
+            if (!sameOwner()) return { synced: false, reason: "account-changed" };
+            if (!remote.loaded) throw new Error("원격 오답 상태를 확인하지 못해 저장을 중단했습니다.");
+            if (remote.hasRemote) applyStudentRetryState(remote.state);
           }
-        }
-        const snapshot = flattenStudentRetryStateForFirebase();
-        const now = Date.now();
-        const nowIso = new Date(now).toISOString();
-        await Promise.all([
-          db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(owner.ownerUid).set({
-            ...snapshot.prefs,
-            ...owner,
-            savedAt: now,
-            savedAtIso: nowIso
-          }, { merge: false }),
-          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION, snapshot.students),
-          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_SESSION_COLLECTION, snapshot.sessions),
-          replaceFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STATE_COLLECTION, snapshot.studentStates)
-        ]);
-        bridge.retryStateLastSavedAt = Date.now();
-        bridge.retryStateSyncError = "";
-        return {
-          synced: true,
-          students: snapshot.students.length,
-          sessions: snapshot.sessions.length,
-          studentStates: snapshot.studentStates.length
-        };
-      })()
-        .catch((error) => {
+          if (!sameOwner()) return { synced: false, reason: "account-changed" };
+          const snapshot = flattenStudentRetryStateForFirebase();
+          const prefsKey = JSON.stringify(snapshot.prefs);
+          if (bridge.retryStateSavedPrefs !== prefsKey) {
+            await bridge.db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(owner.ownerUid)
+              .set({ ...snapshot.prefs, ...owner, savedAt: Date.now() }, { merge: false });
+            if (!sameOwner()) return { synced: false, reason: "account-changed" };
+            bridge.retryStateSavedPrefs = prefsKey;
+          }
+          await Promise.all([
+            saveFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION, snapshot.students, owner),
+            saveFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_SESSION_COLLECTION, snapshot.sessions, owner),
+            saveFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STATE_COLLECTION, snapshot.studentStates, owner)
+          ]);
+          if (!sameOwner()) return { synced: false, reason: "account-changed" };
+          bridge.retryStateLastSavedAt = Date.now();
+          bridge.retryStateSyncError = "";
+        } while (bridge.retryStateSaveDirty);
+        return { synced: true };
+      })().catch(error => {
+        if (sameOwner()) {
+          bridge.retryStateSaveDirty = true;
           bridge.retryStateSyncError = error?.message || "Firebase 오답 상태 저장 실패";
-          console.warn("Failed to save student retry state to Firebase", error);
-          return { synced: false, reason: bridge.retryStateSyncError };
-        })
-        .finally(() => {
-          if (bridge.retryStateSavePromise === task) {
-            bridge.retryStateSavePromise = null;
-          }
-        });
+          setStatus(`오답 상태가 아직 동기화되지 않았습니다. 로컬 변경은 보존했습니다. ${bridge.retryStateSyncError}`, "error", "저장 실패");
+        }
+        return { synced: false, reason: error.message };
+      }).finally(() => {
+        if (bridge.retryStateSavePromise === task) bridge.retryStateSavePromise = null;
+      });
       bridge.retryStateSavePromise = task;
       return task;
     }
@@ -6626,6 +6690,9 @@
         };
       });
       const remoteState = normalizeStudentRetryState({
+        deletedStudents: Object.fromEntries(students.filter(row => row.deletedAt).map(row => [row.studentId, row.deletedAt])),
+        deletedStudentKeys: Object.fromEntries(students.filter(row => row.deletedAt).map(row => [row.studentId, row.matchKeys || []])),
+        deletedSessions: Object.fromEntries(sessions.filter(row => row.deletedAt).map(row => [row.sessionId, row.deletedAt])),
         selectedStudentId: pref.selectedStudentId || "",
         selectedSessionId: pref.selectedSessionId || "",
         expandedRoundKeys: pref.expandedRoundKeys || {},
@@ -6648,8 +6715,10 @@
       if (!force && bridge.retryStateLoadPromise) {
         return bridge.retryStateLoadPromise;
       }
+      const ownerUid = getFirebaseStudentRetryOwnerUid();
       const task = (async () => {
         const remote = await loadStudentRetryStateFromFirebase();
+        if (ownerUid !== getFirebaseStudentRetryOwnerUid()) return { synced: false, reason: "account-changed" };
         if (!remote.loaded) {
           return { synced: false, reason: remote.reason || "unavailable" };
         }
@@ -7119,6 +7188,19 @@
         }
         state.firebaseSchoolBridge.enabled = true;
         state.firebaseSchoolBridge.auth = firebase.auth();
+        if (!state.firebaseSchoolBridge.authScopeUnsubscribe && state.firebaseSchoolBridge.auth.onAuthStateChanged) {
+          state.firebaseSchoolBridge.authScopeUnsubscribe = state.firebaseSchoolBridge.auth.onAuthStateChanged(user => {
+            const uid = user?.uid || "";
+            if (uid === state.studentRetryOwnerUid) return;
+            switchStudentRetryOwner(uid);
+            state.firebaseSchoolBridge.currentUser = user || null;
+            state.firebaseSchoolBridge.currentProfile = null;
+            clearStudentRetryCheckResponseSyncTimer();
+            clearFirebaseProfileWatcher();
+            renderStudentRetryPanel();
+            renderPdfLabFirebaseAuthUi();
+          });
+        }
         state.firebaseSchoolBridge.db = firebase.firestore();
         state.firebaseSchoolBridge.storage = typeof firebase.storage === "function" ? firebase.storage() : null;
         return Boolean(state.firebaseSchoolBridge.auth && state.firebaseSchoolBridge.db && state.firebaseSchoolBridge.storage);
@@ -7529,6 +7611,7 @@
         const existingMap = new Map(existingRecords.map((record) => [record.recordId, record]));
         const nextRecordIds = new Set();
         const staleAssetPaths = [];
+        const operations = [];
         for (const record of Array.isArray(problemRecords) ? problemRecords : []) {
           const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
           const segmentStoragePaths = await uploadBlobListToSharedLibraryStorage(metadataRecord.recordId, "segment", assetRecord.segmentBlobs);
@@ -7545,10 +7628,7 @@
             answerSegmentStoragePaths,
             updatedAt: Number(metadataRecord.updatedAt || sourceRecord?.importedAt || Date.now())
           };
-          await state.firebaseSchoolBridge.db
-            .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
-            .doc(metadataRecord.recordId)
-            .set(nextRemoteRecord, { merge: true });
+          operations.push({ ref: state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(metadataRecord.recordId), data: nextRemoteRecord, options: { merge: true } });
           staleAssetPaths.push(
             ...[
               ...(Array.isArray(existingRecord?.segmentStoragePaths) ? existingRecord.segmentStoragePaths : []),
@@ -7556,6 +7636,7 @@
             ].filter((path) => path && !segmentStoragePaths.includes(path) && !answerSegmentStoragePaths.includes(path))
           );
         }
+        await commitFirestoreOperations(state.firebaseSchoolBridge.db, operations);
         const nextSourceRecord = {
           ...(sourceRecord && typeof sourceRecord === "object" ? sourceRecord : {}),
           ...(existingRecords.some(PDFLabCanonical.has) && !problemRecords.some(PDFLabCanonical.has) ? { canonicalSource: null } : {}),
@@ -7568,9 +7649,9 @@
           .set(nextSourceRecord, { merge: true });
 
         const staleProblemRecords = existingRecords.filter((record) => !nextRecordIds.has(record.recordId));
-        await Promise.all(staleProblemRecords.map((record) =>
-          state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId).delete()
-        ));
+        await commitFirestoreOperations(state.firebaseSchoolBridge.db, staleProblemRecords.map(record => ({
+          type: "delete", ref: state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(record.recordId)
+        })));
         staleAssetPaths.push(...staleProblemRecords.flatMap((record) => [
           ...(Array.isArray(record.segmentStoragePaths) ? record.segmentStoragePaths : []),
           ...(Array.isArray(record.answerSegmentStoragePaths) ? record.answerSegmentStoragePaths : [])
@@ -7604,6 +7685,7 @@
         return { synced: false, updatedCount: 0, reason: access.reason };
       }
       try {
+        const operations = [];
         for (const record of Array.isArray(problemRecords) ? problemRecords : []) {
           const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
           let nextMetadataRecord = { ...metadataRecord };
@@ -7627,17 +7709,12 @@
               throw new Error(`문항 ${metadataRecord.number || metadataRecord.problemId || "-"} 이미지 블록이 없어 Firebase 문제 라이브러리에 저장할 수 없습니다.`);
             }
           }
-          await state.firebaseSchoolBridge.db
-            .collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION)
-            .doc(nextMetadataRecord.recordId)
-            .set(nextMetadataRecord, { merge: true });
+          operations.push({ ref: state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).doc(nextMetadataRecord.recordId), data: nextMetadataRecord, options: { merge: true } });
         }
         for (const record of Array.isArray(importRecords) ? importRecords : []) {
-          await state.firebaseSchoolBridge.db
-            .collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION)
-            .doc(record.sourceId)
-            .set(record, { merge: true });
+          operations.push({ ref: state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).doc(record.sourceId), data: record, options: { merge: true } });
         }
+        await commitFirestoreOperations(state.firebaseSchoolBridge.db, operations);
         state.firebaseSchoolBridge.sharedLibraryEnabled = true;
         state.firebaseSchoolBridge.sharedLibraryError = "";
         state.firebaseSchoolBridge.sharedLibraryLastSyncedAt = Date.now();
@@ -7797,6 +7874,7 @@
         return false;
       }
       await state.firebaseSchoolBridge.auth.signOut();
+      switchStudentRetryOwner("");
       clearStudentRetryCheckResponseSyncTimer();
       clearFirebaseProfileWatcher();
       if (state.firebaseSchoolBridge.retryStateSaveTimerId) {
@@ -7862,7 +7940,7 @@
       if (!snapshot.exists) {
         return normalizeFirebaseSchoolUserProfile({ uid: user.uid, name: user.displayName || "", role: "student", classIds: [] });
       }
-      return normalizeFirebaseSchoolUserProfile({ uid: snapshot.id, ...(snapshot.data() || {}) });
+      return normalizeFirebaseSchoolUserProfile({ ...(snapshot.data() || {}), uid: snapshot.id });
     }
 
     function buildFirebaseClassCatalogFromUsers(users = []) {
@@ -7980,27 +8058,25 @@
       const firebaseLoginId = normalizeProblemText(firebaseStudent?.loginId || "");
       const firebaseEmail = normalizeProblemText(firebaseStudent?.email || "").toLowerCase();
       const firebaseStudentId = normalizeProblemText(firebaseStudent?.studentId || firebaseLoginId || "");
-      const existing = state.studentRetry.students.find((student) =>
-        normalizeSchoolKey(student.schoolKey || "") === normalizedSchoolKey &&
-        (
-          (firebaseUid && String(student.firebaseUid || "") === firebaseUid) ||
-          (firebaseEmail && String(student.firebaseEmail || "").toLowerCase() === firebaseEmail) ||
-          (firebaseStudentId && String(student.firebaseStudentId || "") === firebaseStudentId) ||
-          normalizeSchoolName(student.name || "") === name
-        )
-      );
+      const candidate = { schoolKey: normalizedSchoolKey, name, firebaseUid, firebaseLoginId, firebaseEmail, firebaseStudentId };
+      const deletionKey = getRetryStudentDeletionKey(candidate);
+      if (deletionKey && Object.values(state.studentRetry.deletedStudentKeys || {}).some(keys => keys.includes(deletionKey))) return null;
+      const sameSchool = state.studentRetry.students.filter(student => normalizeSchoolKey(student.schoolKey || "") === normalizedSchoolKey);
+      const strong = sameSchool.filter(student => compareRetryStudentIdentity(student, candidate) === true);
+      const nameCandidates = sameSchool.filter(student => compareRetryStudentIdentity(student, candidate) === null && normalizeSchoolName(student.name) === name);
+      const catalogNames = (state.firebaseSchoolBridge.studentCatalog || []).filter(student => normalizeSchoolName(student.name) === name);
+      const existing = strong.length === 1 ? strong[0] : (!strong.length && nameCandidates.length === 1 && catalogNames.length <= 1 ? nameCandidates[0] : null);
       const classIds = Array.isArray(firebaseStudent?.classIds) ? [...firebaseStudent.classIds] : [];
       const classNames = Array.isArray(firebaseStudent?.classNames) ? [...firebaseStudent.classNames] : [];
       const now = Date.now();
       if (existing) {
-        existing.name = name;
-        existing.firebaseUid = firebaseUid || existing.firebaseUid || "";
-        existing.firebaseLoginId = firebaseLoginId || existing.firebaseLoginId || "";
-        existing.firebaseEmail = firebaseEmail || existing.firebaseEmail || "";
-        existing.firebaseStudentId = firebaseStudentId || existing.firebaseStudentId || "";
-        existing.classIds = classIds;
-        existing.classNames = classNames;
-        existing.updatedAt = now;
+        const next = { name, firebaseUid: firebaseUid || existing.firebaseUid || "",
+          firebaseLoginId: firebaseLoginId || existing.firebaseLoginId || "",
+          firebaseEmail: firebaseEmail || existing.firebaseEmail || "",
+          firebaseStudentId: firebaseStudentId || existing.firebaseStudentId || "", classIds, classNames };
+        if (Object.entries(next).some(([key, value]) => JSON.stringify(value) !== JSON.stringify(existing[key]))) {
+          Object.assign(existing, next, { updatedAt: now });
+        }
         return existing;
       }
       const student = {
@@ -8153,7 +8229,7 @@
       try {
         state.firebaseSchoolBridge.currentProfileUnsubscribe = db.collection("users").doc(user.uid).onSnapshot((snapshot) => {
           const nextProfile = snapshot?.exists
-            ? normalizeFirebaseSchoolUserProfile({ uid: snapshot.id, ...(snapshot.data() || {}) })
+            ? normalizeFirebaseSchoolUserProfile({ ...(snapshot.data() || {}), uid: snapshot.id })
             : normalizeFirebaseSchoolUserProfile({ uid: user.uid, name: user.displayName || "", role: "student", classIds: [] });
           const nextSignature = createFirebaseProfileScopeSignature(nextProfile);
           if (nextSignature === state.firebaseSchoolBridge.currentProfileSignature) {
@@ -8449,6 +8525,7 @@
         }
         const user = await waitForPdfLabFirebaseAuth(state.firebaseSchoolBridge.auth);
         state.firebaseSchoolBridge.currentUser = user || null;
+        switchStudentRetryOwner(user?.uid || "");
         if (!user) {
           clearStudentRetryCheckResponseSyncTimer();
           clearFirebaseProfileWatcher();
@@ -8464,6 +8541,7 @@
         }
 
         const currentProfile = await fetchPdfLabFirebaseCurrentProfile(state.firebaseSchoolBridge.db, user);
+        if (user.uid !== state.firebaseSchoolBridge.auth.currentUser?.uid) return false;
         state.firebaseSchoolBridge.currentProfile = currentProfile;
         state.firebaseSchoolBridge.currentProfileSignature = createFirebaseProfileScopeSignature(currentProfile || { uid: user.uid });
         state.firebaseSchoolBridge.accessibleClassIds = getFirebaseAccessibleClassIds(currentProfile);
@@ -8474,14 +8552,15 @@
         let users = currentProfile ? [currentProfile] : [];
         if (currentProfile?.role === "admin") {
           try {
-            const snapshot = await state.firebaseSchoolBridge.db.collection("users").get();
-            users = snapshot.docs.map((doc) => normalizeFirebaseSchoolUserProfile({ uid: doc.id, ...(doc.data() || {}) }));
+            const docs = await PDFLabFirebase.loadUserCatalog(state.firebaseSchoolBridge.db, currentProfile, getFirebaseAccessibleClassIds(currentProfile));
+            users = docs.map((doc) => normalizeFirebaseSchoolUserProfile({ ...(doc.data() || {}), uid: doc.id }));
           } catch (error) {
             console.warn("Firebase users read fallback", error);
             userCatalogError = error?.message || "Firebase users 전체 목록을 읽지 못했습니다.";
           }
         }
 
+        if (user.uid !== state.firebaseSchoolBridge.auth.currentUser?.uid) return false;
         const scopedUsers = applyFirebaseAdminScopeToUsers(users, currentProfile);
         const classCatalog = buildFirebaseClassCatalogFromUsers(scopedUsers);
         const schoolCatalog = buildFirebaseSchoolProfiles(classCatalog, getSchoolProfiles());
@@ -8592,7 +8671,7 @@
         `출제 이력 ${stats.examSetCount}개`,
         `출제 문항 이력 ${stats.examItemCount}개`,
         `CHECK 세트 ${stats.checkSetCount}개`,
-        `저장된 반별 draft ${stats.examWorkCount}개`,
+        `저장된 반별 문제 초안 ${stats.examWorkCount}개`,
         "",
         "공용 문제 라이브러리와 교재 원본은 삭제하지 않습니다."
       ].join(String.fromCharCode(10)));
@@ -8682,7 +8761,7 @@
             }
             cursor.continue();
           });
-        request.addEventListener("error", () => reject(request.error || new Error("저장된 반별 draft를 삭제하지 못했습니다.")));
+        request.addEventListener("error", () => reject(request.error || new Error("저장된 반별 문제 초안을 삭제하지 못했습니다.")));
         });
 
         await idbTransactionDone(transaction);
@@ -8721,7 +8800,7 @@
       setStatus(`${targetSchool.name} 반을 삭제했습니다.`, "idle", "반 삭제");
         setOptionalText(
           elements.schoolSelectionSummary,
-        `${targetSchool.name} 반을 삭제했습니다. 관련 출제 이력 ${stats.examSetCount}개, CHECK 세트 ${stats.checkSetCount}개, 저장 draft ${stats.examWorkCount}개를 함께 정리했습니다.`
+        `${targetSchool.name} 반을 삭제했습니다. 관련 출제 이력 ${stats.examSetCount}개, CHECK 세트 ${stats.checkSetCount}개, 저장 초안 ${stats.examWorkCount}개를 함께 정리했습니다.`
         );
       } finally {
         setBusy(false);
@@ -9801,7 +9880,7 @@
         readJsonFileFromDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, null),
         readJsonFileFromDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, null),
-        readJsonFileFromDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, null)
+        readJsonFileFromDirectory(directoryHandle, getStudentRetryFolderFileName(), null)
       ]);
       if (![meta, textbooksRaw, schoolsRaw, importsRaw, problemRecordsRaw, problemAssetsRaw, examSetsRaw, examItemsRaw, checkSetRecordsRaw, savedWorksRaw, studentRetryRaw].some((value) => value != null)) {
         return null;
@@ -9861,12 +9940,17 @@
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_EXAM_ITEMS_FILE, snapshot.examItems || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_CHECK_SETS_FILE, snapshot.checkSetRecords || []);
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_SAVED_WORKS_FILE, savedWorks);
-      await writeJsonFileToDirectory(directoryHandle, LIBRARY_STUDENT_RETRY_FILE, normalizeStudentRetryState(snapshot.studentRetry || {}));
+      await writeJsonFileToDirectory(directoryHandle, getStudentRetryFolderFileName(), normalizeStudentRetryState(snapshot.studentRetry || {}));
       await writeJsonFileToDirectory(directoryHandle, LIBRARY_META_FILE, {
         version: LIBRARY_SNAPSHOT_VERSION,
         updatedAt
       });
       state.libraryLastSyncedAt = updatedAt;
+    }
+
+    function getStudentRetryFolderFileName() {
+      const uid = state.studentRetryOwnerUid || "";
+      return uid ? LIBRARY_STUDENT_RETRY_FILE.replace(/\.json$/, `--${encodeURIComponent(uid)}.json`) : LIBRARY_STUDENT_RETRY_FILE;
     }
 
     async function createLibrarySnapshotFromState() {
@@ -10542,54 +10626,42 @@
 
     async function saveSourceProblemsToLocalLibrary(sourceRecord, problemRecords = []) {
       const rows = Array.isArray(problemRecords) ? problemRecords : [];
-      const total = Math.max(rows.length, 1);
-      if (isLibraryWorkspaceMode()) {
-        setLibraryProgressState({
-          phaseKey: "saving",
-          phaseLabel: "라이브러리 저장",
-          message: "기존에 같은 PDF로 저장된 기록을 먼저 정리하고 있습니다.",
-          current: 0,
-          total
-        });
-      }
-      setStatus("기존에 같은 PDF로 저장된 라이브러리 기록을 정리하고 있습니다.", "working", "라이브러리 저장");
-      await deleteProblemsForSourceId(sourceRecord.sourceId);
-      await yieldToBrowser();
-
-      setStatus("교재 저장 기록을 브라우저 저장소에 기록하고 있습니다.", "working", "라이브러리 저장");
+      const prepared = rows.map(splitProblemRecordStorage);
       const db = await openLibraryDb();
-      const importTransaction = db.transaction(LIBRARY_IMPORT_STORE, "readwrite");
-      importTransaction.objectStore(LIBRARY_IMPORT_STORE).put(sourceRecord);
-      await idbTransactionDone(importTransaction);
-
-      const chunkSize = 12;
-      for (let start = 0; start < rows.length; start += chunkSize) {
-        const chunk = rows.slice(start, start + chunkSize);
-        const transaction = db.transaction([LIBRARY_PROBLEM_STORE, LIBRARY_PROBLEM_ASSET_STORE], "readwrite");
-        const problemStore = transaction.objectStore(LIBRARY_PROBLEM_STORE);
-        const problemAssetStore = transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
-        chunk.forEach((record) => {
-          const { metadataRecord, assetRecord } = splitProblemRecordStorage(record);
-          if (state.libraryCache.problemAssetCache && metadataRecord.recordId) {
-            delete state.libraryCache.problemAssetCache[metadataRecord.recordId];
+      const transaction = db.transaction([LIBRARY_IMPORT_STORE, LIBRARY_PROBLEM_STORE, LIBRARY_PROBLEM_ASSET_STORE], "readwrite");
+      const done = idbTransactionDone(transaction);
+      const problems = transaction.objectStore(LIBRARY_PROBLEM_STORE);
+      const assets = transaction.objectStore(LIBRARY_PROBLEM_ASSET_STORE);
+      const invalidated = [];
+      try {
+        const cursorRequest = problems.index("sourceId").openCursor(IDBKeyRange.only(sourceRecord.sourceId));
+        cursorRequest.addEventListener("success", () => {
+          try {
+            const cursor = cursorRequest.result;
+            if (cursor) {
+              invalidated.push(cursor.value.recordId);
+              assets.delete(cursor.value.recordId);
+              cursor.delete();
+              cursor.continue();
+              return;
+            }
+            transaction.objectStore(LIBRARY_IMPORT_STORE).put(sourceRecord);
+            prepared.forEach(({ metadataRecord, assetRecord }) => {
+              problems.put(metadataRecord);
+              assets.put(assetRecord);
+              invalidated.push(metadataRecord.recordId);
+            });
+          } catch (error) {
+            transaction.abort();
           }
-          problemStore.put(metadataRecord);
-          problemAssetStore.put(assetRecord);
         });
-        await idbTransactionDone(transaction);
-        if (isLibraryWorkspaceMode()) {
-          const saved = Math.min(start + chunk.length, rows.length);
-          setStatus(`${saved}/${rows.length} 문항을 브라우저 저장소에 기록하고 있습니다.`, "working", "라이브러리 저장");
-          setLibraryProgressState({
-            phaseKey: "saving",
-            phaseLabel: "라이브러리 저장",
-            message: `${saved}/${rows.length} 문항을 브라우저 저장소에 기록하고 있습니다.`,
-            current: saved,
-            total
-          });
-        }
-        await yieldToBrowser();
+        await done;
+      } catch (error) {
+        try { transaction.abort(); } catch (_) { /* Already completed or aborted. */ }
+        throw error;
       }
+      invalidated.forEach(id => { delete state.libraryCache.problemAssetCache?.[id]; });
+      setStatus(`${rows.length}문항을 브라우저 저장소에 저장했습니다.`, "idle", "라이브러리 저장");
     }
 
     async function deleteTextbookLibraryRecords(sourceKey, textbookName) {
@@ -11163,6 +11235,7 @@
           "idle",
           "저장 완료"
         );
+        markWorkspaceSaved("repack");
       } finally {
         setBusy(false);
       }
@@ -11643,58 +11716,18 @@
         payload.targetStudentName,
         payload.targetStudentNames
       ].flat(), { schoolName: true });
-      const studentUid = normalizeProblemText(student.firebaseUid || "");
-      const studentId = normalizeProblemText(student.firebaseStudentId || "");
-      const studentLoginId = normalizeProblemText(student.firebaseLoginId || "");
-      const studentEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
-      const studentName = normalizeSchoolName(student.name || "");
-      if (recordUid && studentUid && recordUid === studentUid) {
-        return true;
-      }
-      if (recordStudentId && studentId && recordStudentId === studentId) {
-        return true;
-      }
-      if (recordStudentId && studentLoginId && recordStudentId === studentLoginId) {
-        return true;
-      }
-      if (recordLoginId && studentLoginId && recordLoginId === studentLoginId) {
-        return true;
-      }
-      if (recordLoginId && studentId && recordLoginId === studentId) {
-        return true;
-      }
-      if (recordEmail && studentEmail && recordEmail === studentEmail) {
-        return true;
-      }
-      if (record.targetStudentLocalId && String(record.targetStudentLocalId || "") === String(student.studentId || "")) {
-        return true;
-      }
-      return Boolean(recordName && studentName && recordName === studentName);
+      const candidate = { firebaseUid: recordUid, firebaseStudentId: recordStudentId,
+        firebaseLoginId: recordLoginId, firebaseEmail: recordEmail,
+        studentId: record.targetStudentLocalId, name: recordName };
+      const match = compareRetryStudentIdentity(candidate, student);
+      return match === null ? retryStudentNameMatches(candidate, student) : match;
     }
 
     function doesRetryStudentMatchCheckResponse(response = {}, student = {}) {
-      const responseUid = normalizeProblemText(response.userId || "");
-      const responseStudentId = normalizeProblemText(response.studentId || "");
-      const responseEmail = normalizeProblemText(response.email || "").toLowerCase();
-      const responseName = normalizeSchoolName(response.name || "");
-      const studentUid = normalizeProblemText(student.firebaseUid || "");
-      const studentId = normalizeProblemText(student.firebaseStudentId || "");
-      const studentLoginId = normalizeProblemText(student.firebaseLoginId || "");
-      const studentEmail = normalizeProblemText(student.firebaseEmail || "").toLowerCase();
-      const studentName = normalizeSchoolName(student.name || "");
-      if (responseUid && studentUid && responseUid === studentUid) {
-        return true;
-      }
-      if (responseStudentId && studentId && responseStudentId === studentId) {
-        return true;
-      }
-      if (responseStudentId && studentLoginId && responseStudentId === studentLoginId) {
-        return true;
-      }
-      if (responseEmail && studentEmail && responseEmail === studentEmail) {
-        return true;
-      }
-      return Boolean(responseName && studentName && responseName === studentName);
+      const candidate = { firebaseUid: response.userId, firebaseStudentId: response.studentId,
+        firebaseEmail: response.email, name: response.name };
+      const match = compareRetryStudentIdentity(candidate, student);
+      return match === null ? retryStudentNameMatches(candidate, student) : match;
     }
 
     function doesCheckSetRecordMatchRetrySchool(record = {}, schoolKey = getStudentRetrySchoolKey()) {
@@ -11983,6 +12016,7 @@
           baseItems,
           studentStates: {}
         };
+        if (state.studentRetry.deletedSessions?.[session.sessionId]) return;
         getStudentRetryState(session, student.studentId);
         state.studentRetry.sessions.unshift(session);
         if (!state.studentRetry.selectedSessionId) {
@@ -12612,6 +12646,8 @@
       setBusy(true);
       setStatus(`${student.name} 학생 정보를 삭제하는 중입니다...`, "working", "학생 삭제");
       try {
+        state.studentRetry.deletedStudentKeys = { ...state.studentRetry.deletedStudentKeys, [student.studentId]: [getRetryStudentDeletionKey(student)].filter(Boolean) };
+        state.studentRetry.deletedStudents = { ...state.studentRetry.deletedStudents, [student.studentId]: Date.now() };
         state.studentRetry.students = (state.studentRetry.students || [])
           .filter((entry) => entry.studentId !== student.studentId);
         state.studentRetry.sessions = (state.studentRetry.sessions || []).map((session) => {
@@ -12713,6 +12749,7 @@
       setBusy(true);
       setStatus(`${session.name} 세트를 삭제하는 중입니다...`, "working", "세트 삭제");
       try {
+        state.studentRetry.deletedSessions = { ...state.studentRetry.deletedSessions, [session.sessionId]: Date.now() };
         state.studentRetry.sessions = (state.studentRetry.sessions || [])
           .filter((entry) => entry.sessionId !== session.sessionId);
         state.studentRetry.selectedSessionId = "";
@@ -12740,11 +12777,11 @@
         throw new Error("먼저 반을 선택해주세요.");
       }
       if (state.examBuilder.slots.some((slot) => slot.studentRetrySessionId)) {
-        throw new Error("오답 재출제 draft가 아니라 1차 공통으로 쓸 반별 draft를 먼저 생성해주세요.");
+        throw new Error("오답 재출제 문제 초안이 아니라 1차 공통으로 쓸 반별 문제 초안을 먼저 생성해주세요.");
       }
       const baseItems = getCurrentDraftRetryBaseItems();
       if (!baseItems.length) {
-        throw new Error("먼저 1차 공통으로 쓸 반별 draft를 생성해주세요.");
+        throw new Error("먼저 1차 공통으로 쓸 반별 문제 초안을 생성해주세요.");
       }
       const addedStudentCount = ensureFirebaseRetryStudentsForSelectedSchool();
       const students = getRetryStudentsForSelectedSchool();
@@ -13264,7 +13301,7 @@
         const sessionLabel = selectedSession ? `${selectedSession.name} 세트` : "오답 세트";
         elements.studentRetryHistoryEmptyState.innerHTML = `
           <h3>저장된 학생별 출력 이력이 없습니다</h3>
-          <p>${escapeHtml(studentLabel)}의 ${escapeHtml(sessionLabel)} 출력 이력은 아직 없습니다. 오답 재출제 draft에서 출제 이력 저장 + PDF 출력을 누르면 여기에 쌓입니다.</p>
+          <p>${escapeHtml(studentLabel)}의 ${escapeHtml(sessionLabel)} 출력 이력은 아직 없습니다. 오답 재출제 문제 초안에서 출제 이력 저장 + PDF 출력을 누르면 여기에 쌓입니다.</p>
         `;
         elements.studentRetryHistoryList.innerHTML = "";
         return;
@@ -13304,10 +13341,7 @@
         return;
       }
       renderStudentRetryFirebaseControls();
-      const addedFirebaseRetryStudents = ensureFirebaseRetryStudentsForSelectedSchool();
-      if (addedFirebaseRetryStudents) {
-        writeStudentRetryState({ syncFolder: false });
-      }
+      ensureFirebaseRetryStudentsForSelectedSchool();
       ensureStudentRetrySelection();
       ensureStudentRetrySessionsFromAvailableCheckSets(getSelectedRetryStudent());
       ensureStudentRetrySelection();
@@ -13423,7 +13457,6 @@
           })).join("")}
         </div>
       `;
-      writeStudentRetryState({ syncFolder: false });
       scheduleStudentRetryCheckResponseSync();
     }
 
@@ -13752,7 +13785,7 @@
         );
       } else {
         setStatus(
-          `${schoolProfile.name} 기준으로 배정 가능한 draft를 만들지 못했습니다.${warningCount ? ` 경고 ${warningCount}개를 확인해주세요.` : ""}`,
+          `${schoolProfile.name} 기준으로 배정 가능한 문제 초안을 만들지 못했습니다.${warningCount ? ` 경고 ${warningCount}개를 확인해주세요.` : ""}`,
           "error",
           "draft 없음"
         );
@@ -13901,7 +13934,7 @@
       }
       if (
         state.examBuilder.answerEditSlotId &&
-        state.examBuilder.answerEditSlotId !== normalizedSlotId &&
+        (state.examBuilder.answerEditSlotId !== normalizedSlotId || options.forceReload) &&
         isExamAnswerEditorDirty() &&
         !options.forceDiscard
       ) {
@@ -13927,121 +13960,11 @@
       return true;
     }
 
-    function parseExamAnswerEditBlock(blockText, fallbackNumber = null) {
-      const normalizedBlock = String(blockText || "").replace(/\r\n?/g, "\n").trim();
-      const lines = normalizedBlock.split("\n").map((line) => line.trim()).filter(Boolean);
-      const fallbackNumeric = fallbackNumber == null || fallbackNumber === ""
-        ? Number.NaN
-        : Number(fallbackNumber);
-      let number = Number.isFinite(fallbackNumeric) ? fallbackNumeric : null;
-      if (!lines.length) {
-        return {
-          number,
-          answerText: "",
-          explanationText: ""
-        };
-      }
-
-      const numberedMatch = lines[0].match(/^(\d{1,3})\s*(?:번)?\s*[.)-]?\s*(.*)$/);
-      const workingLines = numberedMatch
-        ? [(numberedMatch[2] || "").trim(), ...lines.slice(1)]
-        : [...lines];
-      if (numberedMatch) {
-        number = Number(numberedMatch[1]);
-      }
-
-      let answerText = "";
-      const explanationLines = [];
-      let collectingExplanation = false;
-      workingLines.forEach((line) => {
-        const answerMatch = line.match(/^(?:정답|답)\s*[:：-]?\s*(.*)$/);
-        if (answerMatch) {
-          answerText = normalizeParsedAnswerText(answerMatch[1] || "");
-          collectingExplanation = false;
-          return;
-        }
-        const explanationMatch = line.match(/^(?:해설|설명)\s*[:：-]?\s*(.*)$/);
-        if (explanationMatch) {
-          explanationLines.push(explanationMatch[1] || "");
-          collectingExplanation = true;
-          return;
-        }
-        if (collectingExplanation) {
-          explanationLines.push(line);
-        }
-      });
-
-      let explanationText = normalizeAnswerExplanationText(explanationLines.join("\n").trim());
-      if (!answerText || !explanationText) {
-        const fallback = parseOcrAnswerBlockText(normalizedBlock, number);
-        if (!answerText && fallback.answerText) {
-          answerText = fallback.answerText;
-        }
-        if (!explanationText && fallback.explanationText) {
-          explanationText = fallback.explanationText;
-        }
-      }
-
-      return {
-        number,
-        answerText: normalizeParsedAnswerText(answerText),
-        explanationText: normalizeAnswerExplanationText(explanationText)
-      };
-    }
-
     function parseExamAnswerEditText(value, records = []) {
-      const targetRecords = (Array.isArray(records) ? records : []).filter((record) => record?.kind === "problem");
-      if (!targetRecords.length) {
-        throw new Error("수정할 문항이 없습니다.");
-      }
-      const normalizedText = String(value || "").replace(/\r\n?/g, "\n").trim();
-      if (!normalizedText) {
-        throw new Error("번호-정답-해설 텍스트가 비어 있습니다.");
-      }
-
-      const blocks = normalizedText.split(/\n\s*\n+/).map((block) => block.trim()).filter(Boolean);
-      const parsedByNumber = new Map();
-
-      if (blocks.length === targetRecords.length || targetRecords.length === 1) {
-        blocks.forEach((block, index) => {
-          const parsed = parseExamAnswerEditBlock(block, targetRecords[index]?.number ?? null);
-          if (parsed.number != null) {
-            parsedByNumber.set(String(parsed.number), parsed);
-          } else {
-            parsedByNumber.set(`index:${index}`, parsed);
-          }
-        });
-      }
-
-      if (parsedByNumber.size < targetRecords.length) {
-        Array.from(normalizeOcrAnswerBlockText(normalizedText).matchAll(ANSWER_ENTRY_PATTERN)).forEach((match) => {
-          const number = Number(match[1]);
-          if (!Number.isFinite(number)) {
-            return;
-          }
-          parsedByNumber.set(String(number), {
-            number,
-            answerText: normalizeParsedAnswerText(match[2] || ""),
-            explanationText: normalizeAnswerExplanationText(match[3] || "")
-          });
-        });
-      }
-
-      return targetRecords.map((record, index) => {
-        const parsed = parsedByNumber.get(String(record.number))
-          || (blocks.length === targetRecords.length ? parseExamAnswerEditBlock(blocks[index], record.number) : null)
-          || (targetRecords.length === 1 ? parseExamAnswerEditBlock(normalizedText, record.number) : null)
-          || parsedByNumber.get(`index:${index}`);
-        if (!parsed) {
-          throw new Error(`문항 ${record.number} 수정 내용을 찾지 못했습니다. 번호-정답-해설 형식을 확인해주세요.`);
-        }
-        return {
-          recordId: record.recordId,
-          sourceId: record.sourceId,
-          number: record.number,
-          answerText: normalizeParsedAnswerTextForProblem(record, parsed.answerText || "", parsed.explanationText || ""),
-          explanationText: parsed.explanationText || ""
-        };
+      return PDFLabAnswerEditor.parse(value, records, {
+        parseOcrBlock: parseOcrAnswerBlockText, normalizeOcrText: normalizeOcrAnswerBlockText,
+        entryPattern: ANSWER_ENTRY_PATTERN, normalizeAnswer: normalizeAnswerLabel,
+        normalizeFallbackAnswer: normalizeParsedAnswerText, normalizeExplanation: normalizeAnswerExplanationText
       });
     }
 
@@ -14049,7 +13972,7 @@
       const slot = getExamSlot(state.examBuilder.answerEditSlotId);
       const records = getEditableExamRecordsForSlot(slot);
       if (!slot || !records.length) {
-        throw new Error("먼저 수정할 draft를 선택해주세요.");
+        throw new Error("먼저 수정할 문제 초안을 선택해주세요.");
       }
 
       const updates = parseExamAnswerEditText(state.examBuilder.answerEditDraftText, records);
@@ -14066,12 +13989,12 @@
             return record;
           }
           affectedSourceIds.add(record.sourceId);
-          return {
-            ...record,
-            answerText: update.answerText,
-            explanationText: update.explanationText,
-            updatedAt: now
-          };
+          const edited = PDFLabCanonical.has(record)
+            ? PDFLabCanonical.editedRecords(state.libraryCache.problemRecords, record, {
+                answerText: update.answerText, explanationText: update.explanationText
+              })[0]
+            : { ...record, answerText: update.answerText, explanationText: update.explanationText };
+          return { ...edited, updatedAt: now };
         });
 
         const nextImports = (state.libraryCache.imports || []).map((record) => {
@@ -15628,7 +15551,7 @@
       }
       const slotCount = state.examBuilder.slots.length;
       if (!slotCount) {
-        elements.examCheckSetSummary.textContent = "현재 draft를 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.";
+        elements.examCheckSetSummary.textContent = "현재 문제 초안을 만들면 학생별 개인 CHECK 세트를 저장하고 CODE LAB에 올릴 수 있습니다.";
         return;
       }
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
@@ -15904,6 +15827,7 @@
           elements.repackWorkSummary.textContent = `${workName} 작업을 저장했습니다. 나중에 다시 불러와 필터와 레이아웃을 이어서 수정할 수 있습니다.`;
         }
         setStatus(`${workName} 작업을 저장했습니다.`, "idle", "작업 저장");
+        markWorkspaceSaved("repack");
       } finally {
         setBusy(false);
       }
@@ -15911,7 +15835,7 @@
 
     async function persistCurrentExamWorkRecord() {
       if (!state.examBuilder.slots.length) {
-        throw new Error("먼저 반별 출제 draft를 생성한 뒤 저장해주세요.");
+        throw new Error("먼저 반별 출제 문제 초안을 생성한 뒤 저장해주세요.");
       }
 
       const existingRecord = state.examBuilder.loadedWorkId
@@ -16011,6 +15935,7 @@
       try {
         const workRecord = await persistCurrentExamWorkRecord();
         setStatus(`${workRecord.name} 작업을 저장했습니다.`, "idle", "작업 저장");
+        markWorkspaceSaved("exam");
       } finally {
         setBusy(false);
       }
@@ -16041,6 +15966,7 @@
     }
 
     async function loadSavedWork(workId) {
+      if (!confirmWorkspaceDiscard()) return;
       const record = getSavedWorks().find((entry) => entry.workId === workId);
       if (!record) {
         throw new Error("불러올 저장 작업을 찾을 수 없습니다.");
@@ -16155,6 +16081,7 @@
       setActiveTab("exam");
       setOptionalText(elements.examWorkSummary, `${record.name || "저장 작업"}을 불러왔습니다. 제목을 바꾸거나 문항을 교체한 뒤 다시 저장할 수 있습니다.`);
       setStatus(`${record.name || "저장 작업"}을 불러왔습니다.`, "idle", "작업 불러오기");
+      markWorkspaceSaved();
     }
 
     async function deleteSavedWork(workId) {
@@ -16616,7 +16543,7 @@
 
     function validateExamBuilderForExport() {
       if (!state.examBuilder.slots.length) {
-        throw new Error("먼저 반별 출제 draft를 생성해주세요.");
+        throw new Error("먼저 반별 출제 문제 초안을 생성해주세요.");
       }
       const unassignedSlots = state.examBuilder.slots.filter((slot) => !(slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)));
       if (unassignedSlots.length) {
@@ -17082,8 +17009,8 @@
         if (commitHistory) {
           setStatus(
             retryContext
-              ? "학생 출력 이력과 draft를 저장하는 중입니다..."
-              : "시험지 이력과 draft를 저장하는 중입니다...",
+              ? "학생 출력 이력과 문제 초안을 저장하는 중입니다..."
+              : "시험지 이력과 문제 초안을 저장하는 중입니다...",
             "working",
             retryContext ? "학생 출력" : "시험지 확정"
           );
@@ -19405,6 +19332,7 @@
     }
 
     async function analyzePdf(file) {
+      if (!confirmWorkspaceDiscard()) return;
       const selectedTextbookName = getSelectedTextbookName();
       const selectedLibrarySourceKey = getSelectedLibrarySourceKey();
       if (!selectedTextbookName) {
@@ -19549,7 +19477,34 @@
       }
     }
 
+    function workspaceWorkSignature() {
+      const titles = ids => ids.map(id => document.getElementById(id)?.value || "");
+      return {
+        repack: state.problems.length ? JSON.stringify({
+          problems: state.problems.map(problem => ({
+            id: problem.id, number: problem.number, canonical: problem.canonical,
+            textStructure: problem.textStructure, promptText: problem.promptText, analysisText: problem.analysisText,
+            answerText: problem.answerText, explanationText: problem.explanationText,
+            retryMode: problem.retryMode, retryGroupId: problem.retryGroupId, retryRound: problem.retryRound, difficulty: problem.difficulty,
+            problemType: problem.problemType, segments: problem.segments, manualSquashPercent: problem.manualSquashPercent
+          })), fileName: state.fileName, sourceKey: state.selectedLibrarySourceKey,
+          textbookName: state.selectedTextbookName, titles: titles(["titleInput", "subtitleInput", "newTextbookInput", "existingTextbookSelect"])
+        }) : "",
+        exam: state.examBuilder.slots.length ? JSON.stringify({ slots: state.examBuilder.slots,
+          titles: titles(["examTitleInput", "examSubtitleInput", "examKickerInput"]) }) : ""
+      };
+    }
+
+    function markWorkspaceSaved(scope) {
+      state.workspaceUi?.markSaved(scope);
+    }
+
+    function confirmWorkspaceDiscard() {
+      return state.workspaceUi?.confirmDiscard() !== false;
+    }
+
     function clearAll() {
+      if (!confirmWorkspaceDiscard()) return false;
       cleanupObjectUrls();
       if (state.pdfDoc) {
         try {
@@ -20267,7 +20222,7 @@
           if (!state.libraryReview.editorScope || !state.libraryReview.editorTargetId) {
             return;
           }
-          openLibraryTextEditor(state.libraryReview.editorScope, state.libraryReview.editorTargetId, { forceDiscard: true });
+          openLibraryTextEditor(state.libraryReview.editorScope, state.libraryReview.editorTargetId, { forceReload: true });
         });
       }
       if (elements.libraryTextEditorCloseButton) {
@@ -20371,7 +20326,7 @@
           }
           if (button.dataset.answerEditorReload) {
             if (state.examBuilder.answerEditSlotId) {
-              openExamAnswerEditor(state.examBuilder.answerEditSlotId, { forceReload: true, forceDiscard: true });
+              openExamAnswerEditor(state.examBuilder.answerEditSlotId, { forceReload: true });
             }
             return;
           }
@@ -20851,6 +20806,18 @@
 
     wireEvents()
       .then(() => {
+        state.workspaceUi = PDFLabWorkspaceUI.install({
+          signature: workspaceWorkSignature,
+          editorDirty: () => (typeof isLibraryTextEditorDirty === "function" && isLibraryTextEditorDirty()) || isExamAnswerEditorDirty(),
+          dialogs: [
+            { element: document.getElementById("libraryTextEditorRoot"), close: () => closeLibraryTextEditor() },
+            { element: document.getElementById("examAnswerEditorRoot"), close: () => closeExamAnswerEditor() }
+          ]
+        });
+        elements.statusBar.setAttribute("role", "status");
+        elements.statusBar.setAttribute("aria-atomic", "true");
+        elements.statusBar.classList.add("workspace-status");
+        document.querySelector(".app-topbar").after(elements.statusBar);
         document.body.dataset.appReady = "true";
       })
       .catch(handleError);

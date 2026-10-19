@@ -1,5 +1,7 @@
 # 한부장 호환성 Git 보관 범위
 
+2026-10-20 현황: 아래 배포 경계와 커밋 설명은 당시 검토 기록이다. 이후 main은 0073b05로 갱신되었으며 GitHub Pages는 main 루트 자동 배포를 사용한다. 현재 감사 결함 수정은 analysis의 로컬 변경으로 진행했고 푸시·배포하지 않았다. 공개 기본 검사와 private 검사 구분은 [현재 검사 안내](testing.md)를 따른다.
+
 독립 검토 판정은 `PDF_LAB_HANBUJANG_COMPAT_LOCAL_REVIEW_PASSED`다. 기준본은 `PDF_LAB_HANBUJANG_COMPAT_R1_FINAL_REVIEW.zip`, SHA-256은 `8ae832a21f0c5b6bf7d35f5448351b5e7cd0966ece18c2f2299688c1f8694376`다.
 
 이번 Git 보관 시 앱 실행 소스 5개와 관련 테스트·문서를 기준 ZIP과 대조했다. 실행 소스는 동일하며, Git 보관 안내 문서만 추가했다. 기존 최종 검사 8개와 세 화면 PDF 검증의 PASS 결과를 재사용한다. 검사 원본 결과·로그·PDF·PNG·검토 ZIP은 로컬에 보존한다.
