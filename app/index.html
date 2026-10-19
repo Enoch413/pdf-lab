@@ -89,12 +89,20 @@
           <input class="visually-hidden" type="file" id="pdfInput" accept="application/pdf">
           <p class="file-name" id="fileName">아직 불러온 PDF / JSON이 없습니다.</p>
         </div>
+        <div class="field-row">
+          <label class="field-label" for="jsonRetryModeSelect">JSON 오답 재출제 방식</label>
+          <select class="select-input" id="jsonRetryModeSelect" aria-describedby="jsonRetryModeHelp">
+            <option value="general">일반형 — 너른터·이그잼포유 등 기존 재출제</option>
+            <option value="rounds">차수형 — 난이도별 1·2·3차 대응</option>
+          </select>
+          <p class="small-note" id="jsonRetryModeHelp">업로드 전에 선택하세요. 차수형은 같은 지문·원래 유형·난이도의 배열 순서로 1~3차를 연결합니다. 난이도가 없으면 ‘미지정’끼리 연결합니다. 새 파일은 먼저 초기화하세요.</p>
+        </div>
         <div class="single-action-row">
-          <button class="solid-button" type="button" id="chooseProblemJsonButton">AI JSON 업로드</button>
+          <button class="solid-button" type="button" id="chooseProblemJsonButton">AI JSON 업로드 (여러 파일)</button>
           <button class="ghost-button" type="button" id="saveLibraryButton" disabled hidden>문제 라이브러리에 저장</button>
         </div>
-        <input class="visually-hidden" type="file" id="problemJsonInput" accept="application/json,.json">
-        <p class="small-note" id="problemJsonSummary">PDF 없이 JSON만 올려 텍스트 문항을 등록할 수 있습니다. 이미 불러온 문항이 있으면 번호 기준으로 텍스트/유형/답안을 덮어씁니다. 새 파일로 등록하려면 먼저 초기화하세요.</p>
+        <input class="visually-hidden" type="file" id="problemJsonInput" accept="application/json,.json" multiple>
+        <p class="small-note" id="problemJsonSummary">여러 JSON을 선택하면 한 교재에 파일별 지문으로 함께 등록합니다. 여러 파일은 초기화 후 가져오세요. 단일 JSON은 이미 불러온 문항이 있으면 번호 기준으로 텍스트/유형/답안을 덮어씁니다. 새 파일로 등록하려면 먼저 초기화하세요.</p>
         <p class="small-note" id="librarySaveSummary">문제를 저장해두면 PDF LAB에서 반별 출제를 바로 이어서 진행할 수 있습니다.</p>
       </section>
 
@@ -1532,6 +1540,7 @@
       exportHtmlButton: document.getElementById("exportHtmlButton"),
       chooseProblemJsonButton: document.getElementById("chooseProblemJsonButton"),
       problemJsonInput: document.getElementById("problemJsonInput"),
+      jsonRetryModeSelect: document.getElementById("jsonRetryModeSelect"),
       problemJsonSummary: document.getElementById("problemJsonSummary"),
       saveLibraryButton: document.getElementById("saveLibraryButton"),
       librarySaveSummary: document.getElementById("librarySaveSummary"),
@@ -4666,6 +4675,38 @@
       };
     }
 
+    function getRetrySeriesMetadata(record = {}) {
+      return {
+        retryMode: record.retryMode === "rounds" ? "rounds" : "general",
+        retryGroupId: String(record.retryGroupId || ""),
+        retryRound: Number(record.retryRound) || 0,
+        difficulty: String(record.difficulty || "")
+      };
+    }
+
+    function assignJsonRetrySeries(problems, items, mode, fileName) {
+      const groups = new Map();
+      problems.forEach((problem, index) => {
+        const item = items[index];
+        const rawDifficulty = String(item.difficulty || "").trim().toLowerCase();
+        const difficulty = ({ "쉬움": "easy", "보통": "medium", "어려움": "hard" })[rawDifficulty] || rawDifficulty;
+        Object.assign(problem, getRetrySeriesMetadata({ difficulty }));
+        if (mode !== "rounds") return;
+        const rawType = getFirstDefinedAiField(item, ["problemType", "type", "questionType", "category", "유형", "문제유형"]) || problem.problemType;
+        const key = JSON.stringify([fileName, problem.worksheetRef, rawType, difficulty]);
+        const group = groups.get(key) || [];
+        group.push(problem);
+        groups.set(key, group);
+      });
+      for (const [key, group] of groups) {
+        if (group.length !== 3) {
+          throw new Error(`차수형은 같은 지문·유형·난이도마다 정확히 3문항이 필요합니다. ${group[0].worksheetRef} / ${group[0].problemType} / ${group[0].difficulty || "미지정"}: ${group.length}문항. 일반형으로 등록하거나 JSON 구성을 확인해주세요.`);
+        }
+        group.forEach((problem, index) => Object.assign(problem, { retryMode: "rounds", retryGroupId: key, retryRound: index + 1 }));
+      }
+      return problems;
+    }
+
     function createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, fileName) {
       const numbers = new Set();
       return items.map((item, index) => {
@@ -4823,8 +4864,12 @@
       } finally { setBusy(false); }
     }
 
-    function applyAiProblemJsonPayload(payload, fileName = "AI JSON") {
-      if (PDFLabCanonical.candidate(extractAiProblemJsonItems(payload))) return applyCanonicalJsonPayload(payload, fileName);
+    function applyAiProblemJsonPayload(payload, fileName = "AI JSON", preparedProblems = null) {
+      const retryMode = elements.jsonRetryModeSelect?.value || "general";
+      if (retryMode === "rounds" && (state.problems.length || PDFLabCanonical.candidate(extractAiProblemJsonItems(payload)))) {
+        throw new Error("차수형은 초기화 후 쏠북형 JSON을 새로 등록해주세요. 기존 문항 덮어쓰기와 canonical JSON은 일반형을 사용해주세요.");
+      }
+      if (!preparedProblems && PDFLabCanonical.candidate(extractAiProblemJsonItems(payload))) return applyCanonicalJsonPayload(payload, fileName);
       const items = extractAiProblemJsonItems(payload);
       if (!items.length) {
         throw new Error("JSON에서 문항 배열을 찾지 못했습니다. 배열 또는 problems/items/questions 키를 사용해주세요.");
@@ -4837,7 +4882,7 @@
         }
         const librarySourceKey = getSelectedLibrarySourceKey();
         // Validate the entire file before changing the current import.
-        const problems = createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, fileName);
+        const problems = preparedProblems || assignJsonRetrySeries(createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, fileName), items, retryMode, fileName);
         cleanupObjectUrls();
         if (state.pdfDoc) {
           Promise.resolve(state.pdfDoc.destroy()).catch((error) => console.warn("Failed to destroy previous PDF document", error));
@@ -4867,6 +4912,9 @@
       );
       let updatedCount = 0;
       let skippedCount = 0;
+      if (!isNewImport && state.problems.some(problem => problem.retryMode === "rounds")) {
+        throw new Error("차수형 문항은 초기화 후 파일 전체를 다시 등록해주세요.");
+      }
       if (!isNewImport) {
         items.forEach((item) => {
           const number = normalizeAiProblemNumber(item);
@@ -4887,28 +4935,68 @@
       }
       setOptionalText(
         elements.problemJsonSummary,
-        `${fileName} 적용 완료: ${updatedCount}문항을 ${isNewImport ? "PDF 없이 텍스트 문항으로 불러왔습니다" : "번호 기준으로 덮어썼습니다"}.${skippedCount ? ` 매칭 실패 ${skippedCount}개는 건너뛰었습니다. 새 파일로 등록하려면 초기화 후 다시 올려주세요.` : ""}`
+        `${fileName} · ${retryMode === "rounds" ? "차수형 (난이도별 1~3차)" : "일반형"} 적용 완료: ${updatedCount}문항을 ${isNewImport ? "PDF 없이 텍스트 문항으로 불러왔습니다" : "번호 기준으로 덮어썼습니다"}.${skippedCount ? ` 매칭 실패 ${skippedCount}개는 건너뛰었습니다. 새 파일로 등록하려면 초기화 후 다시 올려주세요.` : ""}`
       );
       setOptionalText(elements.librarySaveSummary, `${getLibrarySourceLabel(state.selectedLibrarySourceKey)} · ${state.selectedTextbookName || getSelectedTextbookName()} / ${state.fileName || fileName} · JSON 텍스트 적용됨 · ${getAnswerImportSummary(state.problems)} · 아직 라이브러리에 저장되지 않았습니다.`);
       setStatus(`${updatedCount}문항에 AI JSON 텍스트를 적용했습니다.`, "idle", "JSON 적용");
       updatePreviewActionRow();
     }
 
-    async function importAiProblemJsonFile(file) {
-      if (!file) {
-        return;
+    function prepareAiProblemJsonBatch(entries, textbookName, librarySourceKey, retryMode) {
+      const names = new Set();
+      const problems = [];
+      for (const { name, payload } of entries) {
+        try {
+          if (names.has(name)) throw new Error("같은 이름의 파일이 중복되었습니다. 파일 이름을 구분해주세요.");
+          names.add(name);
+          const items = extractAiProblemJsonItems(payload);
+          if (!items.length) throw new Error("문항 배열이 비어 있거나 없습니다.");
+          if (PDFLabCanonical.candidate(items)) throw new Error("canonical JSON은 문서·그룹 대응 보존을 위해 한 파일씩 등록해주세요.");
+          const rows = assignJsonRetrySeries(createTextProblemsFromAiJsonItems(items, textbookName, librarySourceKey, name), items, retryMode, name);
+          rows.forEach(problem => {
+            const fileLabel = name.replace(/\.[^.]+$/, "");
+            const passageLabel = problem.worksheetRef === fileLabel ? fileLabel : `${fileLabel} / ${problem.worksheetRef}`;
+            problem.worksheetRef = passageLabel;
+            problem.passageGroupKey = `${textbookName}::${passageLabel}`;
+            problem.number = problems.length + 1;
+            problem.id = `json-problem-${problem.number}`;
+            problems.push(problem);
+          });
+        } catch (error) {
+          throw new Error(`${name}: ${error.message}`);
+        }
       }
+      return problems;
+    }
+
+    async function importAiProblemJsonFile(file) {
+      const files = Array.from(Array.isArray(file) ? file : (file ? [file] : []));
+      if (!files.length) return;
+      if (files.length > 1 && state.problems.length) throw new Error("여러 JSON은 초기화 후 새로 가져와주세요. 현재 작업은 유지됩니다.");
+      const textbookName = getSelectedTextbookName();
+      if (files.length > 1 && !textbookName) throw new Error("먼저 새 교재명을 입력하거나 기존 교재를 선택해주세요.");
       setBusy(true);
       setStatus("AI JSON을 불러와 문항 텍스트를 적용하는 중입니다...", "working", "JSON");
       try {
-        const text = await readBlobAsText(file);
-        let payload;
-        try {
-          payload = JSON.parse(text.replace(/^\uFEFF/, ""));
-        } catch (error) {
-          throw new Error("JSON 파일 형식이 올바르지 않습니다. 쉼표, 따옴표, 괄호를 확인해주세요.");
+        const entries = await Promise.all(files.map(async selectedFile => {
+          const text = await readBlobAsText(selectedFile);
+          try {
+            return { name: selectedFile.name, payload: JSON.parse(text.replace(/^\uFEFF/, "")) };
+          } catch (error) {
+            throw new Error(`${selectedFile.name}: JSON 파일 형식이 올바르지 않습니다. 쉼표, 따옴표, 괄호를 확인해주세요.`);
+          }
+        }));
+        if (entries.length === 1) {
+          applyAiProblemJsonPayload(entries[0].payload, entries[0].name);
+        } else {
+          const problems = prepareAiProblemJsonBatch(entries, textbookName, getSelectedLibrarySourceKey(), elements.jsonRetryModeSelect?.value || "general");
+          const nameBytes = new TextEncoder().encode(JSON.stringify(entries.map(entry => entry.name)));
+          const digest = await crypto.subtle.digest("SHA-256", nameBytes);
+          const batchKey = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 16);
+          const batchName = `${entries[0].name.replace(/\.[^.]+$/, "")} 외 ${entries.length - 1}개-${batchKey}.json`;
+          applyAiProblemJsonPayload([{}], batchName, problems);
+          setOptionalText(elements.problemJsonSummary, `${entries.length}개 JSON · ${problems.length}문항 가져오기 완료. 파일별 지문 구분과 오답 재출제 방식을 유지했습니다. 아직 저장하지 않았습니다.`);
         }
-        applyAiProblemJsonPayload(payload, file.name);
       } finally {
         setBusy(false);
         if (isLibraryWorkspaceMode()) {
@@ -5843,6 +5931,7 @@
         updatedAt: Number(round.updatedAt) || createdAt,
         items: items
           .map((item, index) => ({
+            ...getRetrySeriesMetadata(item),
             itemId: String(item?.itemId || createRetryId("retry-item")),
             problemRecordId: String(item?.problemRecordId || ""),
             sourceProblemId: String(item?.sourceProblemId || item?.problemRecordId || ""),
@@ -10758,6 +10847,7 @@
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
         contentMode: getLibraryProblemMode(problem),
+        ...getRetrySeriesMetadata(problem),
         textOnly: problem.textOnly === true,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
@@ -10819,6 +10909,7 @@
         pageSignature: problem.pageSignature || "",
         pageCount: problem.pageCount || 0,
         contentMode: getLibraryProblemMode(problem),
+        ...getRetrySeriesMetadata(problem),
         textOnly: problem.textOnly === true,
         promptText: problem.promptText || "",
         analysisText: problem.analysisText || "",
@@ -10881,6 +10972,7 @@
         pageSignature: snapshot.pageSignature || "",
         pageCount: snapshot.pageCount || 0,
         contentMode: getLibraryProblemMode(snapshot),
+        ...getRetrySeriesMetadata(snapshot),
         textOnly: snapshot.textOnly === true,
         ...(snapshot.textOnly ? { renderContentMode: EXAM_CONTENT_MODE_TEXT } : {}),
         promptText: snapshot.promptText || "",
@@ -11099,7 +11191,8 @@
     }
 
     function getSchoolProblemRecordsOnly() {
-      return getProblemRecordsOnly().filter(recordMatchesSchoolSource);
+      return getProblemRecordsOnly().filter(recordMatchesSchoolSource)
+        .filter(record => record.retryMode !== "rounds" || record.retryRound === 1);
     }
 
     function getSchoolTailProblemRecordsOnly() {
@@ -11348,6 +11441,7 @@
     function createRetryItemFromRecord(record, displayNumber, sourceProblemId = "") {
       const typeLabel = getRecordTypeLabel(record);
       return {
+        ...getRetrySeriesMetadata(record),
         itemId: createRetryId("retry-item"),
         problemRecordId: record.recordId,
         sourceProblemId: sourceProblemId || record.recordId,
@@ -12378,7 +12472,18 @@
     }
 
     function findNextRetryCandidateForItem(item, usedProblemIds) {
+      const current = getRetryRecordById(item.problemRecordId);
+      if (!current && item.retryMode === "rounds") return null;
+      if (current?.retryMode === "rounds") {
+        if (current.retryRound >= 3) return null;
+        return getProblemRecordsOnly().find(record =>
+          record.retryMode === "rounds" && record.sourceId === current.sourceId &&
+          record.retryGroupId === current.retryGroupId && record.retryRound === current.retryRound + 1 &&
+          record.difficulty === current.difficulty && doesRetryCandidateMatchItemSource(record, item) &&
+          !usedProblemIds.has(record.recordId)) || null;
+      }
       const candidates = getProblemRecordsOnly()
+        .filter((record) => record.retryMode !== "rounds")
         .filter((record) => doesRetryCandidateMatchItemSource(record, item))
         .filter((record) => record.problemType !== PROBLEM_TYPE_TAIL)
         .filter((record) => record.passageKey === item.passageKey)
@@ -12715,7 +12820,7 @@
         const candidate = findNextRetryCandidateForItem(item, usedProblemIds);
         if (!candidate) {
           item.exhausted = true;
-          item.note = "남은 대체 문제가 없습니다.";
+          item.note = getRetryRecordById(item.problemRecordId)?.retryMode === "rounds" ? "다음 대응 차수가 없거나 3차까지 완료했습니다." : "남은 대체 문제가 없습니다.";
           exhaustedItems.push(item);
           return;
         }
@@ -12724,7 +12829,7 @@
       });
 
       if (!nextItems.length) {
-        throw new Error("오답 유형에 남은 대체 문제가 없습니다. 해당 지문/유형은 더 이상 반복 출제할 수 없습니다.");
+        throw new Error("다음 대응 문항이 없습니다. 차수형은 3차까지 완료했거나 다음 문항이 없고, 일반형은 남은 대체 문제가 없습니다.");
       }
 
       const nextRoundIndex = Number(previousRound.roundIndex || rounds.length) + 1;
@@ -12770,7 +12875,7 @@
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
       clearExamAnswerEditorState();
       state.schoolWorkflow.warnings = exhaustedItems.map((item) =>
-        `${item.passageLabel || item.passageKey} / ${item.typeLabel}: 남은 대체 문제가 없습니다.`
+        `${item.passageLabel || item.passageKey} / ${item.typeLabel}: ${item.note}`
       );
       elements.examObjectiveCountInput.value = String(state.examBuilder.slots.filter((slot) => slot.category === "objective").length);
       elements.examSubjectiveCountInput.value = String(state.examBuilder.slots.filter((slot) => slot.category === "subjective").length);
@@ -17800,6 +17905,7 @@
       if (elements.problemJsonInput) {
         elements.problemJsonInput.disabled = isBusy;
       }
+      if (elements.jsonRetryModeSelect) elements.jsonRetryModeSelect.disabled = isBusy;
       if (elements.librarySaveModeSelect) {
         elements.librarySaveModeSelect.disabled = isBusy;
       }
@@ -19822,9 +19928,9 @@
           elements.problemJsonInput.click();
         });
         elements.problemJsonInput.addEventListener("change", (event) => {
-          const file = event.target.files?.[0];
-          if (file) {
-            importAiProblemJsonFile(file).catch(handleError);
+          const files = Array.from(event.target.files || []);
+          if (files.length) {
+            importAiProblemJsonFile(files).catch(handleError);
           }
           event.target.value = "";
         });
