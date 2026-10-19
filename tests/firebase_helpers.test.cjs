@@ -33,6 +33,13 @@ function fakeDb(failAt = 0) {
   await helper.loadUserCatalog({collection:()=>users},{uid:'admin',adminScope:'all'},[]);assert.deepEqual(queries,['all']);
   for (const file of ['app/index.html','app/final_test.html']) {
     const app=load(file);
+    const messageFunction=file.endsWith('index.html')?'getFriendlyFirebaseAuthMessage':'getFriendlyFirebaseMessage';
+    for (const hostname of ['enoch413.github.io','localhost','127.0.0.1']) {
+      app.context.window={location:{hostname}};
+      const message=app.run(`${messageFunction}({code:"auth/unauthorized-domain"})`);
+      assert.ok(message.includes(`현재 도메인(${hostname})`));
+      assert.ok(message.includes(`domains에 ${hostname}을 추가`));
+    }
     app.run('normalizeFirebaseSchoolUserProfile = value => value');
     app.context.db={collection:()=>({doc:()=>({get:async()=>({id:'actual-uid',exists:true,data:()=>({uid:'forged-uid'})})})})};
     const profile=await app.run('fetchPdfLabFirebaseCurrentProfile(db,{uid:"actual-uid"})');

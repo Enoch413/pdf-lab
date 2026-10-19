@@ -1723,7 +1723,7 @@
         return "Firebase 공용 문제 라이브러리 권한이 없습니다. 관리자 계정으로 로그인해주세요.";
       }
       if (code.includes("unauthorized-domain")) {
-        return "현재 도메인이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 localhost와 127.0.0.1을 추가한 뒤 다시 시도해주세요.";
+        return `현재 도메인(${window.location.hostname})이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 ${window.location.hostname}을 추가한 뒤 다시 시도해주세요.`;
       }
       if (code.includes("popup-blocked")) {
         return "브라우저가 Google 로그인 팝업을 차단했습니다. 팝업을 허용한 뒤 다시 시도해주세요.";

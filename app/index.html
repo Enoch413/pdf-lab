@@ -7228,7 +7228,7 @@
     function getFriendlyFirebaseAuthMessage(error) {
       const code = String(error?.code || "");
       if (code.includes("unauthorized-domain")) {
-        return "현재 도메인이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 localhost와 127.0.0.1을 추가한 뒤 다시 시도해주세요.";
+        return `현재 도메인(${window.location.hostname})이 Firebase 승인 도메인에 없습니다. Firebase Console Authentication Authorized domains에 ${window.location.hostname}을 추가한 뒤 다시 시도해주세요.`;
       }
       if (code.includes("operation-not-supported-in-this-environment")) {
         return getPdfLabFirebaseAuthEnvironmentMessage() || "현재 브라우저 환경에서 Firebase 로그인을 사용할 수 없습니다. PDF LAB을 http://127.0.0.1:8762 주소로 열고, 이 사이트의 쿠키/사이트 데이터 저장을 허용한 뒤 새로고침해주세요.";
