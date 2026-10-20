@@ -32,4 +32,18 @@ EXE는 app/build_exe.ps1에서 하나의 spec 목록으로 빌드한다. 빌드 
 
 GitHub Pages는 현재 main 푸시로 자동 배포된다. 공개 검사 실행은 배포를 하지 않는다. analysis 변경을 main에 반영하는 작업은 배포 범위를 확인한 후 별도로 수행한다.
 
-17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·공통 화면 메뉴·실제 jsPDF 출력 검사까지 포함한다(12개 Node suite + 5개 Python test). Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. 운영 규칙 적용 결과와 검증 범위는 security/HARDENING_20261020.md의 운영 검증 기록을 확인한다. UI 통일 및 추가 검증은 docs/ui-unification.md에 기록한다.
+17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·공통 화면 메뉴·실제 jsPDF 출력 및 CODE LAB CHECK 계약 검사까지 포함한다(13개 Node suite + 5개 Python test). 기존 Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. 운영 규칙 적용 결과와 검증 범위는 security/HARDENING_20261020.md의 운영 검증 기록을 확인한다. UI 통일 및 추가 검증은 docs/ui-unification.md에 기록한다.
+
+## CODE LAB 새 권한 계약 — 로컬 호환 후보
+
+CHECK 업로드는 `accessSchemaVersion: 1`, 단일 `classIds`, `class/personal` 배정 방식을 루트와 payload에 맞춘다. 개인 대상은 Auth UID를 요구하고 업로드 전에 서버의 `users/{uid}` 문서 ID·활성 학생 상태·반 배정을 확인한다. 이름·이메일·로그인 ID는 권한 키로 대체하지 않는다. 기존 개인 `student` 형식은 업로드할 새 문서에서 `personal`로 정규화한다. 다중 반 초안은 학생과 교집합인 반마다 문서를 나누고 ID 충돌은 저장 전에 거부한다. 모든 초안과 대상 검증을 첫 쓰기 전에 마치지만, 여러 문서의 전송 자체는 원자적 트랜잭션이 아니므로 네트워크 실패 시 일부 업로드됐을 수 있다.
+
+제한 강사의 자료 쿼리는 검토 버전과 담당 반, 응답 쿼리는 CHECK ID와 담당 반을 서버에서 제한한다. 반은 30개씩 나누고 문서 ID로 중복 제거한다. 전체 관리자는 구형 자료 조회를 유지한다. 계정·권한 변경 후 늦은 결과는 가져오거나 반영하지 않는다. 구형 자료에 검토 표식을 일괄 추가하지 않으며 제한 강사가 구형 문서를 승격하는 요청은 새 서버 규칙에서 거부된다.
+
+인접한 최신 CODE LAB 체크아웃과 Java 21·Firebase CLI 15.34.0이 있는 PDF LAB 루트에서 새 계약 통합 검사를 실행한다:
+
+```powershell
+firebase emulators:exec --config "../CODE LAB/firebase.local.json" --project demo-codelab-reaudit --only firestore "node tests/check_contract_rules.test.cjs"
+```
+
+이 검사는 `127.0.0.1:8786`만 허용하고 실제 PDF LAB 함수와 합성 프로필·문서를 REST 어댑터로 연결한다. 인접 CODE LAB의 실제 자료 쿼리·정규화 함수로 배정 학생·강사·전체 관리자 조회, 비배정·비활성 거부도 확인한다. 앱 시작·CLI 로그인·운영 계정·DB를 사용하지 않는다. 실제 브라우저 Firebase SDK 검증과 구분한다. 기존 `security/firestore.rules`·`security/storage.rules` 및 배포 규칙 보존본은 변경하지 않았다. CODE LAB 새 규칙·인덱스와 두 앱을 함께 검토한 후 별도 승인으로 전환해야 하며, 이전 규칙 사본으로 덮어쓰면 안 된다. `checkResponses(checkSetId, classIds)` 및 `portalCheckSets(accessSchemaVersion, classIds)` 인덱스 준비는 에뮬레이터 통과만으로 확인되지 않는다.

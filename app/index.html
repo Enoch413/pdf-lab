@@ -624,7 +624,7 @@
   </div>
 
   <script src="./workspace_ui.js?v=20261020-1"></script>
-  <script src="./firebase_helpers.js"></script>
+  <script src="./firebase_helpers.js?v=20261020-check-contract-01"></script>
   <script src="./hanbujang_canonical.js"></script>
   <script src="./answer_editor.js"></script>
   <script src="./problem_page_layout.js"></script>
@@ -7050,6 +7050,7 @@
         email,
         studentId: normalizeProblemText(source?.studentId || loginId || ""),
         role: normalizeProblemText(source?.role || "student").toLowerCase() || "student",
+        loginDisabled: source?.loginDisabled === undefined ? false : source.loginDisabled,
         adminScope: normalizeProblemTypeToken(source?.adminScope || "").toLowerCase(),
         classIds: Array.from(new Set(
           (Array.isArray(source?.classIds) ? source.classIds : [])
@@ -7064,6 +7065,7 @@
       return JSON.stringify({
         uid: normalized.uid || "",
         role: normalized.role || "",
+        loginDisabled: normalized.loginDisabled,
         adminScope: normalized.adminScope || "",
         classIds: [...normalized.classIds].sort((left, right) => left.localeCompare(right, "ko"))
       });
@@ -12059,7 +12061,7 @@
         payload.targetStudentName,
         payload.targetStudentNames
       ].flat();
-      const checkSetId = normalizeProblemText(data.docId || data.id || payload.id || doc?.id || "");
+      const checkSetId = normalizeProblemText(doc?.id || data.docId || data.id || payload.id || "");
       const questionMappings = normalizeCheckSetQuestionMappings({
         ...data,
         checkSetId,
@@ -12174,9 +12176,11 @@
     async function syncStudentRetrySessionsFromFirebaseCheckSets(options = {}) {
       const { silent = true, force = false } = options;
       const bridge = state.firebaseSchoolBridge || {};
+      const profile = bridge.currentProfile;
+      const user = bridge.currentUser || bridge.auth?.currentUser;
       const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
       const student = getSelectedRetryStudent();
-      if (!student || !bridge.db || profileRole !== "admin") {
+      if (!student || !bridge.db || profileRole !== "admin" || profile.loginDisabled) {
         return { synced: false, imported: 0, created: 0, reason: "unavailable" };
       }
       const contextKey = getStudentRetrySessionSyncContextKey(student);
@@ -12190,11 +12194,16 @@
         return bridge.retrySessionSyncPromise;
       }
       const task = (async () => {
-        const snapshot = await bridge.db.collection("portalCheckSets").get();
+        const docs = await PDFLabFirebase.loadClassScopedDocs(bridge.db, "portalCheckSets", profile,
+          hasFirebaseAdminFullAccess(profile) ? [] : [["accessSchemaVersion", "==", 1]]);
+        if (state.firebaseSchoolBridge !== bridge || bridge.currentProfile !== profile ||
+          (bridge.currentUser || bridge.auth?.currentUser) !== user) {
+          return { synced: false, imported: 0, created: 0, reason: "account-changed" };
+        }
         const selectedSchoolKey = getStudentRetrySchoolKey();
         const selectedSourceKey = getStudentRetrySourceKey();
         const selectedSchool = getSelectedSchoolProfile();
-        const records = snapshot.docs
+        const records = docs
           .map((doc) => normalizePortalCheckSetDocForRetry(doc))
           .filter(Boolean)
           .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
@@ -12310,16 +12319,20 @@
     }
 
     async function fetchLatestCheckResponseForRetryRoundRecord(record, student) {
-      const db = state.firebaseSchoolBridge?.db;
+      const bridge = state.firebaseSchoolBridge || {};
+      const db = bridge.db;
+      const profile = bridge.currentProfile;
+      const user = bridge.currentUser || bridge.auth?.currentUser;
       const checkSetId = normalizeProblemText(record?.checkSetId || "");
       if (!db || typeof db.collection !== "function" || !checkSetId) {
         return null;
       }
-      const snapshot = await db.collection("checkResponses")
-        .where("checkSetId", "==", checkSetId)
-        .get();
-      const responses = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...(doc.data() || {}) }))
+      const docs = await PDFLabFirebase.loadClassScopedDocs(db, "checkResponses", profile,
+        [["checkSetId", "==", checkSetId]]);
+      if (state.firebaseSchoolBridge !== bridge || bridge.currentProfile !== profile ||
+        (bridge.currentUser || bridge.auth?.currentUser) !== user) return null;
+      const responses = docs
+        .map((doc) => ({ ...(doc.data() || {}), id: doc.id }))
         .filter((entry) => String(entry.role || "").toLowerCase() !== "admin")
         .filter((entry) => doesRetryStudentMatchCheckResponse(entry, student))
         .sort((left, right) => String(right.submittedAt || "").localeCompare(String(left.submittedAt || "")));
@@ -12342,6 +12355,10 @@
     async function syncSelectedStudentRetryResultsFromCheckResponses(options = {}) {
       const { silent = true, force = false } = options;
       const bridge = state.firebaseSchoolBridge || {};
+      const profile = bridge.currentProfile;
+      const user = bridge.currentUser || bridge.auth?.currentUser;
+      const isCurrent = () => state.firebaseSchoolBridge === bridge && bridge.currentProfile === profile &&
+        (bridge.currentUser || bridge.auth?.currentUser) === user;
       const profileRole = String(bridge.currentProfile?.role || "").toLowerCase();
       const session = getSelectedRetrySession();
       const student = getSelectedRetryStudent();
@@ -12364,6 +12381,7 @@
             continue;
           }
           const response = await fetchLatestCheckResponseForRetryRoundRecord(record, student);
+          if (!isCurrent()) return { synced: false, changed: false, reason: "account-changed" };
           if (!response) {
             continue;
           }
@@ -12386,6 +12404,7 @@
       })()
         .catch((error) => {
           console.warn("Failed to sync student retry results from CHECK responses", error);
+          if (!isCurrent()) return { synced: false, changed: false, reason: "account-changed" };
           if (!silent) {
             setStatus(`CHECK 제출 결과 자동 반영 실패: ${error?.message || "알 수 없는 오류"}`, "error", "오답유형");
           }
@@ -15174,78 +15193,87 @@
       const classIds = Array.isArray(fallbackClassIds) && fallbackClassIds.length
         ? fallbackClassIds
         : targetInfo.classIds;
-      return Array.from(new Set((Array.isArray(classIds) ? classIds : []).map((classId) => normalizeProblemText(classId)).filter(Boolean)));
+      return Array.from(new Set((Array.isArray(classIds) ? classIds : []).map((classId) => normalizeProblemText(classId)).filter(Boolean)))
+        .filter(classId => !targetInfo.classIds.length || targetInfo.classIds.includes(classId));
     }
 
     function buildPersonalExamCheckSetDrafts(baseDraft) {
       const retryContext = getCurrentStudentRetryDraftContext();
       const targetStudents = getCheckSetTargetStudentsForCurrentDraft(retryContext);
-      return targetStudents.map((student, index) => {
+      const drafts = targetStudents.flatMap((student, index) => {
         const targetInfo = getCheckSetTargetStudentInfo(student);
-        const personalId = buildPersonalCheckSetId(baseDraft.checkSetId, targetInfo, index);
-        const isRetryDraft = Boolean(retryContext?.student);
-        const title = baseDraft.title;
-        const description = [
-          baseDraft.description,
-          targetInfo.name ? `${targetInfo.name} 개인 CHECK` : "학생 개인 CHECK"
-        ].filter(Boolean).join(" · ");
-        const classIds = getPersonalCheckSetClassIds(targetInfo, baseDraft.classIds);
-        const sourceRound = baseDraft.sourceRound || (isRetryDraft
-          ? `round${baseDraft.studentRetryRoundIndex || 1}`
-          : "round1");
-        const targetStudentIds = Array.from(new Set([targetInfo.firebaseStudentId, targetInfo.firebaseLoginId].filter(Boolean)));
-        const exportPayload = {
-          ...baseDraft.exportPayload,
-          savedAt: new Date().toISOString(),
-          id: personalId,
-          title,
-          description,
-          classIds,
-          assignmentMode: "student",
-          targetUserIds: targetInfo.firebaseUid ? [targetInfo.firebaseUid] : [],
-          targetStudentIds,
-          targetEmails: targetInfo.firebaseEmail ? [targetInfo.firebaseEmail] : [],
-          targetStudentNames: targetInfo.name ? [targetInfo.name] : [],
-          targetStudentName: targetInfo.name || "",
-          targetStudentId: targetInfo.firebaseStudentId || targetInfo.firebaseLoginId || "",
-          targetLoginIds: targetInfo.firebaseLoginId ? [targetInfo.firebaseLoginId] : [],
-          source: baseDraft.source || "pdf-lab",
-          sourceBatchId: baseDraft.sourceBatchId || "",
-          sourceSetId: baseDraft.sourceSetId || "",
-          sourceRound,
-          createdByLab: baseDraft.createdByLab || "pdf-lab",
-          studentRetrySessionId: baseDraft.studentRetrySessionId || "",
-          studentRetrySessionName: baseDraft.studentRetrySessionName || "",
-          studentRetryStudentId: baseDraft.studentRetryStudentId || targetInfo.localStudentId || "",
-          studentRetryStudentName: baseDraft.studentRetryStudentName || targetInfo.name || "",
-          studentRetryRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
-          pdfLabStudentId: targetInfo.localStudentId,
-          pdfLabSessionId: baseDraft.studentRetrySessionId || "",
-          pdfLabSessionName: baseDraft.studentRetrySessionName || "",
-          pdfLabRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
-          questions: baseDraft.questions
-        };
-        return {
-          ...baseDraft,
-          title,
-          description,
-          checkSetId: personalId,
-          classIds,
-          assignmentMode: "student",
-          targetStudentLocalId: targetInfo.localStudentId,
-          targetStudentName: targetInfo.name || "",
-          targetFirebaseUid: targetInfo.firebaseUid,
-          targetFirebaseLoginId: targetInfo.firebaseLoginId,
-          targetFirebaseEmail: targetInfo.firebaseEmail,
-          targetFirebaseStudentId: targetInfo.firebaseStudentId,
-          source: baseDraft.source || "pdf-lab",
-          sourceBatchId: baseDraft.sourceBatchId || "",
-          sourceSetId: baseDraft.sourceSetId || "",
-          sourceRound,
-          createdByLab: baseDraft.createdByLab || "pdf-lab",
-          exportPayload
-        };
+        const assignedClassIds = getPersonalCheckSetClassIds(targetInfo, baseDraft.classIds);
+        if (!assignedClassIds.length) throw new Error("CHECK 대상 학생의 배정 반을 확인해 주세요.");
+        return assignedClassIds.map(classId => {
+          const personalId = buildPersonalCheckSetId(assignedClassIds.length > 1 ? `${baseDraft.checkSetId}-${classId}` : baseDraft.checkSetId, targetInfo, index);
+          const isRetryDraft = Boolean(retryContext?.student);
+          const title = baseDraft.title;
+          const description = [
+            baseDraft.description,
+            targetInfo.name ? `${targetInfo.name} 개인 CHECK` : "학생 개인 CHECK"
+          ].filter(Boolean).join(" · ");
+          const classIds = [classId];
+          const sourceRound = baseDraft.sourceRound || (isRetryDraft
+            ? `round${baseDraft.studentRetryRoundIndex || 1}`
+            : "round1");
+          const targetStudentIds = Array.from(new Set([targetInfo.firebaseStudentId, targetInfo.firebaseLoginId].filter(Boolean)));
+          const exportPayload = {
+            ...baseDraft.exportPayload,
+            savedAt: new Date().toISOString(),
+            id: personalId,
+            title,
+            description,
+            classIds,
+            assignmentMode: "personal",
+            targetUserIds: targetInfo.firebaseUid ? [targetInfo.firebaseUid] : [],
+            targetStudentIds,
+            targetEmails: targetInfo.firebaseEmail ? [targetInfo.firebaseEmail] : [],
+            targetStudentNames: targetInfo.name ? [targetInfo.name] : [],
+            targetStudentName: targetInfo.name || "",
+            targetStudentId: targetInfo.firebaseStudentId || targetInfo.firebaseLoginId || "",
+            targetLoginIds: targetInfo.firebaseLoginId ? [targetInfo.firebaseLoginId] : [],
+            source: baseDraft.source || "pdf-lab",
+            sourceBatchId: baseDraft.sourceBatchId || "",
+            sourceSetId: baseDraft.sourceSetId || "",
+            sourceRound,
+            createdByLab: baseDraft.createdByLab || "pdf-lab",
+            studentRetrySessionId: baseDraft.studentRetrySessionId || "",
+            studentRetrySessionName: baseDraft.studentRetrySessionName || "",
+            studentRetryStudentId: baseDraft.studentRetryStudentId || targetInfo.localStudentId || "",
+            studentRetryStudentName: baseDraft.studentRetryStudentName || targetInfo.name || "",
+            studentRetryRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
+            pdfLabStudentId: targetInfo.localStudentId,
+            pdfLabSessionId: baseDraft.studentRetrySessionId || "",
+            pdfLabSessionName: baseDraft.studentRetrySessionName || "",
+            pdfLabRoundIndex: baseDraft.studentRetryRoundIndex || (sourceRound === "round1" ? 1 : 0),
+            questions: baseDraft.questions
+          };
+          return {
+            ...baseDraft,
+            title,
+            description,
+            checkSetId: personalId,
+            classIds,
+            assignmentMode: "personal",
+            targetStudentLocalId: targetInfo.localStudentId,
+            targetStudentName: targetInfo.name || "",
+            targetFirebaseUid: targetInfo.firebaseUid,
+            targetFirebaseLoginId: targetInfo.firebaseLoginId,
+            targetFirebaseEmail: targetInfo.firebaseEmail,
+            targetFirebaseStudentId: targetInfo.firebaseStudentId,
+            source: baseDraft.source || "pdf-lab",
+            sourceBatchId: baseDraft.sourceBatchId || "",
+            sourceSetId: baseDraft.sourceSetId || "",
+            sourceRound,
+            createdByLab: baseDraft.createdByLab || "pdf-lab",
+            exportPayload
+          };
+        });
       });
+      if (new Set(drafts.map(draft => draft.checkSetId)).size !== drafts.length) {
+        throw new Error("반별 CHECK ID가 겹칩니다. 반을 나누어 저장해 주세요.");
+      }
+      return drafts;
     }
 
     function downloadExamCheckSetPayload(record) {
@@ -15368,17 +15396,35 @@
       if (!payload || !Array.isArray(payload.questions)) {
         throw new Error("CODE LAB에 업로드할 CHECK 세트 데이터가 없습니다.");
       }
+      const docId = normalizeProblemText(record.checkSetId || payload.id || "");
+      if (!docId || docId.includes("/")) throw new Error("CODE LAB CHECK 세트 ID가 올바르지 않습니다.");
       const questionMappings = normalizeCheckSetQuestionMappings(record);
+      const classIds = getCheckSetRecordClassIds(record);
+      if (classIds.length !== 1) throw new Error("CODE LAB 자료는 문서마다 하나의 반만 지정해야 합니다.");
+      const rawMode = normalizeProblemText(record.assignmentMode || payload.assignmentMode || "student");
+      const assignmentMode = rawMode === "student" ? "personal" : rawMode;
+      if (!["class", "personal"].includes(assignmentMode)) throw new Error("CHECK 배정 방식이 올바르지 않습니다.");
+      const payloadUids = Array.from(new Set((Array.isArray(payload.targetUserIds) ? payload.targetUserIds : [])
+        .map(uid => normalizeProblemText(uid)).filter(Boolean)));
+      const recordUid = normalizeProblemText(record.targetFirebaseUid || "");
+      if (recordUid && payloadUids.length && (payloadUids.length !== 1 || payloadUids[0] !== recordUid)) {
+        throw new Error("CHECK 대상 학생 UID가 서로 다릅니다. Firebase 학생을 다시 연결해 주세요.");
+      }
+      const targetUserIds = recordUid ? [recordUid] : payloadUids;
+      if (assignmentMode === "personal" && !targetUserIds.length) throw new Error("개인 CHECK에는 대상 학생의 Auth UID가 필요합니다. 이름만으로 배정할 수 없습니다.");
+      if (assignmentMode === "class" && targetUserIds.length) throw new Error("반 배정 CHECK에는 개인 대상 UID를 지정할 수 없습니다.");
       const payloadWithMappings = {
         ...payload,
+        id: docId,
+        accessSchemaVersion: 1,
+        classIds,
+        assignmentMode,
+        targetUserIds,
         questionMappings
       };
       const bridge = state.firebaseSchoolBridge || {};
       const user = bridge.currentUser || bridge.auth?.currentUser || null;
       const profile = bridge.currentProfile || {};
-      const targetUserIds = Array.isArray(payloadWithMappings.targetUserIds) && payloadWithMappings.targetUserIds.length
-        ? payloadWithMappings.targetUserIds
-        : (record?.targetFirebaseUid ? [record.targetFirebaseUid] : []);
       const targetStudentIds = Array.isArray(payloadWithMappings.targetStudentIds) && payloadWithMappings.targetStudentIds.length
         ? payloadWithMappings.targetStudentIds
         : Array.from(new Set([record?.targetFirebaseStudentId, record?.targetFirebaseLoginId].filter(Boolean)));
@@ -15405,22 +15451,19 @@
         ""
       );
       return {
-        docId: record.checkSetId,
+        docId,
+        accessSchemaVersion: 1,
         title: record.title || payloadWithMappings.title || "CHECK 세트",
         fileName: `${buildPortableCheckSetId(record.fileStem || record.checkSetId || payloadWithMappings.id || "pdflab-check-set")}.json`,
         payload: payloadWithMappings,
-        classIds: Array.from(new Set(
-          (Array.isArray(record.classIds) && record.classIds.length ? record.classIds : payloadWithMappings.classIds || [])
-            .map((classId) => normalizeProblemText(classId))
-            .filter(Boolean)
-        )),
+        classIds,
         schoolKey: record.schoolKey || payloadWithMappings.schoolKey || "",
         schoolName: record.schoolName || payloadWithMappings.schoolName || "",
         librarySourceKey: record.librarySourceKey || payloadWithMappings.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY,
         librarySourceName: record.librarySourceName || payloadWithMappings.librarySourceName || "",
         historyScope: record.historyScope || payloadWithMappings.historyScope || "",
         workflowMode: record.workflowMode || payloadWithMappings.workflowMode || "",
-        assignmentMode: payloadWithMappings.assignmentMode || record.assignmentMode || "student",
+        assignmentMode,
         targetUserIds,
         targetStudentIds,
         targetLoginIds,
@@ -15466,17 +15509,45 @@
       if (String(profile?.role || "").toLowerCase() !== "admin") {
         return { uploaded: 0, skipped: rows.length, reason: "관리자 계정 필요" };
       }
+      if (profile.loginDisabled !== undefined && profile.loginDisabled !== false) {
+        throw new Error("비활성 계정은 CHECK 자료를 업로드할 수 없습니다.");
+      }
 
       const uploadedAtIso = new Date().toISOString();
-      for (const record of rows) {
-        const docId = normalizeProblemText(record.checkSetId || record.exportPayload?.id || "");
-        if (!docId) {
-          throw new Error("CODE LAB에 업로드할 CHECK 세트 ID가 비어 있습니다.");
+      const prepared = rows.map(record => {
+        const data = buildCodeLabPortalCheckSetDoc(record, uploadedAtIso);
+        const docId = data.docId;
+        if (!hasFirebaseAdminFullAccess(profile) && !getFirebaseAccessibleClassIds(profile).includes(data.classIds[0])) {
+          throw new Error("담당 반의 CHECK 자료만 업로드할 수 있습니다.");
         }
-        await db.collection("portalCheckSets").doc(docId).set(
-          buildCodeLabPortalCheckSetDoc(record, uploadedAtIso),
-          { merge: true }
-        );
+        return { docId, data };
+      });
+      if (new Set(prepared.map(item => item.docId)).size !== prepared.length) throw new Error("업로드할 CHECK 세트 ID가 중복됩니다.");
+      const isCurrent = () => state.firebaseSchoolBridge === bridge && bridge.db === db &&
+        (bridge.currentUser || bridge.auth?.currentUser) === user && bridge.currentProfile === profile;
+      const targets = new Map();
+      for (const { data } of prepared) {
+        for (const uid of data.targetUserIds) {
+          if (uid.includes("/")) throw new Error("대상 학생의 Auth UID가 올바르지 않습니다.");
+          if (!targets.has(uid)) {
+            const snapshot = await db.collection("users").doc(uid).get({ source: "server" });
+            if (!isCurrent()) throw new Error("로그인 또는 권한이 변경되었습니다. 다시 시도해 주세요.");
+            if (!snapshot.exists || snapshot.id !== uid || snapshot.metadata?.fromCache || snapshot.metadata?.hasPendingWrites) {
+              throw new Error("대상 학생의 Firebase 프로필을 서버에서 확인하지 못했습니다.");
+            }
+            targets.set(uid, snapshot.data() || {});
+          }
+          const target = targets.get(uid);
+          if ((target.role || "student") !== "student" ||
+            (target.loginDisabled !== undefined && target.loginDisabled !== false) ||
+            !(Array.isArray(target.classIds) && target.classIds.includes(data.classIds[0]))) {
+            throw new Error("대상 학생의 활성 상태와 배정 반을 확인해 주세요.");
+          }
+        }
+      }
+      for (const { docId, data } of prepared) {
+        if (!isCurrent()) throw new Error("로그인 또는 권한이 변경되었습니다. 다시 시도해 주세요.");
+        await db.collection("portalCheckSets").doc(docId).set(data, { merge: true });
       }
       return { uploaded: rows.length, skipped: 0, reason: "" };
     }

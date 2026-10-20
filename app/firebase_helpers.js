@@ -35,5 +35,19 @@
     if (count) { await batch.commit(); committed += count; }
     return committed;
   }
-  root.PDFLabFirebase = { loadUserCatalog, commitOperations };
+  async function loadClassScopedDocs(db, collectionName, profile = {}, filters = []) {
+    if (profile.role !== "admin" || (profile.loginDisabled !== undefined && profile.loginDisabled !== false)) return [];
+    let query = db.collection(collectionName);
+    for (const filter of filters) query = query.where(...filter);
+    if (profile.adminScope === "all") return (await query.get({ source: "server" })).docs;
+    const ids = [...new Set((Array.isArray(profile.classIds) ? profile.classIds : [])
+      .filter(id => typeof id === "string" && id.trim()).map(id => id.trim()))];
+    const docs = new Map();
+    for (let start = 0; start < ids.length; start += 30) {
+      const snapshot = await query.where("classIds", "array-contains-any", ids.slice(start, start + 30)).get({ source: "server" });
+      snapshot.docs.forEach(doc => docs.set(doc.id, doc));
+    }
+    return [...docs.values()];
+  }
+  root.PDFLabFirebase = { loadUserCatalog, commitOperations, loadClassScopedDocs };
 })(typeof window !== "undefined" ? window : globalThis);
