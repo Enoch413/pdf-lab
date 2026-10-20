@@ -217,6 +217,9 @@
   }
   .pdflab-workspace .school-section-header { align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
   .pdflab-workspace .school-section-header .panel-title { margin-bottom: 0; }
+  .pdflab-workspace .panel-card-spaced { display: grid; gap: 16px; }
+  .pdflab-workspace .panel-card-spaced > :is(.panel-title, .compact-field-grid, .single-action-row, .school-chip-list) { margin-block: 0; }
+  .pdflab-workspace .panel-card-spaced > .school-chip-list:empty { display: none; }
   .pdflab-workspace :is(.field-grid, .control-stack) { gap: 16px; }
   .pdflab-workspace :is(.field-row, .field) { min-width: 0; gap: 8px; }
   .pdflab-workspace :is(.field-label, .field > span, .check-row span, .json-picker strong, .type-filter legend) {
@@ -264,6 +267,7 @@
   .pdflab-workspace :is(.toggle-input, .check-row input, .type-filter-option input) { accent-color: var(--ui-accent); }
   .pdflab-workspace :is(.check-row, .type-filter-option) { min-height: 44px; }
   .pdflab-workspace .type-filter-option { color: var(--ui-ink); font: 400 14px/1.5 var(--ui-font); }
+  .pdflab-workspace .type-filter-options:not(:has(> .type-filter-option)) { display: block; }
   .pdflab-workspace .general2-title-row { margin-bottom: 16px; }
   .pdflab-workspace .general2-title-row h2 { margin: 0; }
   .pdflab-workspace .general2-count { background: var(--ui-accent-soft); color: var(--ui-accent); font: 600 13px/1.5 var(--ui-font); }
