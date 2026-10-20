@@ -14,7 +14,7 @@ for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/worksp
   new vm.Script(fs.readFileSync(file,'utf8'), {filename:file});
 }
 console.log('PASS: authored JavaScript syntax');
-for (const file of ['dependency_integrity', 'firebase_helpers', 'check_contract', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui', 'workspace_shell',
+for (const file of ['dependency_integrity', 'firebase_helpers', 'check_contract', 'check_response_retry', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui', 'workspace_shell',
   'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'jspdf_output']) {
   const result = spawnSync(process.execPath, [`tests/${file}.test.cjs`], { stdio: 'inherit' });
   if (result.error) throw result.error;

@@ -12285,28 +12285,37 @@
         .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0));
     }
 
-    function getRetryRoundWrongProblemIdsFromCheckResponse(record = {}, response = {}) {
-      const mappingByQuestionId = new Map(
-        normalizeCheckSetQuestionMappings(record)
-          .map((mapping) => [String(mapping?.questionId || ""), String(mapping?.problemRecordId || "")])
-          .filter(([questionId, problemRecordId]) => Boolean(questionId) && Boolean(problemRecordId))
-      );
-      return new Set(
-        (Array.isArray(response.answers) ? response.answers : [])
-          .filter((answer) => answer?.isCorrect === false)
-          .map((answer) => mappingByQuestionId.get(String(answer?.questionId || answer?.id || "")) || "")
-          .filter(Boolean)
-      );
+    function getRetryRoundResultsFromCheckResponse(record = {}, response = {}) {
+      const questions = new Map(), problems = new Map(), answers = new Map();
+      normalizeCheckSetQuestionMappings(record).forEach(({ questionId, problemRecordId }) => {
+        if (!questions.has(questionId)) questions.set(questionId, new Set());
+        questions.get(questionId).add(problemRecordId);
+        if (!problems.has(problemRecordId)) problems.set(problemRecordId, new Set());
+        problems.get(problemRecordId).add(questionId);
+      });
+      (Array.isArray(response.answers) ? response.answers : []).forEach(answer => {
+        const id = String(answer?.questionId || answer?.id || "");
+        const grade = typeof answer?.isCorrect === "boolean" ? answer.isCorrect : undefined;
+        answers.set(id, answers.has(id) && answers.get(id) !== grade ? undefined : grade);
+      });
+      const results = new Map();
+      problems.forEach((ids, problemId) => {
+        const grades = [...ids].map(id => questions.get(id).size === 1 ? answers.get(id) : undefined);
+        if (grades.includes(false)) results.set(problemId, "wrong");
+        else if (grades.every(grade => grade === true)) results.set(problemId, "correct");
+      });
+      return results;
     }
 
     function applyCheckResponseToRetryRound(round, record, response) {
       if (!round || !record || !response) {
         return false;
       }
-      const wrongProblemIds = getRetryRoundWrongProblemIdsFromCheckResponse(record, response);
+      const results = getRetryRoundResultsFromCheckResponse(record, response);
       let changed = false;
       (Array.isArray(round.items) ? round.items : []).forEach((item) => {
-        const nextResult = wrongProblemIds.has(String(item.problemRecordId || "")) ? "wrong" : "correct";
+        const nextResult = results.get(String(item.problemRecordId || ""));
+        if (!nextResult) return;
         if (item.result !== nextResult) {
           item.result = nextResult;
           changed = true;

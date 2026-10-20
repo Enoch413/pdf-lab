@@ -105,6 +105,16 @@ context.source = { sourceId: 'source', librarySourceKey: 'neoreunteo', textbookN
   context.studentState.rounds[2].items[0].result = 'wrong';
   assert.throws(() => run('generateNextStudentRetryRound()'), /3차까지/);
   assert.equal(context.studentState.rounds.length, 3, 'No fourth round is created');
+  for (const corrected of [false, true]) {
+    context.studentState = { rounds: [{ roundIndex: 1, items: ['r0', 'r3'].map(problemRecordId =>
+      ({ problemRecordId, passageKey: 'passage', typeLabel: '내용', result: 'wrong' })) }] };
+    context.checkRecord = { questionMappings: [{ questionId: 'q1', problemRecordId: 'r0' }, { questionId: 'q2', problemRecordId: 'r3' }] };
+    context.checkResponse = { answers: [{ questionId: 'q1', isCorrect: corrected }] };
+    run('applyCheckResponseToRetryRound(studentState.rounds[0], checkRecord, checkResponse)');
+    run('generateNextStudentRetryRound()');
+    assert.deepEqual(Array.from(context.studentState.rounds[1].items, p => p.problemRecordId), corrected ? ['r4'] : ['r1', 'r4'],
+      'A missing CHECK answer retains its actual paired second-round problem');
+  }
   if (process.env.PDFLAB_JSON_CHECK_DIR) {
     let count = 0;
     const entries = [];

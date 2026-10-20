@@ -32,7 +32,7 @@ EXE는 app/build_exe.ps1에서 하나의 spec 목록으로 빌드한다. 빌드 
 
 GitHub Pages는 현재 main 푸시로 자동 배포된다. 공개 검사 실행은 배포를 하지 않는다. analysis 변경을 main에 반영하는 작업은 배포 범위를 확인한 후 별도로 수행한다.
 
-17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·공통 화면 메뉴·실제 jsPDF 출력 및 CODE LAB CHECK 계약 검사까지 포함한다(13개 Node suite + 5개 Python test). 기존 Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. 운영 규칙 적용 결과와 검증 범위는 security/HARDENING_20261020.md의 운영 검증 기록을 확인한다. UI 통일 및 추가 검증은 docs/ui-unification.md에 기록한다.
+17~20번 이후 보안 검증은 security/README.md와 security/HARDENING_20261020.md를 따른다. 공개 runner는 vendor 해시·CDN SRI·범위별 users 쿼리·대량 batch·공통 답안 파서·공통 화면 메뉴·실제 jsPDF 출력 및 CODE LAB CHECK 계약·부분 제출 회귀까지 포함한다(14개 Node suite + 5개 Python test). 기존 Firebase 인가와 실제 SDK/앱 저장 흐름은 demo 프로젝트의 Firestore/Storage emulator에서 별도로 실행하며, 격리된 테스트 SDK와 CODE LAB 소스가 필요하다. 운영 규칙 적용 결과와 검증 범위는 security/HARDENING_20261020.md의 운영 검증 기록을 확인한다. UI 통일 및 추가 검증은 docs/ui-unification.md에 기록한다.
 
 ## CODE LAB 새 권한 계약 — 로컬 호환 후보
 
@@ -43,7 +43,9 @@ CHECK 업로드는 `accessSchemaVersion: 1`, 단일 `classIds`, `class/personal`
 인접한 최신 CODE LAB 체크아웃과 Java 21·Firebase CLI 15.34.0이 있는 PDF LAB 루트에서 새 계약 통합 검사를 실행한다:
 
 ```powershell
-firebase emulators:exec --config "../CODE LAB/firebase.local.json" --project demo-codelab-reaudit --only firestore "node tests/check_contract_rules.test.cjs"
+node "../CODE LAB/tools/firebase-cli/node_modules/firebase-tools/lib/bin/firebase.js" emulators:exec --config "../CODE LAB/firebase.local.json" --project demo-codelab-reaudit --only firestore "node tests/check_contract_rules.test.cjs"
 ```
 
 이 검사는 `127.0.0.1:8786`만 허용하고 실제 PDF LAB 함수와 합성 프로필·문서를 REST 어댑터로 연결한다. 인접 CODE LAB의 실제 자료 쿼리·정규화 함수로 배정 학생·강사·전체 관리자 조회, 비배정·비활성 거부도 확인한다. 앱 시작·CLI 로그인·운영 계정·DB를 사용하지 않는다. 실제 브라우저 Firebase SDK 검증과 구분한다. 기존 `security/firestore.rules`·`security/storage.rules` 및 배포 규칙 보존본은 변경하지 않았다. CODE LAB 새 규칙·인덱스와 두 앱을 함께 검토한 후 별도 승인으로 전환해야 하며, 이전 규칙 사본으로 덮어쓰면 안 된다. `checkResponses(checkSetId, classIds)` 및 `portalCheckSets(accessSchemaVersion, classIds)` 인덱스 준비는 에뮬레이터 통과만으로 확인되지 않는다.
+
+CHECK 응답에서 실제 매핑되고 boolean으로 채점된 문항만 오답 차수에 반영한다. 누락·미채점·매핑 실패·상충하는 중복 답안은 이전 결과를 유지한다. 한 원문항에 여러 문항이 매핑되면 명시적 오답이 하나라도 있을 때 틀림이며, 모두 명시적 정답일 때만 맞음으로 바꾼다. 부분 제출·답 수정 이후 실제 2차 오답 생성 입력에 누락된 기존 오답이 남는지도 `check_response_retry.test.cjs`에서 확인한다. 기존 자기 채점·화면 디자인은 유지한다.
