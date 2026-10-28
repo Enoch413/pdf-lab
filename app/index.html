@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./pdf_problem_template_repacker.css?v=20261020-1">
-  <link rel="stylesheet" href="./workspace_shell.css?v=20261020-2">
+  <link rel="stylesheet" href="./workspace_shell.css?v=20261028-1">
 </head>
 <body data-lab-page="exam" data-lab-root="../">
   <div class="app-page-shell">
@@ -623,7 +623,8 @@
     </section>
   </div>
 
-  <script src="./workspace_ui.js?v=20261020-1"></script>
+  <script src="./workspace_ui.js?v=20261028-1"></script>
+  <script>PDFLabWorkspaceUI.startup = PDFLabWorkspaceUI.prepareStartup();</script>
   <script src="./firebase_helpers.js?v=20261020-check-contract-01"></script>
   <script src="./hanbujang_canonical.js"></script>
   <script src="./answer_editor.js"></script>
@@ -6654,12 +6655,12 @@
       if (!canUseFirebaseStudentRetryStorage() || !ownerUid) {
         return { loaded: false, hasRemote: false, reason: "unavailable" };
       }
-      const [prefDoc, studentSnapshot, sessionSnapshot, studentStateSnapshot] = await Promise.all([
+      const [prefDoc, studentSnapshot, sessionSnapshot, studentStateSnapshot] = await PDFLabWorkspaceUI.readWithTimeout(Promise.all([
         db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(ownerUid).get(),
         db.collection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION).where("ownerUid", "==", ownerUid).get(),
         db.collection(FIREBASE_STUDENT_RETRY_SESSION_COLLECTION).where("ownerUid", "==", ownerUid).get(),
         db.collection(FIREBASE_STUDENT_RETRY_STATE_COLLECTION).where("ownerUid", "==", ownerUid).get()
-      ]);
+      ]), "오답 상태 조회");
       const pref = prefDoc.exists ? stripFirebaseOwnerFields(prefDoc.data() || {}) : {};
       const students = studentSnapshot.docs.map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }));
       const sessions = sessionSnapshot.docs.map((doc) => ({
@@ -6782,11 +6783,11 @@
         return { examSets: [], examItems: [], savedWorks: [] };
       }
       try {
-        const [examSnapshot, itemSnapshot, workSnapshot] = await Promise.all([
+        const [examSnapshot, itemSnapshot, workSnapshot] = await PDFLabWorkspaceUI.readWithTimeout(Promise.all([
           db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION).where("ownerUid", "==", ownerUid).get(),
           db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION).where("ownerUid", "==", ownerUid).get(),
           db.collection(FIREBASE_STUDENT_RETRY_WORK_COLLECTION).where("ownerUid", "==", ownerUid).get()
-        ]);
+        ]), "출제 이력 조회");
         return {
           examSets: examSnapshot.docs
             .map((doc) => stripFirebaseOwnerFields({ docKey: doc.id, ...(doc.data() || {}) }))
@@ -6801,7 +6802,8 @@
       } catch (error) {
         bridge.retryStateSyncError = error?.message || "Firebase 오답 출력 이력을 불러오지 못했습니다.";
         console.warn("Failed to load Firebase student retry operational snapshot", error);
-        return { examSets: [], examItems: [], savedWorks: [] };
+        // A failed read must not replace existing history with an authoritative empty set.
+        throw error;
       }
     }
 
@@ -7738,10 +7740,10 @@
         return null;
       }
       try {
-        const [importsSnapshot, problemSnapshot] = await Promise.all([
+        const [importsSnapshot, problemSnapshot] = await PDFLabWorkspaceUI.readWithTimeout(Promise.all([
           state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_IMPORT_COLLECTION).get(),
           state.firebaseSchoolBridge.db.collection(FIREBASE_SHARED_LIBRARY_PROBLEM_COLLECTION).get()
-        ]);
+        ]), "공용 문제 라이브러리 조회");
         const imports = importsSnapshot.docs.map((doc) => normalizeSharedFirebaseImportRecord(doc.data(), doc.id));
         const problemRecords = problemSnapshot.docs.map((doc) => normalizeSharedFirebaseProblemRecord(doc.data(), doc.id));
         state.firebaseSchoolBridge.sharedLibraryEnabled = true;
@@ -7930,7 +7932,7 @@
       if (!db || !user?.uid) {
         return null;
       }
-      const snapshot = await db.collection("users").doc(user.uid).get();
+      const snapshot = await PDFLabWorkspaceUI.readWithTimeout(db.collection("users").doc(user.uid).get(), "계정 프로필 조회");
       if (!snapshot.exists) {
         return normalizeFirebaseSchoolUserProfile({ uid: user.uid, name: user.displayName || "", role: "student", classIds: [] });
       }
@@ -8390,7 +8392,7 @@
       if (!user || !bridge.db) {
         return false;
       }
-      const snapshot = await bridge.db.collection("portalContent").doc("exam-state").get();
+      const snapshot = await PDFLabWorkspaceUI.readWithTimeout(bridge.db.collection("portalContent").doc("exam-state").get(), "CODE LAB 초기화 상태 조회");
       const payload = snapshot.exists && snapshot.data() && typeof snapshot.data().payload === "object"
         ? snapshot.data().payload
         : null;
@@ -8500,7 +8502,7 @@
       updateExamCheckSetSummary();
     }
 
-    async function syncSchoolCatalogFromFirebase(forceRefresh = false) {
+    async function syncSchoolCatalogFromFirebase(forceRefresh = false, options = {}) {
       if (!isPdfLabFirebaseConfigured()) {
         clearStudentRetryCheckResponseSyncTimer();
         clearFirebaseProfileWatcher();
@@ -8546,7 +8548,7 @@
         let users = currentProfile ? [currentProfile] : [];
         if (currentProfile?.role === "admin") {
           try {
-            const docs = await PDFLabFirebase.loadUserCatalog(state.firebaseSchoolBridge.db, currentProfile, getFirebaseAccessibleClassIds(currentProfile));
+            const docs = await PDFLabWorkspaceUI.readWithTimeout(PDFLabFirebase.loadUserCatalog(state.firebaseSchoolBridge.db, currentProfile, getFirebaseAccessibleClassIds(currentProfile)), "반·학생 목록 조회");
             users = docs.map((doc) => normalizeFirebaseSchoolUserProfile({ ...(doc.data() || {}), uid: doc.id }));
           } catch (error) {
             console.warn("Firebase users read fallback", error);
@@ -8598,7 +8600,7 @@
         }
         try {
           await syncStudentRetryStateFromFirebase({ silent: true, force: forceRefresh });
-          await refreshLibrarySummary({ loadShared: false });
+          if (options.refreshSummary !== false) await refreshLibrarySummary({ loadShared: false });
         } catch (error) {
           console.warn("Failed to sync Firebase student retry state", error);
         }
@@ -9127,10 +9129,10 @@
     }
 
     function idbRequestToPromise(request) {
-      return new Promise((resolve, reject) => {
+      return PDFLabWorkspaceUI.readWithTimeout(new Promise((resolve, reject) => {
         request.addEventListener("success", () => resolve(request.result));
         request.addEventListener("error", () => reject(request.error || new Error("IndexedDB request failed.")));
-      });
+      }), "브라우저 저장소 조회");
     }
 
     function idbTransactionDone(transaction) {
@@ -9147,7 +9149,17 @@
       }
       libraryDbPromise = new Promise((resolve, reject) => {
         const request = window.indexedDB.open(LIBRARY_DB_NAME, LIBRARY_DB_VERSION);
+        let expired = false;
+        const fail = (error) => {
+          expired = true;
+          window.clearTimeout(timer);
+          try { request.transaction?.abort(); } catch (_) { /* Already completed. */ }
+          reject(error);
+        };
+        const timer = window.setTimeout(() => fail(new Error("브라우저 저장소가 응답하지 않습니다. 다른 PDF LAB 탭을 닫고 다시 불러와 주세요. 저장된 데이터는 삭제하지 마세요.")), 15000);
+        request.addEventListener("blocked", () => fail(new Error("다른 PDF LAB 탭이 저장소 갱신을 막고 있습니다. 다른 탭을 닫고 다시 불러와 주세요.")));
         request.addEventListener("upgradeneeded", () => {
+          if (expired) { request.transaction.abort(); return; }
           const db = request.result;
           const importStore = db.objectStoreNames.contains(LIBRARY_IMPORT_STORE)
             ? request.transaction.objectStore(LIBRARY_IMPORT_STORE)
@@ -9256,9 +9268,15 @@
             });
           }
         });
-        request.addEventListener("success", () => resolve(request.result));
-        request.addEventListener("error", () => reject(request.error || new Error("문제 라이브러리 데이터베이스를 열지 못했습니다.")));
-      });
+        request.addEventListener("success", () => {
+          window.clearTimeout(timer);
+          const db = request.result;
+          if (expired) { db.close(); return; }
+          db.addEventListener("versionchange", () => { db.close(); libraryDbPromise = null; });
+          resolve(db);
+        });
+        request.addEventListener("error", () => fail(request.error || new Error("문제 라이브러리 데이터베이스를 열지 못했습니다.")));
+      }).catch(error => { libraryDbPromise = null; throw error; });
       return libraryDbPromise;
     }
 
@@ -10339,7 +10357,7 @@
       if (!state.libraryDirectoryHandle || state.libraryDirectoryPermission !== "granted") {
         return;
       }
-      const snapshot = await readLibrarySnapshotFromDirectory(state.libraryDirectoryHandle);
+      const snapshot = await PDFLabWorkspaceUI.readWithTimeout(readLibrarySnapshotFromDirectory(state.libraryDirectoryHandle), "연결 폴더 읽기");
       if (!hasLibrarySnapshotData(snapshot)) {
         return;
       }
@@ -19815,12 +19833,31 @@
       }
     }
 
+    async function initializeWorkspaceData(report) {
+      report("브라우저 저장 설정을 불러오고 있습니다.");
+      await initializeLibrarySaveModeSetting();
+      await initializeLibraryExtractionModeSetting();
+      report("연결된 폴더와 로컬 라이브러리를 확인하고 있습니다.");
+      await initializeLibraryFolderStorage();
+      report("로그인과 반·학생 정보를 확인하고 있습니다.");
+      await syncSchoolCatalogFromFirebase(false, { refreshSummary: false });
+      state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
+      applySchoolWorkflowSnapshot(captureSchoolWorkflowSnapshot());
+      report("문제 라이브러리와 출제 이력을 불러오고 있습니다.");
+      await refreshLibrarySummary();
+      renderLibraryTextEditor();
+      const bridge = state.firebaseSchoolBridge;
+      const errors = bridge.auth?.currentUser
+        ? [bridge.sharedLibraryError, bridge.retryStateSyncError, bridge.syncError]
+        : [];
+      return [...new Set(errors.filter(Boolean))].join(" · ");
+    }
+
     async function wireEvents() {
+      setActiveTab(state.workspaceMode === WORKSPACE_MODE_LIBRARY ? "repack" : "exam");
       applyStoredLogoSettings();
       applySettingsToUi();
       updateLogoUi();
-      await initializeLibrarySaveModeSetting();
-      await initializeLibraryExtractionModeSetting();
       updateWorkspaceNavigationUi();
       updateLibraryStorageUi();
       updateLibraryExtractionModeUi();
@@ -19842,15 +19879,11 @@
       populateStoredTextbookOptions();
       syncTextbookModeUi();
       updateLoadedFileLabel();
-      await initializeLibraryFolderStorage();
-      await syncSchoolCatalogFromFirebase();
       state.schoolWorkflow.selectedSchoolKey = ensureSelectedSchoolProfile();
       applySchoolWorkflowSnapshot(captureSchoolWorkflowSnapshot());
       renderExamLibraryList();
       renderExamHistoryList();
       renderExamSlots();
-      setActiveTab(state.workspaceMode === WORKSPACE_MODE_LIBRARY ? "repack" : "exam");
-      await refreshLibrarySummary();
       renderLibraryTextEditor();
       elements.repackTabButton.addEventListener("click", () => {
         setActiveTab("repack");
@@ -20886,14 +20919,14 @@
             { element: document.getElementById("examAnswerEditorRoot"), close: () => closeExamAnswerEditor() }
           ]
         });
-        elements.statusBar.setAttribute("role", "status");
-        elements.statusBar.setAttribute("aria-atomic", "true");
-        elements.statusBar.classList.add("workspace-status");
-        document.querySelector(".workspace-status-slot").replaceChildren(elements.statusBar);
-        if (elements.statusBar.dataset.tone === "idle") elements.statusCopy.textContent = state.workspaceMode === WORKSPACE_MODE_LIBRARY ? "JSON을 불러와 문항을 검토한 뒤 라이브러리에 저장하세요." : "반·출제 규칙을 설정한 뒤 지문과 유형을 선택하세요.";
         document.body.dataset.appReady = "true";
+        return PDFLabWorkspaceUI.startup.run(initializeWorkspaceData, {
+          setBusy,
+          onLoaded: () => state.workspaceUi.markSaved(),
+          readyMessage: state.workspaceMode === WORKSPACE_MODE_LIBRARY ? "JSON을 불러와 문항을 검토한 뒤 라이브러리에 저장하세요." : "반·출제 규칙을 설정한 뒤 지문과 유형을 선택하세요."
+        });
       })
-      .catch(handleError);
+      .catch(error => PDFLabWorkspaceUI.startup.fail(error));
   </script>
 </body>
 </html>

@@ -5,8 +5,8 @@ const vm = require('node:vm');
 module.exports = function loadApp(file = 'app/index.html', globals = {}) {
   const root = path.resolve(__dirname, '..');
   const html = fs.readFileSync(path.join(root, file), 'utf8');
-  const context = vm.createContext({ console, TextEncoder, ...globals });
-  for (const script of ['app/hanbujang_canonical.js', 'app/solbook_text_renderer.js', 'app/answer_editor.js', 'app/firebase_helpers.js']) {
+  const context = vm.createContext({ console, TextEncoder, setTimeout, clearTimeout, ...globals });
+  for (const script of ['app/hanbujang_canonical.js', 'app/solbook_text_renderer.js', 'app/answer_editor.js', 'app/firebase_helpers.js', 'app/workspace_ui.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, script), 'utf8'), context);
   }
   vm.runInContext([...html.matchAll(/^    (?:async )?function \w+\([^]*?^    }\r?$/gm)].map(m => m[0]).join('\n'), context);

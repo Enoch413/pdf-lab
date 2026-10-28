@@ -1,5 +1,85 @@
 (function (root) {
   'use strict';
+  // Only wrap reads: a late response must not apply state after its caller has timed out.
+  function readWithTimeout(promise, label, timeoutMs = 15000) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = root.setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다. 연결을 확인한 뒤 다시 불러와 주세요.`)), timeoutMs);
+      })
+    ]).finally(() => root.clearTimeout(timer));
+  }
+
+  function prepareStartup() {
+    const panels = [...document.querySelectorAll('.tab-panel')];
+    const library = document.body.dataset.uiPage === 'library';
+    for (const panel of panels) {
+      const active = panel.id === (library ? 'repackTabPanel' : 'examBuilderTabPanel');
+      panel.hidden = !active;
+      panel.classList.toggle('is-active', active);
+      panel.inert = true;
+      panel.setAttribute('aria-busy', 'true');
+    }
+    const bar = document.getElementById('statusBar');
+    const copy = document.getElementById('statusCopy');
+    const pill = document.getElementById('statsPill');
+    bar.classList.add('workspace-status');
+    bar.setAttribute('role', 'status');
+    bar.setAttribute('aria-atomic', 'true');
+    document.querySelector('.workspace-status-slot').replaceChildren(bar);
+    const retry = document.createElement('button');
+    retry.id = 'startupRetryButton';
+    retry.type = 'button';
+    retry.className = 'ghost-button';
+    retry.textContent = '다시 불러오기';
+    retry.hidden = true;
+    retry.addEventListener('click', () => root.location.reload());
+    bar.append(retry);
+    let timer;
+    function show(message, tone, badge) {
+      copy.textContent = message;
+      bar.dataset.tone = tone;
+      pill.textContent = badge;
+    }
+    function stage(label) {
+      root.clearTimeout(timer);
+      retry.hidden = true;
+      show(label, 'working', '불러오는 중');
+      timer = root.setTimeout(() => {
+        show(`${label} 지연되고 있습니다. 연결을 확인하고, 다른 PDF LAB 탭을 닫은 뒤 다시 불러와 주세요.`, 'error', '연결 확인');
+        retry.hidden = false;
+      }, 15000);
+    }
+    stage('화면 기능을 불러오고 있습니다.');
+    return {
+      fail(error) {
+        root.clearTimeout(timer);
+        document.body.dataset.dataReady = 'error';
+        show(error?.message || '화면을 초기화하지 못했습니다. 다시 불러와 주세요.', 'error', '불러오기 실패');
+        retry.hidden = false;
+      },
+      async run(load, { setBusy, onLoaded, readyMessage }) {
+        document.body.dataset.dataReady = 'loading';
+        setBusy(true);
+        try {
+          const warning = await load(stage);
+          onLoaded();
+          document.body.dataset.dataReady = 'true';
+          for (const panel of panels) panel.inert = false;
+          show(warning || readyMessage, warning ? 'error' : 'idle', warning ? '일부 조회 실패' : '준비됨');
+          retry.hidden = !warning;
+        } catch (error) {
+          console.error('Workspace data initialization failed', error);
+          this.fail(error);
+        } finally {
+          root.clearTimeout(timer);
+          panels.forEach(panel => panel.setAttribute('aria-busy', 'false'));
+          setBusy(false);
+        }
+      }
+    };
+  }
   function install({ signature, editorDirty, dialogs }) {
     let baseline = signature();
     let leaving = false;
@@ -53,5 +133,5 @@
     }
     return { confirmDiscard, dirty, markSaved(scope) { baseline = scope ? { ...baseline, [scope]: signature()[scope] } : signature(); } };
   }
-  root.PDFLabWorkspaceUI = { install };
-})(window);
+  root.PDFLabWorkspaceUI = { install, readWithTimeout, prepareStartup };
+})(typeof window !== 'undefined' ? window : globalThis);

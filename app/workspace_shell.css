@@ -138,7 +138,9 @@
     background: #faf9f6;
     box-shadow: none;
   }
-  .pdflab-workspace .workspace-status .status-copy { margin: 0; color: var(--ui-muted); font: inherit; }
+  .pdflab-workspace .workspace-status { flex-wrap: wrap; }
+  .pdflab-workspace .workspace-status .status-copy { flex: 1 1 240px; min-width: 0; margin: 0; color: var(--ui-muted); font: inherit; }
+  .pdflab-workspace #startupRetryButton { flex: 0 0 auto; }
   .pdflab-workspace .workspace-status[data-tone="error"] { border-color: #cb8e7e; background: #fff3ef; }
   .pdflab-workspace .workspace-status[data-tone="error"] .status-copy { color: #8b3128; }
   .pdflab-workspace .workspace-status[data-tone="working"] { border-color: #accbbd; background: var(--ui-accent-soft); }
