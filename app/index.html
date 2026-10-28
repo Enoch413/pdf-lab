@@ -8392,7 +8392,16 @@
       if (!user || !bridge.db) {
         return false;
       }
+      // The global reset document is full-admin-only; scoped admins must not read or apply it.
+      const canReadGlobalReset = () => {
+        const profile = bridge.currentProfile;
+        return profile?.uid === user.uid && bridge.auth?.currentUser?.uid === user.uid
+          && profile.role === "admin" && profile.loginDisabled === false
+          && hasFirebaseAdminFullAccess(profile);
+      };
+      if (!canReadGlobalReset()) return false;
       const snapshot = await PDFLabWorkspaceUI.readWithTimeout(bridge.db.collection("portalContent").doc("exam-state").get(), "CODE LAB 초기화 상태 조회");
+      if (!canReadGlobalReset()) return false;
       const payload = snapshot.exists && snapshot.data() && typeof snapshot.data().payload === "object"
         ? snapshot.data().payload
         : null;
