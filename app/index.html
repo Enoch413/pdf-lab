@@ -365,6 +365,15 @@
                   </label>
                 </div>
               </div>
+              <div class="field-row">
+                <label class="field-label" for="schoolOutputOrderSelect">출제 순서</label>
+                <select class="select-input" id="schoolOutputOrderSelect" aria-describedby="schoolOutputOrderHelp schoolOutputOrderRetryNote">
+                  <option value="type" selected>유형별</option>
+                  <option value="passage">지문별</option>
+                </select>
+                <span class="small-note" id="schoolOutputOrderHelp">유형별: 같은 유형의 여러 지문을 먼저 출제합니다. 지문별: 한 지문의 유형을 순서대로 출제한 뒤 다음 지문으로 넘어갑니다.</span>
+                <span class="small-note" id="schoolOutputOrderRetryNote" hidden>오답 차수 초안은 기존 문항 번호를 유지합니다.</span>
+              </div>
               <label class="toggle-row">
                 <input class="toggle-input" type="checkbox" id="schoolExcludeUsedProblems" checked>
                 <span class="toggle-copy">
@@ -1429,6 +1438,7 @@
         sourceFilterKey: LIBRARY_SOURCE_FILTER_ALL,
         typeSelectionCustomized: false,
         draftMode: "distinct",
+        outputOrder: "type",
         passageTextbookName: "",
         passageQuery: "",
         excludeUsedProblems: true,
@@ -1635,6 +1645,8 @@
       schoolSourceFilterSelect: document.getElementById("schoolSourceFilterSelect"),
       schoolModeDistinct: document.getElementById("schoolModeDistinct"),
       schoolModeFull: document.getElementById("schoolModeFull"),
+      schoolOutputOrderSelect: document.getElementById("schoolOutputOrderSelect"),
+      schoolOutputOrderRetryNote: document.getElementById("schoolOutputOrderRetryNote"),
       schoolExcludeUsedProblems: document.getElementById("schoolExcludeUsedProblems"),
       schoolExcludeUsedPassageTypes: document.getElementById("schoolExcludeUsedPassageTypes"),
       schoolPassageTextbookSelect: document.getElementById("schoolPassageTextbookSelect"),
@@ -13020,10 +13032,13 @@
       return index >= 0 ? index : PROBLEM_TYPE_OPTIONS.length + 10;
     }
 
-    function sortSchoolDraftSlotsByType(slots) {
+    function sortSchoolDraftSlots(slots) {
       const recordsById = new Map(getProblemRecordsOnly().map((record) => [record.recordId, record]));
+      const passageOrder = new Map(state.schoolWorkflow.selectedPassageKeys.map((key, index) => [key, index]));
       return slots.map((slot) => {
         const record = recordsById.get(slot.assignedProblemId);
+        const passageKey = record?.passageKey || slot.passageKey || "";
+        if (!passageOrder.has(passageKey)) passageOrder.set(passageKey, passageOrder.size);
         const type = normalizeEffectiveProblemType(slot.selectedType || getRecordTypeLabel(record));
         let sortIndex = getTypeSortIndex(type);
         if (type === PROBLEM_TYPE_CONTENT) {
@@ -13032,8 +13047,31 @@
           const contentLabel = normalizeProblemTypeToken([record?.problemType, record?.selectableType, stem].join(" "));
           if (/불일치|일치하지|옳지않|맞지않|적절하지않/.test(contentLabel)) sortIndex += 0.5;
         }
-        return { slot, sortIndex };
-      }).sort((left, right) => left.sortIndex - right.sortIndex).map((entry) => entry.slot);
+        return { slot, sortIndex, passageIndex: passageOrder.get(passageKey) };
+      }).sort((left, right) => {
+        const passageDiff = state.schoolWorkflow.outputOrder === "passage" ? left.passageIndex - right.passageIndex : 0;
+        return passageDiff || left.sortIndex - right.sortIndex;
+      }).map((entry) => entry.slot);
+    }
+
+    function setSchoolOutputOrder(value) {
+      if (isStudentRetryDraftActive()) {
+        if (elements.schoolOutputOrderSelect) elements.schoolOutputOrderSelect.value = state.schoolWorkflow.outputOrder || "type";
+        return;
+      }
+      const nextOrder = value === "passage" ? "passage" : "type";
+      if (state.schoolWorkflow.outputOrder === nextOrder) return;
+      state.schoolWorkflow.outputOrder = nextOrder;
+      if (state.examBuilder.slots.length) {
+        cleanupExamPreviewUrls();
+        cleanupExamExportUrls();
+        state.examBuilder.slots = sortSchoolDraftSlots(state.examBuilder.slots);
+        state.examBuilder.loadedExamId = "";
+        state.examBuilder.loadedWorkId = "";
+        state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
+      }
+      renderExamSlots();
+      setStatus(`${nextOrder === "passage" ? "지문별" : "유형별"} 출제 순서를 적용했습니다. 기존 문항과 답안은 유지됩니다.`, "idle", "출제 순서");
     }
 
     function getSchoolPassageSummaries() {
@@ -13719,7 +13757,7 @@
         });
       });
 
-      return { slots: sortSchoolDraftSlotsByType(slots), warnings };
+      return { slots: sortSchoolDraftSlots(slots), warnings };
     }
 
     function buildSchoolFullDraft() {
@@ -13780,7 +13818,7 @@
           });
       });
 
-      return { slots: sortSchoolDraftSlotsByType(slots), warnings };
+      return { slots: sortSchoolDraftSlots(slots), warnings };
     }
 
     function updateSchoolDraftText() {
@@ -14559,10 +14597,17 @@
         return;
       }
       const modeLabel = state.schoolWorkflow.draftMode === "distinct" ? "각 지문별 유형당 1문제" : "선택 유형 전부";
-      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
+      const orderLabel = state.schoolWorkflow.outputOrder === "passage" ? "지문별" : "유형별";
+      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · ${orderLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
     }
 
     function updateExamActionButtons() {
+      if (elements.schoolOutputOrderSelect) {
+        elements.schoolOutputOrderSelect.disabled = state.isBusy || isStudentRetryDraftActive();
+      }
+      if (elements.schoolOutputOrderRetryNote) {
+        elements.schoolOutputOrderRetryNote.hidden = !isStudentRetryDraftActive();
+      }
       const slotCount = state.examBuilder.slots.length;
       const assignedCount = state.examBuilder.slots.filter((slot) => slot.assignedProblemId || (slot.assignedProblemIds && slot.assignedProblemIds.length)).length;
       const isReady = slotCount > 0 && assignedCount === slotCount;
@@ -15843,6 +15888,7 @@
         sourceFilterKey: getSchoolSourceFilterKey(),
         typeSelectionCustomized: Boolean(state.schoolWorkflow.typeSelectionCustomized),
         draftMode: state.schoolWorkflow.draftMode,
+        outputOrder: state.schoolWorkflow.outputOrder === "passage" ? "passage" : "type",
         passageTextbookName: state.schoolWorkflow.passageTextbookName || "",
         passageQuery: state.schoolWorkflow.passageQuery || "",
         excludeUsedProblems: Boolean(state.schoolWorkflow.excludeUsedProblems),
@@ -15858,6 +15904,7 @@
       state.schoolWorkflow.sourceFilterKey = normalizeSchoolSourceFilterKey(snapshot.sourceFilterKey || state.schoolWorkflow.sourceFilterKey || LIBRARY_SOURCE_FILTER_ALL);
       state.schoolWorkflow.typeSelectionCustomized = Boolean(snapshot.typeSelectionCustomized);
       state.schoolWorkflow.draftMode = snapshot.draftMode === "full" ? "full" : "distinct";
+      state.schoolWorkflow.outputOrder = snapshot.outputOrder === "passage" ? "passage" : "type";
       state.schoolWorkflow.passageTextbookName = normalizeTextbookName(snapshot.passageTextbookName || "");
       state.schoolWorkflow.passageQuery = snapshot.passageQuery || "";
       state.schoolWorkflow.excludeUsedProblems = snapshot.excludeUsedProblems !== false;
@@ -15870,6 +15917,9 @@
       }
       if (elements.schoolModeFull) {
         elements.schoolModeFull.checked = state.schoolWorkflow.draftMode === "full";
+      }
+      if (elements.schoolOutputOrderSelect) {
+        elements.schoolOutputOrderSelect.value = state.schoolWorkflow.outputOrder;
       }
       if (elements.schoolExcludeUsedProblems) {
         elements.schoolExcludeUsedProblems.checked = state.schoolWorkflow.excludeUsedProblems;
@@ -16274,7 +16324,8 @@
           ? examSet.selectedPassageKeys
           : Array.from(new Set(examItems.map((item) => item.passageKey).filter(Boolean))),
         selectedTypeLabels: Array.isArray(examSet.selectedTypeLabels) ? examSet.selectedTypeLabels : Array.from(new Set(examItems.map((item) => item.typeLabel).filter(Boolean))),
-        draftMode: examSet.workflowMode || "distinct"
+        draftMode: examSet.workflowMode || "distinct",
+        outputOrder: examSet.outputOrder
       });
       elements.examKickerInput.value = examSet.kicker || "FINAL TEST WORKSHEET";
       elements.examTitleInput.value = examSet.title || "파이널 테스트";
@@ -16953,6 +17004,7 @@
         librarySourceName,
         historyScope,
         workflowMode: state.schoolWorkflow.draftMode,
+        outputOrder: state.schoolWorkflow.outputOrder === "passage" ? "passage" : "type",
         selectedPassageKeys: retryContext
           ? Array.from(new Set(entries.map((entry) => entry.record.passageKey).filter(Boolean)))
           : [...state.schoolWorkflow.selectedPassageKeys],
@@ -19606,7 +19658,7 @@
           })), fileName: state.fileName, sourceKey: state.selectedLibrarySourceKey,
           textbookName: state.selectedTextbookName, titles: titles(["titleInput", "subtitleInput", "newTextbookInput", "existingTextbookSelect"])
         }) : "",
-        exam: state.examBuilder.slots.length ? JSON.stringify({ slots: state.examBuilder.slots,
+        exam: state.examBuilder.slots.length ? JSON.stringify({ slots: state.examBuilder.slots, outputOrder: state.schoolWorkflow.outputOrder || "type",
           titles: titles(["examTitleInput", "examSubtitleInput", "examKickerInput"]) }) : ""
       };
     }
@@ -20745,6 +20797,11 @@
           updateExamBuilderSummary();
         });
       });
+      if (elements.schoolOutputOrderSelect) {
+        elements.schoolOutputOrderSelect.addEventListener("change", () => {
+          setSchoolOutputOrder(elements.schoolOutputOrderSelect.value);
+        });
+      }
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.addEventListener("change", () => {
           setSchoolSourceFilter(elements.schoolSourceFilterSelect.value);

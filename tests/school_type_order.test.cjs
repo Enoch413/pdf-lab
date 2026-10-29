@@ -21,23 +21,21 @@ app.run(`getSchoolPassageSummaries = () => summaries;
   getProblemRecordsOnly = () => records;
   getSchoolPassageUsageCounts = () => new Map();
   createSchoolDraftSlotFromRecord = (record, order) => ({ id: record.recordId, category: 'objective', selectedType: getRecordTypeLabel(record), assignedProblemId: record.recordId });`);
-for (const builder of ['buildSchoolFullDraft', 'buildSchoolDistinctDraft']) {
+for (const outputOrder of ['type', 'passage']) for (const builder of ['buildSchoolFullDraft', 'buildSchoolDistinctDraft']) {
+  c.state.schoolWorkflow.outputOrder = outputOrder;
   const original = JSON.stringify(c.records);
   const result = app.pure(builder + '()');
   c.state.examBuilder.slots = result.slots;
   const entries = app.pure('getExamSlotAssignedRecords()');
-  const typeOrder = entries.map(e => e.record.recordId.replace(/^[AB]-/, ''));
-  if (builder === 'buildSchoolFullDraft') {
-    assert.deepEqual(Array.from(typeOrder), types.flatMap(t => [t, t]), 'all passages grouped by the requested 16-type order');
-    assert.deepEqual(Array.from(entries.filter(e => e.record.recordId.endsWith('-주제')), e => e.record.passageKey), ['B', 'A'], 'retain passage order within a type');
-  } else {
-    // One candidate per content filter per passage; factual and unfactual must still be ranked correctly.
-    const expected = types.filter(t => t !== '내용일치').flatMap(t => [t, t]);
-    assert.deepEqual(Array.from(typeOrder), expected, 'distinct mode uses the same type priority');
-  }
+  const selectedTypes = builder === 'buildSchoolFullDraft' ? types : types.filter(t => t !== '내용일치');
+  const expected = outputOrder === 'passage'
+    ? ['B', 'A'].flatMap(p => selectedTypes.map(t => p + '-' + t))
+    : selectedTypes.flatMap(t => ['B-' + t, 'A-' + t]);
+  assert.deepEqual(Array.from(entries, e => e.record.recordId), expected, outputOrder + ' / ' + builder);
   assert.equal(JSON.stringify(c.records), original, 'sorting must not change library records');
   assert.equal(result.warnings.length, 0);
 }
+c.state.schoolWorkflow.outputOrder = 'type';
 // Canonical, legacy labels and stems share the same factual/unfactual ordering.
 c.records = [
   { recordId: 'negative', problemType: '내용', canonical: { problemType: '내용', questionText: '내용과 일치하지 않는 것은?' } },
@@ -49,8 +47,41 @@ c.records = [
 ];
 c.slots = c.records.map(r => ({ id: r.recordId, selectedType: r.problemType, assignedProblemId: r.recordId, assignedProblemIds: r.recordId === 'tail' ? ['child-1', 'child-2'] : [r.recordId] }));
 const originalSlots = JSON.stringify(c.slots);
-const ordered = app.pure('sortSchoolDraftSlotsByType(slots)');
+const ordered = app.pure('sortSchoolDraftSlots(slots)');
 assert.deepEqual(Array.from(ordered, s => s.id), ['positive', 'legacy-positive', 'negative', 'legacy-negative', 'extra', 'tail']);
 assert.deepEqual(ordered.at(-1).assignedProblemIds, ['child-1', 'child-2'], 'tail pack remains intact');
 assert.equal(JSON.stringify(c.slots), originalSlots, 'sort must not mutate existing slots');
-console.log('PASS: 16-type priority across passages, full/distinct drafts, content polarity, stable ties, intact groups and nonmutation');
+// Switching order reuses the exact questions and edits, and detaches saved history.
+c.records = ['B', 'A'].flatMap(p => ['제목', '주제'].map(t => ({ recordId: p + t, passageKey: p, problemType: t })));
+c.state.examBuilder = { slots: c.records.map(r => ({ id: r.recordId, selectedType: r.problemType, assignedProblemId: r.recordId })), loadedExamId: 'saved-exam', loadedWorkId: 'saved-work', answerEditSlotId: 'B제목', answerEditDraftText: 'unsaved answer' };
+c.elements = { schoolOutputOrderSelect: {} };
+c.retryActive = false;
+app.run(`isStudentRetryDraftActive = () => retryActive;
+  cleanupExamPreviewUrls = () => {}; cleanupExamExportUrls = () => {};
+  renderExamSlots = () => {}; setStatus = () => {};`);
+app.pure('EXAM_SLOT_RENDER_BATCH_SIZE');
+app.pure('setSchoolOutputOrder("passage")');
+assert.deepEqual(Array.from(c.state.examBuilder.slots, s => s.id), ['B주제', 'B제목', 'A주제', 'A제목']);
+assert.equal(c.state.examBuilder.answerEditDraftText, 'unsaved answer');
+assert.equal(c.state.examBuilder.loadedExamId, '');
+assert.equal(c.state.examBuilder.loadedWorkId, '');
+c.retryActive = true;
+const retrySlots = JSON.stringify(c.state.examBuilder.slots);
+app.pure('setSchoolOutputOrder("type")');
+assert.equal(JSON.stringify(c.state.examBuilder.slots), retrySlots, 'retry numbering must remain intact');
+assert.equal(c.state.schoolWorkflow.outputOrder, 'passage');
+assert.equal(c.elements.schoolOutputOrderSelect.value, 'passage');
+
+// Saved work round-trips the setting; legacy records fall back without reordering.
+app.run(`getSchoolSourceFilterKey = () => 'all'; applySelectedSchoolClassIdsToCheckSetInput = () => {};`);
+Object.assign(c.state.schoolWorkflow, { selectedSchoolKey: '', warnings: [], sourceFilterKey: 'all' });
+const snapshot = JSON.parse(JSON.stringify(app.pure('captureSchoolWorkflowSnapshot()')));
+assert.equal(snapshot.outputOrder, 'passage');
+c.snapshot = snapshot;
+app.pure('applySchoolWorkflowSnapshot(snapshot)');
+assert.equal(c.state.schoolWorkflow.outputOrder, 'passage');
+app.pure('applySchoolWorkflowSnapshot({})');
+assert.equal(c.state.schoolWorkflow.outputOrder, 'type');
+assert.equal(c.elements.schoolOutputOrderSelect.value, 'type');
+assert.equal(JSON.stringify(c.state.examBuilder.slots), retrySlots, 'restoring old settings must not reorder saved questions');
+console.log('PASS: passage/type order in both draft modes, content polarity, groups, nonmutation, switching without losing edits, retry protection and saved settings');
