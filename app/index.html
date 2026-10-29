@@ -16524,7 +16524,7 @@
         return "";
       }
       const styleSheet = Array.from(document.styleSheets)
-        .find((sheet) => sheet.href && sheet.href.endsWith("pdf_problem_template_repacker.css"));
+        .find((sheet) => sheet.href && new URL(sheet.href, window.location.href).pathname.endsWith("pdf_problem_template_repacker.css"));
       if (!styleSheet) {
         return "";
       }
@@ -16538,7 +16538,7 @@
 
     function getStandaloneStylesheetHref() {
       const stylesheetLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .find((node) => (node.getAttribute("href") || "").endsWith("pdf_problem_template_repacker.css"));
+        .find((node) => new URL(node.getAttribute("href") || "", window.location.href).pathname.endsWith("pdf_problem_template_repacker.css"));
       if (!stylesheetLink) {
         return "";
       }

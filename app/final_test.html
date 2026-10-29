@@ -8003,7 +8003,7 @@
       }
       const stylesheetCandidates = ["final_test.css", "pdf_problem_template_repacker.css"];
       const styleSheet = Array.from(document.styleSheets)
-        .find((sheet) => sheet.href && stylesheetCandidates.some((fileName) => sheet.href.endsWith(fileName)));
+        .find((sheet) => sheet.href && stylesheetCandidates.some((fileName) => new URL(sheet.href, window.location.href).pathname.endsWith(fileName)));
       if (!styleSheet) {
         return "";
       }
@@ -8018,7 +8018,7 @@
     function getStandaloneStylesheetHref() {
       const stylesheetCandidates = ["final_test.css", "pdf_problem_template_repacker.css"];
       const stylesheetLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .find((node) => stylesheetCandidates.some((fileName) => (node.getAttribute("href") || "").endsWith(fileName)));
+        .find((node) => stylesheetCandidates.some((fileName) => new URL(node.getAttribute("href") || "", window.location.href).pathname.endsWith(fileName)));
       if (!stylesheetLink) {
         return "";
       }
