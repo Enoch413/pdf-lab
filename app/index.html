@@ -784,23 +784,23 @@
     const EXAM_HTML_PREVIEW_PROBLEM_LIMIT = 80;
     const LIBRARY_REVIEW_PAGE_SIZE = 24;
     const OBJECTIVE_PROBLEM_TYPE_OPTIONS = Object.freeze([
-      "삽입",
-      "순서",
-      "요약",
-      "선택어법",
-      "선택어휘",
-      "연결사",
-      "밑줄어법",
-      "밑줄어휘",
-      PROBLEM_TYPE_ODD_SENTENCE,
-      "지칭",
-      "빈칸",
-      "함축의미",
-      PROBLEM_TYPE_CONTENT,
-      "제목",
       "주제",
+      "제목",
       "요지",
       "주장",
+      "함축의미",
+      "빈칸",
+      "요약",
+      PROBLEM_TYPE_CONTENT,
+      "밑줄어휘",
+      "선택어휘",
+      "밑줄어법",
+      "선택어법",
+      "순서",
+      "삽입",
+      PROBLEM_TYPE_ODD_SENTENCE,
+      "연결사",
+      "지칭",
       "목적",
       PROBLEM_TYPE_MOOD,
       PROBLEM_TYPE_OTHER
@@ -13020,6 +13020,22 @@
       return index >= 0 ? index : PROBLEM_TYPE_OPTIONS.length + 10;
     }
 
+    function sortSchoolDraftSlotsByType(slots) {
+      const recordsById = new Map(getProblemRecordsOnly().map((record) => [record.recordId, record]));
+      return slots.map((slot) => {
+        const record = recordsById.get(slot.assignedProblemId);
+        const type = normalizeEffectiveProblemType(slot.selectedType || getRecordTypeLabel(record));
+        let sortIndex = getTypeSortIndex(type);
+        if (type === PROBLEM_TYPE_CONTENT) {
+          // Content is one stored type; distinguish polarity only for output order.
+          const stem = record?.canonical?.questionText || record?.textStructure?.questionText || record?.promptText || "";
+          const contentLabel = normalizeProblemTypeToken([record?.problemType, record?.selectableType, stem].join(" "));
+          if (/불일치|일치하지|옳지않|맞지않|적절하지않/.test(contentLabel)) sortIndex += 0.5;
+        }
+        return { slot, sortIndex };
+      }).sort((left, right) => left.sortIndex - right.sortIndex).map((entry) => entry.slot);
+    }
+
     function getSchoolPassageSummaries() {
       const questionRecords = getSchoolProblemRecordsOnly();
       const usedProblemIds = getSchoolUsedProblemIds();
@@ -13703,7 +13719,7 @@
         });
       });
 
-      return { slots, warnings };
+      return { slots: sortSchoolDraftSlotsByType(slots), warnings };
     }
 
     function buildSchoolFullDraft() {
@@ -13764,7 +13780,7 @@
           });
       });
 
-      return { slots, warnings };
+      return { slots: sortSchoolDraftSlotsByType(slots), warnings };
     }
 
     function updateSchoolDraftText() {
