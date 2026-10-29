@@ -15744,6 +15744,7 @@
         const typeSummary = Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort((left, right) => left.localeCompare(right, "ko"));
         const sourceLabel = getLibrarySourceLabel(examSet.librarySourceKey || examSet.librarySourceName || items[0]?.librarySourceKey || items[0]?.librarySourceName || DEFAULT_LIBRARY_SOURCE_KEY);
         const answerModeLabel = getExamAnswerModeLabel(examSet.answerOutputMode || EXAM_ANSWER_MODE_WITH_ANSWER_KEY);
+        const contentModeLabel = getExamContentModeLabel(examSet.contentRenderMode || EXAM_CONTENT_MODE_IMAGE);
         return `
           <article class="exam-history-card">
             <header class="exam-history-card-header">
