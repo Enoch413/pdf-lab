@@ -6464,12 +6464,18 @@
       };
     }
 
-    function createFirebaseRetryDocId(...parts) {
+    async function createFirebaseRetryDocId(...parts) {
       const raw = parts
         .map((part) => normalizeProblemText(part))
         .filter(Boolean)
         .join("__");
-      return buildPortableCheckSetId(raw || `retry-${Date.now()}`, "retry-doc");
+      const legacyId = buildPortableCheckSetId(raw || `retry-${Date.now()}`, "retry-doc");
+      const encoder = new TextEncoder();
+      if (encoder.encode(legacyId).length <= 1500) return legacyId;
+      // Keep valid IDs and the security-rule owner prefix; only oversized storage IDs change.
+      const digest = await crypto.subtle.digest("SHA-256", encoder.encode(JSON.stringify(parts.map((part) => normalizeProblemText(part)))));
+      const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      return `${legacyId.split("__")[0]}__sha256-${hash}`;
     }
 
     function stripFirebaseOwnerFields(record = {}) {
@@ -6535,30 +6541,30 @@
       return { saved: changes.length, deleted: 0 };
     }
 
-    function flattenStudentRetryStateForFirebase(rawState = state.studentRetry) {
+    async function flattenStudentRetryStateForFirebase(rawState = state.studentRetry) {
       const normalized = normalizeStudentRetryState(rawState || {});
       const ownerUid = getFirebaseStudentRetryOwnerUid();
-      const students = normalized.students.map((student) => ({
-        docId: createFirebaseRetryDocId(ownerUid, "student", student.studentId),
+      const students = await Promise.all(normalized.students.map(async (student) => ({
+        docId: await createFirebaseRetryDocId(ownerUid, "student", student.studentId),
         data: { ...student }
-      }));
+      })));
       const sessions = [];
       const studentStates = [];
-      normalized.sessions.forEach((session) => {
+      for (const session of normalized.sessions) {
         const { studentStates: sessionStudentStates, ...sessionMeta } = session;
         sessions.push({
-          docId: createFirebaseRetryDocId(ownerUid, "session", session.sessionId),
+          docId: await createFirebaseRetryDocId(ownerUid, "session", session.sessionId),
           data: { ...sessionMeta }
         });
-        Object.entries(sessionStudentStates || {}).forEach(([studentId, value]) => {
+        for (const [studentId, value] of Object.entries(sessionStudentStates || {})) {
           const rounds = Array.isArray(value?.rounds)
             ? value.rounds.map((round, index) => normalizeStudentRetryRound(round, index + 1)).filter((round) => round.items.length)
             : [];
           if (!studentId || !rounds.length) {
-            return;
+            continue;
           }
           studentStates.push({
-            docId: createFirebaseRetryDocId(ownerUid, "session-state", session.sessionId, studentId),
+            docId: await createFirebaseRetryDocId(ownerUid, "session-state", session.sessionId, studentId),
             data: {
               sessionId: session.sessionId,
               studentId,
@@ -6567,19 +6573,25 @@
               rounds
             }
           });
-        });
+        }
+      }
+      for (const [studentId, deletedAt] of Object.entries(normalized.deletedStudents)) students.push({
+        docId: await createFirebaseRetryDocId(ownerUid, "student", studentId), data: { studentId, deletedAt, updatedAt: deletedAt, matchKeys: normalized.deletedStudentKeys[studentId] || [] }
       });
-      Object.entries(normalized.deletedStudents).forEach(([studentId, deletedAt]) => students.push({
-        docId: createFirebaseRetryDocId(ownerUid, "student", studentId), data: { studentId, deletedAt, updatedAt: deletedAt, matchKeys: normalized.deletedStudentKeys[studentId] || [] }
-      }));
-      Object.entries(normalized.deletedSessions).forEach(([sessionId, deletedAt]) => sessions.push({
-        docId: createFirebaseRetryDocId(ownerUid, "session", sessionId), data: { sessionId, deletedAt, updatedAt: deletedAt }
-      }));
+      for (const [sessionId, deletedAt] of Object.entries(normalized.deletedSessions)) sessions.push({
+        docId: await createFirebaseRetryDocId(ownerUid, "session", sessionId), data: { sessionId, deletedAt, updatedAt: deletedAt }
+      });
+      // Array values may contain long keys; map field names and paths may not.
+      const expandedEntries = Object.entries(normalized.expandedRoundKeys || {});
+      const encoder = new TextEncoder();
+      const shortEntries = expandedEntries.filter(([key]) => encoder.encode(key).length <= 1400);
+      const longEntries = expandedEntries.filter(([key]) => encoder.encode(key).length > 1400);
       return {
         prefs: {
           selectedStudentId: normalized.selectedStudentId,
           selectedSessionId: normalized.selectedSessionId,
-          expandedRoundKeys: { ...(normalized.expandedRoundKeys || {}) }
+          expandedRoundKeys: Object.fromEntries(shortEntries),
+          ...(longEntries.length ? { expandedRoundEntries: longEntries.map(([key, expanded]) => ({ key, expanded })) } : {})
         },
         students,
         sessions,
@@ -6599,7 +6611,8 @@
       const task = (async () => {
         do {
           bridge.retryStateSaveDirty = false;
-          const localSnapshot = flattenStudentRetryStateForFirebase();
+          const localSnapshot = await flattenStudentRetryStateForFirebase();
+          if (!sameOwner()) return { synced: false, reason: "account-changed" };
           const collections = [FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION, FIREBASE_STUDENT_RETRY_SESSION_COLLECTION, FIREBASE_STUDENT_RETRY_STATE_COLLECTION];
           const dataChanged = [localSnapshot.students, localSnapshot.sessions, localSnapshot.studentStates].some((rows, index) => {
             const cache = bridge.retryStateSavedRows?.[collections[index]];
@@ -6612,7 +6625,8 @@
             if (remote.hasRemote) applyStudentRetryState(remote.state);
           }
           if (!sameOwner()) return { synced: false, reason: "account-changed" };
-          const snapshot = flattenStudentRetryStateForFirebase();
+          const snapshot = await flattenStudentRetryStateForFirebase();
+          if (!sameOwner()) return { synced: false, reason: "account-changed" };
           const prefsKey = JSON.stringify(snapshot.prefs);
           if (bridge.retryStateSavedPrefs !== prefsKey) {
             await bridge.db.collection(FIREBASE_STUDENT_RETRY_PREF_COLLECTION).doc(owner.ownerUid)
@@ -6700,7 +6714,12 @@
         deletedSessions: Object.fromEntries(sessions.filter(row => row.deletedAt).map(row => [row.sessionId, row.deletedAt])),
         selectedStudentId: pref.selectedStudentId || "",
         selectedSessionId: pref.selectedSessionId || "",
-        expandedRoundKeys: pref.expandedRoundKeys || {},
+        expandedRoundKeys: {
+          ...(pref.expandedRoundKeys || {}),
+          ...Object.fromEntries((Array.isArray(pref.expandedRoundEntries) ? pref.expandedRoundEntries : [])
+            .filter((entry) => typeof entry?.key === "string" && entry.key && typeof entry.expanded === "boolean")
+            .map((entry) => [entry.key, entry.expanded]))
+        },
         students,
         sessions
       });
@@ -6838,35 +6857,35 @@
       const operations = previousItemSnapshot.docs
         .filter((doc) => normalizeProblemText(doc.data()?.examId || "") === examId)
         .map((doc) => ({ type: "delete", ref: doc.ref }));
+      const examDocId = await createFirebaseRetryDocId(owner.ownerUid, "exam", examId);
       operations.push({
         type: "set",
-        ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION).doc(createFirebaseRetryDocId(owner.ownerUid, "exam", examId)),
+        ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_COLLECTION).doc(examDocId),
         data: {
           ...examSet,
           ...owner,
-          docKey: createFirebaseRetryDocId(owner.ownerUid, "exam", examId),
+          docKey: examDocId,
           savedAt: now,
           savedAtIso: nowIso
         },
         options: { merge: false }
       });
-      (Array.isArray(examItems) ? examItems : [])
-        .filter((item) => String(item.examId || "") === examId)
-        .forEach((item) => {
-          const itemDocId = createFirebaseRetryDocId(owner.ownerUid, "exam-item", item.entryId || `${examId}-${item.slotIndex || 0}`);
-          operations.push({
-            type: "set",
-            ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION).doc(itemDocId),
-            data: {
-              ...item,
-              ...owner,
-              docKey: itemDocId,
-              savedAt: now,
-              savedAtIso: nowIso
-            },
-            options: { merge: false }
-          });
+      for (const item of (Array.isArray(examItems) ? examItems : [])
+        .filter((item) => String(item.examId || "") === examId)) {
+        const itemDocId = await createFirebaseRetryDocId(owner.ownerUid, "exam-item", item.entryId || `${examId}-${item.slotIndex || 0}`);
+        operations.push({
+          type: "set",
+          ref: db.collection(FIREBASE_STUDENT_RETRY_EXAM_ITEM_COLLECTION).doc(itemDocId),
+          data: {
+            ...item,
+            ...owner,
+            docKey: itemDocId,
+            savedAt: now,
+            savedAtIso: nowIso
+          },
+          options: { merge: false }
         });
+      }
       await commitFirestoreOperations(db, operations);
       bridge.retryStateSyncError = "";
       return { synced: true, examId, itemCount: operations.length - 1 };
@@ -6911,7 +6930,7 @@
       if (!owner.ownerUid || !workId) {
         return { synced: false, reason: "missing-work-id" };
       }
-      const docId = createFirebaseRetryDocId(owner.ownerUid, "work", workId);
+      const docId = await createFirebaseRetryDocId(owner.ownerUid, "work", workId);
       const now = Date.now();
       await db.collection(FIREBASE_STUDENT_RETRY_WORK_COLLECTION).doc(docId).set({
         ...workRecord,

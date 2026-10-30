@@ -71,7 +71,7 @@ module.exports = async function () {
     result=await app.run('saveStudentRetryStateToFirebase({mergeRemote:false})');assert.equal(result.synced,true,result.reason);
     const afterDelete=await app.run('loadStudentRetryStateFromFirebase()');
     assert.equal(afterDelete.state.students.length,200);assert.equal(afterDelete.state.deletedStudents['sdk-0'],3);
-    app.context.rows=[{docId:app.run('createFirebaseRetryDocId("teacher","student","sdk-0")'),data:{studentId:'sdk-0',name:'stale',updatedAt:1}}];
+    app.context.rows=[{docId:await app.run('createFirebaseRetryDocId("teacher","student","sdk-0")'),data:{studentId:'sdk-0',name:'stale',updatedAt:1}}];
     app.context.state.firebaseSchoolBridge.retryStateSavedRows={};
     await app.run('saveFirebaseOwnerCollection(FIREBASE_STUDENT_RETRY_STUDENT_COLLECTION,rows)');
     assert.equal((await app.run('loadStudentRetryStateFromFirebase()')).state.students.length,200,'Stale device must not resurrect a deletion');
