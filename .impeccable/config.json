@@ -1,0 +1,28 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "files": [
+          "app/final_test.css",
+          "app/pdf_problem_template_repacker.css"
+        ],
+        "createdAt": "2026-10-30T09:03:43.593Z",
+        "reason": "Agent: Existing PDF LAB typography predates this print-only change. Project instructions require preserving the established screen design; no font redesign was requested."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/final_test.css",
+          "app/pdf_problem_template_repacker.css"
+        ],
+        "createdAt": "2026-10-30T09:03:43.649Z",
+        "reason": "Agent: Existing screen question-card stripe is intentional incumbent styling. The new @media print override disables it in PDFs to satisfy the ink-saving request while preserving the screen design."
+      }
+    ]
+  }
+}

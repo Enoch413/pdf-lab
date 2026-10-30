@@ -2856,3 +2856,17 @@ body[data-workspace-mode] .app-tab-shell {
   width: min(1440px, calc(100% - 40px));
   margin: 12px auto;
 }
+
+@media print {
+  /* Keep the screen theme out of PDFs, even with background graphics enabled. */
+  html, body, .preview-panel, .preview-root, .sheet, .answer-key-section {
+    background: #fff !important;
+  }
+  .sheet::before, .problem-card::before {
+    display: none !important;
+  }
+  .problem-card, .problem-badge, .problem-type-badge {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}

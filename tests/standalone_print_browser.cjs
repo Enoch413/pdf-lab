@@ -70,17 +70,35 @@ fs.mkdirSync(out, { recursive: true });
         await document.fonts.ready;
         await Promise.all([...document.images].map(image => image.decode()));
       });
+      assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backgroundColor), 'rgb(255, 255, 255)', screen + ': retain screen paper theme');
       await page.emulateMedia({ media: 'print' });
       const geometry = await page.evaluate(() => {
         const rect = el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
         return [...document.querySelectorAll('.sheet')].map(sheet => ({
           sheet: rect(sheet), columns: [...sheet.querySelectorAll('.sheet-column')].map(rect),
           columnDisplay: getComputedStyle(sheet.querySelector('.sheet-columns')).display,
-          logo: sheet.querySelector('.sheet-logo-image') ? rect(sheet.querySelector('.sheet-logo-image')) : null
+          logo: sheet.querySelector('.sheet-logo-image') ? rect(sheet.querySelector('.sheet-logo-image')) : null,
+          pageColor: getComputedStyle(sheet).backgroundColor,
+          pageImage: getComputedStyle(sheet).backgroundImage,
+          paperOverlay: getComputedStyle(sheet, '::before').display,
+          decorations: [...sheet.querySelectorAll('.problem-card,.problem-badge,.problem-type-badge')].map(el => ({
+            color: getComputedStyle(el).backgroundColor, image: getComputedStyle(el).backgroundImage,
+            shadow: getComputedStyle(el).boxShadow, stripe: el.matches('.problem-card') ? getComputedStyle(el, '::before').display : 'none'
+          }))
         }));
       });
+      assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)', screen + ': white print canvas');
       assert(geometry.length >= 2);
       for (const g of geometry) {
+        assert.equal(g.pageColor, 'rgb(255, 255, 255)', screen + ': white paper');
+        assert.equal(g.pageImage, 'none');
+        assert.equal(g.paperOverlay, 'none');
+        for (const d of g.decorations) {
+          assert(['rgba(0, 0, 0, 0)', 'rgb(255, 255, 255)'].includes(d.color));
+          assert.equal(d.image, 'none');
+          assert.equal(d.shadow, 'none');
+          assert.equal(d.stripe, 'none');
+        }
         assert(Math.abs(g.sheet.width - 210 * 96 / 25.4) < 1, screen + ': A4 width');
         assert(Math.abs(g.sheet.height - 296.8 * 96 / 25.4) < 1, screen + ': A4 height');
         assert.equal(g.columnDisplay, 'grid');
@@ -98,7 +116,7 @@ fs.mkdirSync(out, { recursive: true });
       await page.screenshot({ path: path.join(out, screen + '-print.png'), fullPage: false });
       results.push({ screen, counts: generated.counts, geometry, errors, missing });
       await page.close();
-      console.log('PASS: ' + screen + ' actual text/image export, A4, two columns, bounded logo, no errors/missing files');
+      console.log('PASS: ' + screen + ' actual text/image export, white print backgrounds, unchanged screen theme, A4, two columns, bounded logo, no errors/missing files');
     }
   } finally {
     await browser.close();

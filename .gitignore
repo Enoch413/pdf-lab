@@ -4,6 +4,7 @@ tmp/
 firestore-debug.log
 firebase-debug.log
 storage-debug.log
+.impeccable/hook.cache.json
 __pycache__/
 *.pyc
 .edge-headless-*/
