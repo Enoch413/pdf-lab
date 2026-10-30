@@ -70,6 +70,7 @@ assert.equal(run('findNextRetryCandidateForItem(item, used)'), null);
 context.item = { problemRecordId: 'legacy', passageKey: 'passage', typeLabel: '내용' };
 context.used = new Set();
 assert.equal(run('findNextRetryCandidateForItem(item, used)').recordId, 'legacy');
+context.state = { schoolWorkflow: {} };
 assert.ok(run('getSchoolProblemRecordsOnly()').every(p => p.retryMode !== 'rounds' || p.retryRound === 1));
 context.problem = problems[0];
 context.source = { sourceId: 'source', librarySourceKey: 'neoreunteo', textbookName: 'Book', fileName: 'unit.json', importedAt: 1 };

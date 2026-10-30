@@ -15,7 +15,7 @@ for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/worksp
 }
 console.log('PASS: authored JavaScript syntax');
 for (const file of ['dependency_integrity', 'firebase_helpers', 'firebase_retry_keys', 'check_contract', 'check_response_retry', 'exam_reset_access', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui', 'workspace_shell', 'startup', 'history_render',
-  'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'standalone_print_styles', 'school_type_order', 'jspdf_output']) {
+  'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'standalone_print_styles', 'school_type_order', 'school_difficulty', 'jspdf_output']) {
   const result = spawnSync(process.execPath, [`tests/${file}.test.cjs`], { stdio: 'inherit' });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status || 1);
