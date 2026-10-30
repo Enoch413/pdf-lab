@@ -35,6 +35,7 @@ c.sessionId = app.pure('buildRetrySessionIdFromCheckSetRecord({schoolKey:"class"
 assert(bytes(c.sessionId) > 1500, 'reproduce the long CHECK-derived session identifier');
 c.raw = { selectedStudentId: 's', selectedSessionId: c.sessionId, expandedRoundKeys: { [c.sessionId + '::s::1']: true, short: true }, students: [{ studentId: 's', name: '합성 학생', schoolKey: 'class' }], sessions: [{ sessionId: c.sessionId, schoolKey: 'class', sourceKey: 'neoreunteo', baseItems: c.items, studentStates: { s: { rounds: [{ roundIndex: 1, items: c.items }] } } }] };
 c.state = { studentRetryOwnerUid: 'teacher', studentRetry: c.raw, firebaseSchoolBridge: { db, currentUser: { uid: 'teacher' }, currentProfile: { role: 'admin' } } };
+c.raw.sessions[0].studentStates.s.firstRoundAssignedAt = 42;
 c.setStatus = () => {};
 (async () => {
   app.pure('normalizeStudentRetryState(raw)');
@@ -63,6 +64,7 @@ c.setStatus = () => {};
   assert.equal(loaded.state.selectedSessionId, c.sessionId);
   assert.equal(loaded.state.sessions[0].sessionId, c.sessionId);
   assert.equal(loaded.state.sessions[0].studentStates.s.rounds[0].items.length, 100);
+  assert.equal(loaded.state.sessions[0].studentStates.s.firstRoundAssignedAt, 42, 'personal first-round assignment survives storage roundtrip');
   assert.equal(loaded.state.expandedRoundKeys[c.sessionId + '::s::1'], true);
   assert.equal(loaded.state.expandedRoundKeys.short, true);
   assert.equal(JSON.stringify(c.raw), original, 'do not migrate or truncate local session/problem IDs');

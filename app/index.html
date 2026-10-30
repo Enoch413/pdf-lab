@@ -396,6 +396,11 @@
                   <small>같은 지문에서 같은 유형이 반복되지 않게 더 강하게 막습니다.</small>
                 </span>
               </label>
+              <div class="school-inline-actions">
+                <button class="ghost-button" type="button" id="resetSchoolUsedProblemsButton">이전 사용 문제 초기화</button>
+                <button class="ghost-button" type="button" id="resetSchoolUsedPassageTypesButton">이전 사용 지문·유형 초기화</button>
+              </div>
+              <p class="small-note">초기화는 이 브라우저·현재 계정의 선택 반/출처에 적용됩니다. 출제 이력과 학생 오답은 보존합니다.</p>
             </div>
             <p class="small-note" id="examBuilderSummary">반을 선택하고 지문을 고른 뒤 문제 초안을 생성하면 요약과 경고를 여기서 보여줍니다.</p>
           </section>
@@ -473,8 +478,8 @@
             <div class="school-type-grid" id="schoolTypeList"></div>
           </section>
 
-          <section class="panel-card">
-            <h2 class="panel-title">4. 초안 검토</h2>
+          <details class="panel-card" id="schoolDraftReview">
+            <summary class="panel-title">4. 초안 검토 <span class="small-note" id="schoolDraftReviewSummary">· 0문항</span></summary>
             <div class="exam-slot-empty" id="examSlotEmptyState">
               <h3>아직 생성된 문제 초안이 없습니다</h3>
               <p>반 선택, 지문 선택, 유형 선택을 마치고 문제 초안 생성 버튼을 누르면 결과가 여기에 표시됩니다.</p>
@@ -483,7 +488,7 @@
             <p class="small-note" id="examAnswerEditorSummary" hidden>생성 결과에서 틀린 정답이나 해설만 골라서 수정하면, 현재 문제 초안과 공용 라이브러리 원본이 함께 갱신됩니다.</p>
             <div class="exam-answer-editor-empty" id="examAnswerEditorEmptyState" hidden></div>
             <div class="exam-answer-editor-root" id="examAnswerEditorRoot" role="dialog" aria-modal="true" aria-label="답안 수정" hidden></div>
-          </section>
+          </details>
 
           <section class="panel-card workspace-output" id="examOutputSection">
             <h2 class="panel-title">5. 시험지 출력</h2>
@@ -574,11 +579,11 @@
             <div class="school-section-header">
               <h2 class="panel-title">6. 오답 재출제</h2>
               <div class="school-inline-actions">
-                <button class="ghost-button" type="button" id="startStudentRetryButton">현재 문제 초안을 1차 공통으로 시작</button>
+                <button class="ghost-button" type="button" id="startStudentRetryButton">현재 문제 초안으로 1차 세트 시작</button>
                 <button class="solid-button" type="button" id="generateStudentRetryButton">다음 오답 차수 생성</button>
               </div>
             </div>
-            <p class="small-note" id="studentRetrySummary">1차 공통 세트를 시작하면 선택한 반의 학생이 자동으로 연결되고, 학생별 오답 유형만 같은 지문/유형의 다른 문제로 다시 낼 수 있습니다.</p>
+            <p class="small-note" id="studentRetrySummary">1차 세트를 시작한 뒤 학생별 난이도를 지정할 수 있습니다. 각 학생의 1차 초안을 불러와 출력하고, 오답만 같은 난이도의 2·3차로 이어갑니다.</p>
             <div class="field-grid compact-field-grid">
               <label class="field-row">
                 <span class="field-label">학생 선택</span>
@@ -604,7 +609,7 @@
             <div class="student-retry-root" id="studentRetryRoot">
               <div class="exam-empty-state">
                 <h3>오답 재출제 세트가 없습니다</h3>
-                <p>먼저 각 지문별 유형당 1문제 문제 초안을 만들고, 현재 문제 초안을 1차 공통으로 시작하세요.</p>
+                <p>문제 초안으로 1차 세트를 시작한 뒤 학생을 선택해 난이도를 지정하고 1차 초안을 불러오세요.</p>
               </div>
             </div>
             <div class="student-retry-history-block">
@@ -1633,6 +1638,10 @@
       examLibraryList: document.getElementById("examLibraryList"),
       examSlotEmptyState: document.getElementById("examSlotEmptyState"),
       examSlotList: document.getElementById("examSlotList"),
+      schoolDraftReview: document.getElementById("schoolDraftReview"),
+      schoolDraftReviewSummary: document.getElementById("schoolDraftReviewSummary"),
+      resetSchoolUsedProblemsButton: document.getElementById("resetSchoolUsedProblemsButton"),
+      resetSchoolUsedPassageTypesButton: document.getElementById("resetSchoolUsedPassageTypesButton"),
       examAnswerEditorSummary: document.getElementById("examAnswerEditorSummary"),
       examAnswerEditorEmptyState: document.getElementById("examAnswerEditorEmptyState"),
       examAnswerEditorRoot: document.getElementById("examAnswerEditorRoot"),
@@ -6202,6 +6211,7 @@
               ? Object.fromEntries(Object.entries(session.studentStates).filter(([id]) => !deletedStudents[id]).map(([studentId, stateValue]) => [
                   String(studentId),
                   {
+                    ...(Number(stateValue?.firstRoundAssignedAt) > 0 ? { firstRoundAssignedAt: Number(stateValue.firstRoundAssignedAt) } : {}),
                     rounds: (Array.isArray(stateValue?.rounds) ? stateValue.rounds : [])
                       .map((round, index) => normalizeStudentRetryRound(round, index + 1))
                       .filter((round) => round.items.length)
@@ -6346,9 +6356,16 @@
           if (!studentId) {
             return;
           }
-          const existingRounds = merged.studentStates[studentId]?.rounds || [];
+          const previous = merged.studentStates[studentId];
+          const previousAssignment = Number(previous?.firstRoundAssignedAt) || 0;
+          const incomingAssignment = Number(value?.firstRoundAssignedAt) || 0;
+          const assignment = Math.max(previousAssignment, incomingAssignment);
+          // A later difficulty assignment replaces only that student's first round.
+          const existingRounds = (previous?.rounds || []).filter(round => incomingAssignment <= previousAssignment || round.roundIndex !== 1);
+          const incomingRounds = (value?.rounds || []).filter(round => incomingAssignment >= previousAssignment || round.roundIndex !== 1);
           merged.studentStates[studentId] = {
-            rounds: mergeStudentRetryRounds(existingRounds, value?.rounds || [])
+            ...(assignment > 0 ? { firstRoundAssignedAt: assignment } : {}),
+            rounds: mergeStudentRetryRounds(existingRounds, incomingRounds)
           };
         });
       };
@@ -6581,6 +6598,7 @@
               studentId,
               schoolKey: session.schoolKey || "",
               sourceKey: session.sourceKey || "",
+              ...(Number(value.firstRoundAssignedAt) > 0 ? { firstRoundAssignedAt: Number(value.firstRoundAssignedAt) } : {}),
               rounds
             }
           });
@@ -6714,6 +6732,7 @@
           return;
         }
         session.studentStates[studentId] = {
+          ...(Number(data.firstRoundAssignedAt) > 0 ? { firstRoundAssignedAt: Number(data.firstRoundAssignedAt) } : {}),
           rounds: Array.isArray(data.rounds)
             ? data.rounds.map((round, index) => normalizeStudentRetryRound(round, index + 1)).filter((round) => round.items.length)
             : []
@@ -11558,16 +11577,16 @@
     }
 
     function getSchoolUsedProblemIds() {
-      return new Set(getSchoolHistoryExamItems().map((item) => item.problemRecordId).filter(Boolean));
+      return new Set(getSchoolUsageHistoryItems("problems").map((item) => item.problemRecordId).filter(Boolean));
     }
 
     function getSchoolUsedPassageTypeKeys() {
-      return new Set(getSchoolHistoryExamItems().map((item) => item.passageTypeKey).filter(Boolean));
+      return new Set(getSchoolUsageHistoryItems("passageTypes").map((item) => item.passageTypeKey).filter(Boolean));
     }
 
     function getSchoolUsedTailPackKeys() {
       return new Set(
-        getSchoolHistoryExamItems()
+        getSchoolUsageHistoryItems("passageTypes")
           .filter((item) => item.category === "tail")
           .map((item) => item.tailPackKey)
           .filter(Boolean)
@@ -11576,6 +11595,49 @@
 
     function getStudentRetrySchoolKey() {
       return normalizeSchoolKey(state.schoolWorkflow.selectedSchoolKey || "");
+    }
+
+    function getSchoolUsageResetStorageKey() {
+      return `pdfProblemTemplateRepacker.usageResets.v1:${encodeURIComponent(state.studentRetryOwnerUid || "local")}`;
+    }
+
+    function readSchoolUsageResets() {
+      try {
+        const value = JSON.parse(window.localStorage.getItem(getSchoolUsageResetStorageKey()) || "[]");
+        return Array.isArray(value) ? value.filter(row => row && typeof row === "object") : [];
+      } catch (_) { return []; }
+    }
+
+    function getSchoolUsageHistoryItems(kind) {
+      const resets = readSchoolUsageResets().filter(row => row.schoolKey === state.schoolWorkflow.selectedSchoolKey && row.kind === kind);
+      if (!resets.length) return getSchoolHistoryExamItems();
+      const ignored = new Set(resets.flatMap(row => (Array.isArray(row.exams) ? row.exams : [])
+        .filter(exam => exam && typeof exam.examId === "string")
+        .map(exam => JSON.stringify([row.sourceKey, exam.examId, exam.version]))));
+      const sets = new Map(getExamSets().map(set => [set.examId, set]));
+      return getSchoolHistoryExamItems().filter(item => {
+        const version = Number(sets.get(item.examId)?.updatedAt || sets.get(item.examId)?.createdAt || 0);
+        const source = normalizeLibrarySourceKey(item.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+        return !ignored.has(JSON.stringify([LIBRARY_SOURCE_FILTER_ALL, item.examId, version])) &&
+          !ignored.has(JSON.stringify([source, item.examId, version]));
+      });
+    }
+
+    function resetPreviousSchoolUsage(kind) {
+      if (state.isBusy) return;
+      if (!["problems", "passageTypes"].includes(kind)) throw new Error("초기화 종류를 확인해주세요.");
+      const school = getSelectedSchoolProfile();
+      if (!school) throw new Error("먼저 반을 선택해주세요.");
+      const sourceKey = getSchoolSourceFilterKey();
+      const label = kind === "problems" ? "이전 사용 문제" : "이전 사용 지문·유형";
+      if (!window.confirm(`${school.name} · ${getLibrarySourceLabel(sourceKey)}의 ${label} 기준을 초기화할까요?\n이 브라우저에만 적용하며 출제 이력과 학생 오답은 삭제하지 않습니다.`)) return;
+      const rows = readSchoolUsageResets().filter(row => !(row.schoolKey === school.key && row.sourceKey === sourceKey && row.kind === kind));
+      rows.push({ schoolKey: school.key, sourceKey, kind,
+        exams: getExamSetsForSelectedSchool().map(set => ({ examId: set.examId, version: Number(set.updatedAt || set.createdAt || 0) })) });
+      try { window.localStorage.setItem(getSchoolUsageResetStorageKey(), JSON.stringify(rows)); }
+      catch (_) { throw new Error("초기화 기준을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요. 기존 기준은 유지됩니다."); }
+      renderExamLibraryList(); renderExamSlots();
+      setStatus(`${school.name} · ${label} 기준을 초기화했습니다. 이후 새로 출제한 문제는 다시 사용 이력에 포함됩니다.`, "idle", "사용 기준 초기화");
     }
 
     function getStudentRetrySourceKey() {
@@ -11670,7 +11732,7 @@
         session.studentStates[studentId] = {
           rounds: [{
             roundIndex: 1,
-            label: "1차 공통",
+            label: "1차 기준",
             createdAt: session.createdAt || Date.now(),
             items: session.baseItems.map((item) => ({
               ...item,
@@ -11683,12 +11745,95 @@
       if (!Array.isArray(session.studentStates[studentId].rounds) || !session.studentStates[studentId].rounds.length) {
         session.studentStates[studentId].rounds = [{
           roundIndex: 1,
-          label: "1차 공통",
+          label: "1차 기준",
           createdAt: session.createdAt || Date.now(),
           items: session.baseItems.map((item) => ({ ...item, result: "correct" }))
         }];
       }
       return session.studentStates[studentId];
+    }
+
+    function getRetryDifficultyFamilyKey(record) {
+      try {
+        const parts = JSON.parse(record.retryGroupId);
+        if (Array.isArray(parts) && parts.length === 4 && parts.slice(0, 3).every(part => typeof part === "string")) {
+          return JSON.stringify([record.sourceId, ...parts.slice(0, 3)]);
+        }
+      } catch (_) { /* Unrecognized groups cannot safely match a different difficulty. */ }
+      return "";
+    }
+
+    function buildStudentDifficultyFirstRoundItems(baseItems, difficulty) {
+      const key = difficulty ? normalizeSchoolDifficulty(difficulty) : "";
+      const items = baseItems.map((item, index) => {
+        const record = getRetryRecordById(item.problemRecordId);
+        if (!record) throw new Error(`${item.displayNumber || index + 1}번 원본 문항을 찾을 수 없습니다.`);
+        if (!key || record.retryMode !== "rounds") return { ...item, result: "correct" };
+        const family = getRetryDifficultyFamilyKey(record);
+        const candidates = family ? getProblemRecordsOnly().filter(candidate => candidate.retryMode === "rounds" && candidate.retryRound === 1 &&
+          normalizeSchoolDifficulty(candidate.difficulty) === key && getRetryDifficultyFamilyKey(candidate) === family) : [];
+        if (candidates.length !== 1) throw new Error(`${item.displayNumber || index + 1}번 · ${getSchoolDifficultyLabel(key)} 대응 1차 문항이 ${candidates.length}개입니다. 같은 출처·지문·원래 유형의 대응 문항을 확인해주세요.`);
+        return createRetryItemFromRecord(candidates[0], item.displayNumber || index + 1);
+      });
+      if (new Set(items.map(item => item.problemRecordId)).size !== items.length) {
+        throw new Error("대응 문항이 중복됩니다. 난이도 한 가지로 기준 초안을 만든 뒤 학생별 난이도를 배정해주세요.");
+      }
+      return items;
+    }
+
+    function isStudentFirstRoundDifficultyLocked(session, student, studentState) {
+      return studentState.rounds.some(round => Number(round.roundIndex) > 1 || round.items.some(item => item.result === "wrong")) ||
+        getExamSets().some(set => set.studentRetrySessionId === session.sessionId && doesStudentRetryExamSetMatchStudent(set, student)) ||
+        getRetryCheckSetRecordsForRound(session, student, studentState.rounds.find(round => round.roundIndex === 1)).length > 0;
+    }
+
+    function applySelectedStudentFirstRoundDifficulty(value) {
+      if (state.isBusy) return;
+      const session = getSelectedRetrySession(), student = getSelectedRetryStudent();
+      if (!session || !student) throw new Error("먼저 학생과 1차 세트를 선택해주세요.");
+      const studentState = getStudentRetryState(session, student.studentId);
+      if (isStudentFirstRoundDifficultyLocked(session, student, studentState)) throw new Error("채점·출력·CHECK 또는 다음 차수 이력이 있어 1차 난이도를 변경할 수 없습니다. 새 세트를 시작해주세요.");
+      const items = buildStudentDifficultyFirstRoundItems(session.baseItems, value);
+      if (!items.length) throw new Error("배정할 1차 문항이 없습니다.");
+      if (buildRetryProblemRecordSignature(items) === buildRetryProblemRecordSignature(studentState.rounds[0]?.items || [])) return;
+      const draft = getCurrentStudentRetryDraftContext();
+      const replacesDraft = draft?.studentId === student.studentId && draft?.sessionId === session.sessionId;
+      if (replacesDraft && !confirmWorkspaceDiscard()) return;
+      if (!window.confirm(`${student.name} 학생의 1차 문항을 ${getSchoolDifficultyLabel(value)} 기준으로 배정할까요? 다른 학생의 문항은 유지됩니다.`)) return;
+      const now = Math.max(Date.now(), (Number(studentState.firstRoundAssignedAt) || 0) + 1);
+      studentState.firstRoundAssignedAt = now;
+      studentState.rounds = [{ roundId: createRetryId("retry-round"), roundIndex: 1,
+        label: `1차 · ${getSchoolDifficultyLabel(value)}`, createdAt: now, updatedAt: now, items }];
+      session.updatedAt = now;
+      if (replacesDraft) clearGeneratedSchoolDraft();
+      writeStudentRetryState();
+      renderStudentRetryPanel();
+      setStatus(`${student.name} 학생의 1차 난이도를 배정했습니다. ‘선택 학생 1차 초안 불러오기’로 확인하고 출력하세요.`, "idle", "학생별 난이도");
+    }
+
+    function loadSelectedStudentFirstRoundDraft() {
+      if (state.isBusy) return;
+      const student = getSelectedRetryStudent(), session = getSelectedRetrySession();
+      if (!student || !session) throw new Error("학생과 1차 세트를 선택해주세요.");
+      const round = getStudentRetryState(session, student.studentId).rounds.find(round => Number(round.roundIndex) === 1);
+      if (!round?.items.length) throw new Error("학생의 1차 문항이 없습니다.");
+      const records = round.items.map(item => getRetryRecordById(item.problemRecordId));
+      if (records.some(record => !record)) throw new Error("1차 원본 문항이 누락되었습니다. 라이브러리를 확인해주세요.");
+      if (state.examBuilder.slots.length && !confirmWorkspaceDiscard()) return;
+      const slots = records.map((record, index) => ({ ...createSchoolDraftSlotFromRecord(record, index + 1),
+        studentRetrySessionId: session.sessionId, studentRetryStudentId: student.studentId,
+        studentRetryRoundIndex: 1, schoolDraftMode: "student-retry" }));
+      clearGeneratedSchoolDraft();
+      state.examBuilder.slots = slots;
+      if (elements.schoolDraftReview) elements.schoolDraftReview.open = false;
+      elements.examObjectiveCountInput.value = String(slots.filter(slot => slot.category === "objective").length);
+      elements.examSubjectiveCountInput.value = String(slots.filter(slot => slot.category === "subjective").length);
+      elements.examTailCountInput.value = "0";
+      elements.examKickerInput.value = "STUDENT FIRST ROUND";
+      elements.examTitleInput.value = `${student.name} · ${session.baseTitle || session.name} · 1차`;
+      elements.examSubtitleInput.value = round.label || "1차";
+      renderExamSlots(); renderStudentRetryPanel(); revealSchoolDraftResult();
+      setStatus(`${student.name} 학생의 1차 ${slots.length}문항을 불러왔습니다. PDF 출력과 CHECK는 이 학생에게만 연결됩니다.`, "idle", "학생 1차");
     }
 
     function buildRetryProblemRecordSignature(items = []) {
@@ -11920,10 +12065,20 @@
     }
 
     function upsertStudentRetryRound(session, studentId, round) {
-      if (!session || !studentId || !round || Number(round.roundIndex || 0) <= 1) {
+      if (!session || !studentId || !round || Number(round.roundIndex || 0) < 1) {
         return false;
       }
       const studentState = getStudentRetryState(session, studentId);
+      if (Number(round.roundIndex) === 1) {
+        const current = studentState.rounds.find(entry => Number(entry.roundIndex) === 1);
+        if (buildRetryProblemRecordSignature(current?.items || []) !== buildRetryProblemRecordSignature(round.items || [])) {
+          if (studentState.firstRoundAssignedAt || studentState.rounds.some(entry => entry.roundIndex > 1 || entry.items.some(item => item.result === "wrong"))) return false;
+          studentState.firstRoundAssignedAt = Number(round.updatedAt || round.createdAt) || Date.now();
+          studentState.rounds = [normalizeStudentRetryRound(round)];
+          session.updatedAt = Math.max(Number(session.updatedAt) || 0, studentState.firstRoundAssignedAt);
+          return true;
+        }
+      }
       const beforeSignature = JSON.stringify((studentState.rounds || []).map((entry) => ({
         roundId: entry.roundId || "",
         roundIndex: entry.roundIndex,
@@ -11954,7 +12109,8 @@
       const selectedSchoolKey = getStudentRetrySchoolKey();
       const selectedSourceKey = getStudentRetrySourceKey();
       getStoredCheckSetRecords()
-        .filter((record) => getStudentRetryRoundIndexFromCheckSetRecord(record) > 1)
+        .filter((record) => getStudentRetryRoundIndexFromCheckSetRecord(record) > 1 ||
+          Boolean(record.studentRetrySessionId || getCheckSetRecordPayload(record).studentRetrySessionId))
         .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
         .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
         .filter((record) => doesRetryStudentMatchCheckSetRecord(record, student))
@@ -11980,7 +12136,7 @@
               ? `check-${normalizeProblemText(record.checkSetId || record.checkSetRecordId || "")}`
               : "",
             roundIndex,
-            label: `${roundIndex}차 개인 오답`,
+            label: roundIndex === 1 ? "1차 개인" : `${roundIndex}차 개인 오답`,
             createdAt,
             updatedAt,
             items
@@ -12009,7 +12165,7 @@
       let restored = 0;
       getExamSets()
         .filter((examSet) => getExamSetHistoryScope(examSet) === EXAM_HISTORY_SCOPE_STUDENT_RETRY)
-        .filter((examSet) => Number.parseInt(examSet.studentRetryRoundIndex, 10) > 1)
+        .filter((examSet) => Number.parseInt(examSet.studentRetryRoundIndex, 10) >= 1)
         .filter((examSet) => normalizeSchoolKey(examSet.schoolKey || "") === getStudentRetrySchoolKey())
         .filter((examSet) => doesRetrySourceFilterMatch(examSet.librarySourceKey || DEFAULT_LIBRARY_SOURCE_KEY, getStudentRetrySourceKey()))
         .filter((examSet) => doesStudentRetryExamSetMatchStudent(examSet, student))
@@ -12022,7 +12178,7 @@
           if (!session) {
             return;
           }
-          const roundIndex = Math.max(2, Number.parseInt(examSet.studentRetryRoundIndex, 10) || 2);
+          const roundIndex = Math.max(1, Number.parseInt(examSet.studentRetryRoundIndex, 10) || 1);
           const mappings = examItems
             .filter((item) => item.examId === examSet.examId)
             .sort((left, right) => (Number(left.slotIndex) || 0) - (Number(right.slotIndex) || 0))
@@ -12040,7 +12196,7 @@
           const restoredRound = {
             roundId: normalizeProblemText(examSet.examId || "") ? `exam-${normalizeProblemText(examSet.examId || "")}` : "",
             roundIndex,
-            label: `${roundIndex}차 개인 오답`,
+            label: roundIndex === 1 ? "1차 개인" : `${roundIndex}차 개인 오답`,
             createdAt,
             updatedAt,
             items
@@ -12066,6 +12222,12 @@
     }
 
     function findExistingRetrySessionForCheckSetRecord(record = {}, baseItems = []) {
+      const linkedSessionId = normalizeProblemText(record.studentRetrySessionId || getCheckSetRecordPayload(record).studentRetrySessionId || "");
+      const linked = (state.studentRetry.sessions || []).find(session => linkedSessionId && session.sessionId === linkedSessionId &&
+        normalizeSchoolKey(session.schoolKey) === normalizeSchoolKey(record.schoolKey || getStudentRetrySchoolKey()) &&
+        (doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), session.sourceKey) ||
+          doesRetrySourceFilterMatch(session.sourceKey, getCheckSetRecordSourceKey(record))));
+      if (linked) return linked;
       const sessionId = buildRetrySessionIdFromCheckSetRecord(record, baseItems);
       const signature = buildRetryProblemRecordSignature(baseItems);
       const sourceBatchId = normalizeProblemText(record.sourceBatchId || getCheckSetRecordPayload(record).sourceBatchId || "");
@@ -12385,11 +12547,11 @@
         return [];
       }
       const selectedSchoolKey = normalizeSchoolKey(session.schoolKey || "");
-      const selectedSourceKey = normalizeLibrarySourceKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
+      const selectedSourceKey = normalizeSchoolSourceFilterKey(session.sourceKey || DEFAULT_LIBRARY_SOURCE_KEY);
       const roundIndex = Math.max(1, Number.parseInt(round.roundIndex, 10) || 0);
       const allRecords = getStoredCheckSetRecords();
       if (roundIndex <= 1) {
-        const baseSignature = buildRetryProblemRecordSignature(session.baseItems || []);
+        const baseSignature = buildRetryProblemRecordSignature(round.items || []);
         return allRecords
           .filter((record) => doesCheckSetRecordMatchRetrySchool(record, selectedSchoolKey))
           .filter((record) => doesRetrySourceFilterMatch(getCheckSetRecordSourceKey(record), selectedSourceKey))
@@ -12949,7 +13111,7 @@
       writeStudentRetryState();
       renderStudentRetryPanel();
       setStatus(
-        `${session.name} 세트를 학생 ${students.length}명에게 1차 공통으로 적용했습니다.${addedStudentCount ? ` Firebase 학생 ${addedStudentCount}명도 자동 등록했습니다.` : ""} 학생별 오답을 체크한 뒤 다음 차수를 생성하세요.`,
+        `${session.name} 세트를 학생 ${students.length}명에게 시작했습니다.${addedStudentCount ? ` Firebase 학생 ${addedStudentCount}명도 자동 등록했습니다.` : ""} 학생별 난이도를 지정한 뒤 1차 초안을 불러와 출력하세요.`,
         "idle",
         "오답유형"
       );
@@ -13099,7 +13261,7 @@
 
     function getSchoolPassageUsageCounts() {
       const counts = new Map();
-      getSchoolHistoryExamItems().forEach((item) => {
+      getSchoolUsageHistoryItems("problems").forEach((item) => {
         if (!item.passageKey) {
           return;
         }
@@ -13612,7 +13774,29 @@
       const latestRound = rounds[rounds.length - 1];
       const latestWrongCount = (latestRound?.items || []).filter((item) => item.result === "wrong").length;
       const usedProblemCount = getStudentRetryUsedProblemIds(studentState).size;
+      const firstRound = rounds.find(round => round.roundIndex === 1);
+      const hasRoundProblems = selectedSession.baseItems.some(item => getRetryRecordById(item.problemRecordId)?.retryMode === "rounds");
+      const difficultyLocked = isStudentFirstRoundDifficultyLocked(selectedSession, selectedStudent, studentState);
+      const assignedDifficulties = new Set((firstRound?.items || []).filter(item => item.retryMode === "rounds").map(item => normalizeSchoolDifficulty(item.difficulty)));
+      const assignedDifficulty = buildRetryProblemRecordSignature(firstRound?.items || []) === buildRetryProblemRecordSignature(selectedSession.baseItems)
+        ? "" : assignedDifficulties.size === 1 ? [...assignedDifficulties][0] : "";
+      const difficultyOptions = getSchoolDifficultyOptions();
+      if (assignedDifficulty && !difficultyOptions.includes(assignedDifficulty)) difficultyOptions.push(assignedDifficulty);
       elements.studentRetryRoot.innerHTML = `
+        <div class="field-grid">
+          ${hasRoundProblems ? `<div class="field-row">
+            <label class="field-label" for="studentFirstRoundDifficultySelect">${escapeHtml(selectedStudent.name)} · 1차 난이도</label>
+            <select class="select-input" id="studentFirstRoundDifficultySelect" aria-describedby="studentFirstRoundDifficultyHelp"${state.isBusy || difficultyLocked ? " disabled" : ""}>
+              <option value="">기준 초안과 동일</option>
+              ${difficultyOptions.map(key => `<option value="${escapeHtml(key)}"${assignedDifficulty === key ? " selected" : ""}>${escapeHtml(getSchoolDifficultyLabel(key))}</option>`).join("")}
+            </select>
+            <p class="small-note" id="studentFirstRoundDifficultyHelp">${difficultyLocked ? "채점·출력·CHECK 또는 다음 차수 이력이 있어 난이도가 고정되었습니다." : "현재 학생에게만 적용됩니다. 같은 출처·지문·원래 유형의 1차 문항으로 바꾸며, 일반형 문항은 유지합니다."}</p>
+          </div>` : ""}
+          <div class="school-inline-actions">
+            ${hasRoundProblems ? `<button class="ghost-button" type="button" data-student-first-difficulty${state.isBusy || difficultyLocked ? " disabled" : ""}>선택 난이도 적용</button>` : ""}
+            <button class="solid-button" type="button" data-student-first-load${state.isBusy ? " disabled" : ""}>선택 학생 1차 초안 불러오기</button>
+          </div>
+        </div>
         <div class="student-retry-overview">
           <article class="student-retry-stat">
             <span>학생</span>
@@ -13950,6 +14134,7 @@
       state.examBuilder.loadedExamId = "";
       state.examBuilder.loadedWorkId = "";
       state.examBuilder.slots = result.slots;
+      if (elements.schoolDraftReview) elements.schoolDraftReview.open = false;
       state.examBuilder.slotRenderLimit = EXAM_SLOT_RENDER_BATCH_SIZE;
       clearExamAnswerEditorState();
       state.schoolWorkflow.warnings = result.warnings;
@@ -14595,7 +14780,7 @@
           slot.errorMessage = "이 꼬리문제 지문에는 배치 가능한 문항이 없습니다.";
           return;
         }
-        const historyUsedProblemIds = getUsedProblemIdsFromHistory();
+        const historyUsedProblemIds = getSchoolUsedProblemIds();
         const otherAssignedProblemIds = getOtherAssignedProblemIds(slotId);
         const unavailableProblemIds = new Set([...historyUsedProblemIds, ...otherAssignedProblemIds]);
         if (tailPackRecords.some((record) => unavailableProblemIds.has(record.recordId))) {
@@ -14686,6 +14871,9 @@
 
     function updateExamActionButtons() {
       renderSchoolDifficultySelect();
+      [elements.resetSchoolUsedProblemsButton, elements.resetSchoolUsedPassageTypesButton].forEach(button => {
+        if (button) button.disabled = state.isBusy || !getSelectedSchoolProfile();
+      });
       if (elements.schoolOutputOrderSelect) {
         elements.schoolOutputOrderSelect.disabled = state.isBusy || isStudentRetryDraftActive();
       }
@@ -14726,6 +14914,7 @@
 
     function renderExamSlots() {
       const slots = state.examBuilder.slots;
+      if (elements.schoolDraftReviewSummary) elements.schoolDraftReviewSummary.textContent = `· ${slots.length}문항${state.schoolWorkflow.warnings.length ? ` · 경고 ${state.schoolWorkflow.warnings.length}개` : ""}`;
       if (!slots.some((slot) => slot.id === state.examBuilder.answerEditSlotId)) {
         clearExamAnswerEditorState();
       }
@@ -20904,6 +21093,16 @@
           setSchoolSourceFilter(elements.schoolSourceFilterSelect.value);
         });
       }
+      if (elements.resetSchoolUsedProblemsButton) {
+        elements.resetSchoolUsedProblemsButton.addEventListener("click", () => {
+          try { resetPreviousSchoolUsage("problems"); } catch (error) { handleError(error); }
+        });
+      }
+      if (elements.resetSchoolUsedPassageTypesButton) {
+        elements.resetSchoolUsedPassageTypesButton.addEventListener("click", () => {
+          try { resetPreviousSchoolUsage("passageTypes"); } catch (error) { handleError(error); }
+        });
+      }
       if (elements.schoolExcludeUsedProblems) {
         elements.schoolExcludeUsedProblems.addEventListener("change", () => {
           state.schoolWorkflow.excludeUsedProblems = elements.schoolExcludeUsedProblems.checked;
@@ -21034,6 +21233,14 @@
         });
       }
       if (elements.studentRetryRoot) {
+        elements.studentRetryRoot.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button || button.disabled) return;
+          try {
+            if (button.hasAttribute("data-student-first-difficulty")) applySelectedStudentFirstRoundDifficulty(document.getElementById("studentFirstRoundDifficultySelect")?.value || "");
+            if (button.hasAttribute("data-student-first-load")) loadSelectedStudentFirstRoundDraft();
+          } catch (error) { handleError(error); }
+        });
         elements.studentRetryRoot.addEventListener("toggle", (event) => {
           const details = event.target;
           if (!(details instanceof HTMLDetailsElement) || !details.dataset.retryRoundDetails) {

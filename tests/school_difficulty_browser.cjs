@@ -63,6 +63,13 @@ fs.mkdirSync(out, { recursive: true });
     await page.locator('#generateSchoolDraftButton').click();
     records = await assigned();
     assert(records.length === 4 && records.every(r => r.difficulty === 'hard' && r.retryRound === 1));
+    assert.equal(await page.locator('#schoolDraftReview').evaluate(details => details.open), false);
+    assert((await page.locator('#schoolDraftReviewSummary').textContent()).includes('4문항'));
+    await page.locator('#schoolDraftReview > summary').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#examSlotList .exam-slot-card').first().isVisible(), true);
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#schoolDraftReview').evaluate(details => details.open), false);
     assert.equal(await page.evaluate(() => captureSchoolWorkflowSnapshot().difficultyFilter), 'hard');
     await page.evaluate(() => document.querySelector('#schoolDifficultySelect').closest('.panel-card').scrollIntoView());
     await page.screenshot({ path: path.join(out, 'desktop.png') });
@@ -87,7 +94,67 @@ fs.mkdirSync(out, { recursive: true });
     assert.equal(preview.count, 4);
     assert(preview.markup.includes('hard') && !preview.markup.includes('easy') && !preview.markup.includes('medium'),
       'actual export contains only the selected difficulty');
+    // Two different first-round difficulties inside one session, through real UI.
+    await page.evaluate(() => {
+      state.studentRetry.students = ['One', 'Two'].map((name, index) => ({ studentId: 'qa-' + index, name, schoolKey: 'qa' }));
+      renderStudentRetryPanel();
+    });
+    page.on('dialog', dialog => dialog.accept());
+    await page.locator('#startStudentRetryButton').click();
+    await page.locator('#studentFirstRoundDifficultySelect').selectOption('easy');
+    await page.locator('[data-student-first-difficulty]').click();
+    await page.locator('#studentRetryStudentSelect').selectOption('qa-1');
+    await page.locator('#studentFirstRoundDifficultySelect').selectOption('medium');
+    await page.locator('[data-student-first-difficulty]').click();
+    const firstRounds = await page.evaluate(() => {
+      const session = getSelectedRetrySession();
+      return { count: state.studentRetry.sessions.length, base: session.baseItems.map(item => item.difficulty),
+        students: Object.values(session.studentStates).map(value => value.rounds[0].items.map(item => item.difficulty)) };
+    });
+    assert.equal(firstRounds.count, 1);
+    assert(firstRounds.base.every(value => value === 'hard'));
+    assert.deepEqual(firstRounds.students, [Array(4).fill('easy'), Array(4).fill('medium')]);
+    await page.locator('#studentRetryStudentSelect').selectOption('qa-0');
+    await page.locator('[data-student-first-load]').click();
+    assert((await assigned()).every(record => record.difficulty === 'easy'));
+    const personal = await page.evaluate(async () => {
+      const output = await buildExamPreviewDocument('previewUrls');
+      return { markup: output.markup, student: getCurrentStudentRetryDraftContext().studentId,
+        targets: getCheckSetTargetStudentsForCurrentDraft().map(student => student.studentId) };
+    });
+    assert.equal(personal.student, 'qa-0');
+    assert.deepEqual(personal.targets, ['qa-0']);
+    assert(personal.markup.includes('easy') && !personal.markup.includes('medium') && !personal.markup.includes('hard'));
+    await page.evaluate(() => {
+      const first = getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds[0];
+      updateStudentRetryResult('qa-0', 1, first.items[0].itemId, true);
+    });
+    assert.equal(await page.locator('#studentFirstRoundDifficultySelect').isDisabled(), true);
+    await page.locator('#generateStudentRetryButton').click();
+    await page.waitForFunction(() => getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds.length === 2);
+    assert((await assigned()).length === 1 && (await assigned())[0].difficulty === 'easy' && (await assigned())[0].retryRound === 2);
+    await page.evaluate(() => {
+      const second = getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds[1];
+      updateStudentRetryResult('qa-0', 2, second.items[0].itemId, true);
+    });
+    await page.locator('#generateStudentRetryButton').click();
+    await page.waitForFunction(() => getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds.length === 3);
+    assert((await assigned()).length === 1 && (await assigned())[0].difficulty === 'easy' && (await assigned())[0].retryRound === 3);
+    // Independent usage resets preserve the history records.
+    await page.evaluate(() => {
+      state.libraryCache.examSets = [{ examId: 'qa-used', schoolKey: 'qa', librarySourceKey: 'neoreunteo', updatedAt: 1 }];
+      state.libraryCache.examItems = [{ examId: 'qa-used', librarySourceKey: 'neoreunteo', problemRecordId: 'qa-used', passageTypeKey: 'qa-used' }];
+      renderExamSlots();
+    });
+    await page.locator('#resetSchoolUsedProblemsButton').click();
+    assert.equal(await page.evaluate(() => getSchoolUsedProblemIds().size), 0);
+    assert.equal(await page.evaluate(() => getSchoolUsedPassageTypeKeys().size), 1);
+    await page.locator('#resetSchoolUsedPassageTypesButton').click();
+    assert.equal(await page.evaluate(() => getSchoolUsedPassageTypeKeys().size), 0);
+    assert.equal(await page.evaluate(() => state.libraryCache.examSets.length), 1);
+    await page.locator('#studentRetryRoot').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, 'student-difficulty-mobile.png') });
     assert.deepEqual(errors, []); assert.deepEqual(missing, []);
-    console.log('PASS: real imported rounds, difficulty controls, draft generation/export, cancel/confirm, saved selection, desktop/mobile and same-difficulty retry pairing; no production access');
+    console.log('PASS: real imported rounds, scoped non-destructive resets, collapsed review/keyboard, per-student first-round output/CHECK targets, wrong-only rounds 2/3, cancellation and desktop/mobile; no production access');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
