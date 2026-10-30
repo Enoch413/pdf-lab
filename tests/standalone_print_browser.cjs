@@ -70,7 +70,13 @@ fs.mkdirSync(out, { recursive: true });
         await document.fonts.ready;
         await Promise.all([...document.images].map(image => image.decode()));
       });
-      assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backgroundColor), 'rgb(255, 255, 255)', screen + ': retain screen paper theme');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backgroundColor), 'rgb(255, 255, 255)', screen + ': white standalone paper preview');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.sheet'), '::before').display), 'none');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)', screen + ': white preview canvas');
+      assert(await page.locator('.sheet-title').first().isVisible(), screen + ': visible preview title');
+      assert(await page.locator('.problem-card').first().isVisible(), screen + ': visible preview question');
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: path.join(out, screen + '-screen-preview.png'), fullPage: false });
       await page.emulateMedia({ media: 'print' });
       const geometry = await page.evaluate(() => {
         const rect = el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
@@ -116,7 +122,7 @@ fs.mkdirSync(out, { recursive: true });
       await page.screenshot({ path: path.join(out, screen + '-print.png'), fullPage: false });
       results.push({ screen, counts: generated.counts, geometry, errors, missing });
       await page.close();
-      console.log('PASS: ' + screen + ' actual text/image export, white print backgrounds, unchanged screen theme, A4, two columns, bounded logo, no errors/missing files');
+      console.log('PASS: ' + screen + ' actual text/image export, white screen previews and print paper, A4, two columns, bounded logo, no errors/missing files');
     }
   } finally {
     await browser.close();

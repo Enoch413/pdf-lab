@@ -2857,16 +2857,19 @@ body[data-workspace-mode] .app-tab-shell {
   margin: 12px auto;
 }
 
+/* Paper previews show the same ink-saving surface as the printed document. */
+.sheet {
+  background: #fff !important;
+}
+.sheet::before, .sheet .problem-card::before {
+  display: none !important;
+}
+.sheet .problem-card, .sheet .problem-badge, .sheet .problem-type-badge {
+  background: transparent !important;
+  box-shadow: none !important;
+}
 @media print {
-  /* Keep the screen theme out of PDFs, even with background graphics enabled. */
-  html, body, .preview-panel, .preview-root, .sheet, .answer-key-section {
+  html, body, .preview-panel, .preview-root, .answer-key-section {
     background: #fff !important;
-  }
-  .sheet::before, .problem-card::before {
-    display: none !important;
-  }
-  .problem-card, .problem-badge, .problem-type-badge {
-    background: transparent !important;
-    box-shadow: none !important;
   }
 }
