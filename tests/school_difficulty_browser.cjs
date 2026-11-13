@@ -35,34 +35,20 @@ fs.mkdirSync(out, { recursive: true });
       state.schoolWorkflow.schools = [{ key: 'qa', name: 'QA', source: 'local' }];
       state.schoolWorkflow.selectedSchoolKey = 'qa';
       state.schoolWorkflow.excludeUsedProblems = false;
-      applySchoolWorkflowSnapshot(captureSchoolWorkflowSnapshot());
+      applySchoolWorkflowSnapshot({ ...captureSchoolWorkflowSnapshot(), difficultyFilter: 'hard' });
       renderExamLibraryList(); renderExamSlots();
     });
-    const select = page.getByLabel('기준 문항 난이도', { exact: true });
-    assert.equal(await select.isEnabled(), true, JSON.stringify(await page.evaluate(() => ({ busy: state.isBusy,
-      source: getSchoolSourceFilterKey(), options: getSchoolDifficultyOptions(),
-      records: state.libraryCache.problemRecords.slice(0, 1) }))));
-    assert.deepEqual(await select.locator('option').evaluateAll(options => options.map(o => o.value)), ['', 'easy', 'medium', 'hard']);
-    await select.selectOption('easy');
+    assert.equal(await page.locator('#schoolDifficultySelect').count(), 0);
+    assert.equal(await page.evaluate(() => getSchoolProblemRecordsOnly().length), 12, 'legacy filter does not restrict draft candidates');
     for (let index = 0; index < await page.locator('.school-passage-toggle').count(); index++) {
       await page.locator('.school-passage-toggle').nth(index).click();
     }
     await page.locator('#generateSchoolDraftButton').click();
     const assigned = () => page.evaluate(() => state.examBuilder.slots.map(slot =>
       state.libraryCache.problemRecords.find(record => record.recordId === slot.assignedProblemId)));
-    let records = await assigned();
+    const records = await assigned();
     assert.equal(records.length, 4);
-    assert(records.every(r => r.difficulty === 'easy' && r.retryRound === 1));
-    page.once('dialog', dialog => dialog.dismiss());
-    await select.selectOption('hard');
-    assert.equal(await select.inputValue(), 'easy');
-    assert.deepEqual(await assigned(), records, 'cancel keeps existing draft');
-    page.once('dialog', dialog => dialog.accept());
-    await select.selectOption('hard');
-    assert.equal((await assigned()).length, 0, 'confirmed change clears stale draft');
-    await page.locator('#generateSchoolDraftButton').click();
-    records = await assigned();
-    assert(records.length === 4 && records.every(r => r.difficulty === 'hard' && r.retryRound === 1));
+    assert(records.every(r => r.retryRound === 1));
     assert.equal(await page.locator('#schoolDraftReview').evaluate(details => details.open), false);
     assert((await page.locator('#schoolDraftReviewSummary').textContent()).includes('4문항'));
     await page.locator('#schoolDraftReview > summary').focus();
@@ -70,13 +56,14 @@ fs.mkdirSync(out, { recursive: true });
     assert.equal(await page.locator('#examSlotList .exam-slot-card').first().isVisible(), true);
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#schoolDraftReview').evaluate(details => details.open), false);
-    assert.equal(await page.evaluate(() => captureSchoolWorkflowSnapshot().difficultyFilter), 'hard');
-    await page.evaluate(() => document.querySelector('#schoolDifficultySelect').closest('.panel-card').scrollIntoView());
+    assert.equal(await page.evaluate(() => Object.hasOwn(captureSchoolWorkflowSnapshot(), 'difficultyFilter')), false);
+    await page.evaluate(() => document.querySelector('#schoolOutputOrderSelect').closest('.panel-card').scrollIntoView());
     await page.screenshot({ path: path.join(out, 'desktop.png') });
     await page.setViewportSize({ width: 390, height: 844 });
-    await select.scrollIntoViewIfNeeded();
+    const orderSelect = page.locator('#schoolOutputOrderSelect');
+    await orderSelect.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, 'mobile.png') });
-    const size = await select.boundingBox();
+    const size = await orderSelect.boundingBox();
     assert(size && size.width > 100 && size.x >= 0 && size.x + size.width <= 390);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     const pairs = await page.evaluate(() => state.examBuilder.slots.map(slot => {
@@ -85,15 +72,13 @@ fs.mkdirSync(out, { recursive: true });
       const third = findNextRetryCandidateForItem({ problemRecordId: second.recordId }, new Set());
       return [second.difficulty, second.retryRound, third.difficulty, third.retryRound];
     }));
-    assert(pairs.every(pair => JSON.stringify(pair) === JSON.stringify(['hard', 2, 'hard', 3])));
+    assert(pairs.every((pair, index) => JSON.stringify(pair) === JSON.stringify([records[index].difficulty, 2, records[index].difficulty, 3])));
     const preview = await page.evaluate(async () => {
       applyExamContentModeToUi('text');
       const output = await buildExamPreviewDocument('previewUrls');
       return { count: output.totalQuestionCount, markup: output.markup };
     });
     assert.equal(preview.count, 4);
-    assert(preview.markup.includes('hard') && !preview.markup.includes('easy') && !preview.markup.includes('medium'),
-      'actual export contains only the selected difficulty');
     // One action creates all students' difficulty-specific CHECKs and the retry session.
     await page.evaluate(async () => {
       state.studentRetry.students = ['One', 'Two'].map((name, index) => ({ studentId: 'qa-' + index, name, schoolKey: 'qa', firebaseUid: 'qa-uid-' + index, classIds: ['qa-class'] }));
@@ -152,7 +137,7 @@ fs.mkdirSync(out, { recursive: true });
         students: Object.values(session.studentStates).map(value => value.rounds[0].items.map(item => item.difficulty)) };
     });
     assert.equal(firstRounds.count, 1);
-    assert(firstRounds.base.every(value => value === 'hard'));
+    assert.deepEqual(firstRounds.base, records.map(record => record.difficulty));
     assert.deepEqual(firstRounds.students, [Array(4).fill('easy'), Array(4).fill('medium')]);
     await page.locator('#studentRetryStudentSelect').selectOption('qa-0');
     await page.locator('[data-student-first-load]').click();

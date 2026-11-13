@@ -21,15 +21,15 @@ app.run(`recordMatchesSchoolSource = record => record.sourceId !== 'other';
     assignedProblemId: record.recordId, passageKey: record.passageKey, selectedType: record.problemType });`);
 const original = JSON.stringify(c.records);
 for (const difficulty of ['', 'easy', 'medium', 'hard', 'none', 'advanced']) {
+  // Old saved settings must not silently narrow new drafts after removing the control.
   c.state.schoolWorkflow.difficultyFilter = difficulty;
   const candidates = app.pure('getSchoolProblemRecordsOnly()');
   assert(candidates.some(r => r.recordId === 'general'), 'general mode keeps its existing candidates');
-  assert(candidates.every(r => r.retryMode !== 'rounds' || (r.retryRound === 1 &&
-    (!difficulty || (r.difficulty || 'none') === difficulty))), 'initial round must respect selected difficulty');
+  assert.equal(candidates.length, 21, 'all first-round difficulties remain available regardless of legacy filter');
+  assert(candidates.every(r => r.retryMode !== 'rounds' || r.retryRound === 1));
   for (const builder of ['buildSchoolDistinctDraft', 'buildSchoolFullDraft']) {
     const draft = app.pure(builder + '()');
-    assert.equal(draft.slots.length, !difficulty && builder === 'buildSchoolFullDraft' ? 20 : 4);
-    assert(draft.slots.every(s => !difficulty || s.id.startsWith((difficulty === 'none' ? '' : difficulty) + '-')));
+    assert.equal(draft.slots.length, builder === 'buildSchoolFullDraft' ? 20 : 4);
     assert.equal(draft.warnings.length, 0);
   }
 }
@@ -52,34 +52,21 @@ app.run('doesRetryCandidateMatchItemSource = () => true');
 assert.equal(app.pure('findNextRetryCandidateForItem(item, used)').recordId, 'easy-A-주제-2');
 c.item.problemRecordId = 'easy-A-주제-2';
 assert.equal(app.pure('findNextRetryCandidateForItem(item, used)').recordId, 'easy-A-주제-3');
-// Cancel preserves the draft, edits and selection; active retry drafts are locked.
-c.elements = { schoolDifficultySelect: {} };
-c.allowDiscard = false; c.retryActive = false; c.cleared = 0;
-app.run(`isStudentRetryDraftActive = () => retryActive;
-  confirmWorkspaceDiscard = () => allowDiscard;
-  clearGeneratedSchoolDraft = () => { cleared++; state.examBuilder.slots = []; };
-  renderExamLibraryList = () => {}; updateExamBuilderSummary = () => {}; setStatus = () => {};`);
+// Legacy snapshots drop the removed setting without changing saved questions or CHECK assignments.
+c.elements = {};
 c.state.examBuilder.slots = [{ id: 'edited' }];
-app.run('setSchoolDifficulty("easy")');
-assert.equal(c.state.schoolWorkflow.difficultyFilter, 'hard');
-assert.equal(c.state.examBuilder.slots[0].id, 'edited');
-assert.equal(c.elements.schoolDifficultySelect.value, 'hard');
-c.allowDiscard = true;
-app.run('setSchoolDifficulty("easy")');
-assert.equal(c.state.schoolWorkflow.difficultyFilter, 'easy');
-assert.equal(c.cleared, 1);
-c.retryActive = true;
-app.run('setSchoolDifficulty("hard")');
-assert.equal(c.state.schoolWorkflow.difficultyFilter, 'easy');
-assert.equal(c.cleared, 1);
-// Save/load and legacy defaults preserve selection without altering saved slots.
+c.state.examBuilder.checkSetDifficulties = [{studentId:'student',difficulty:'easy'}];
 app.run(`getSchoolSourceFilterKey = () => 'all'; applySelectedSchoolClassIdsToCheckSetInput = () => {};`);
 c.snapshot = app.pure('captureSchoolWorkflowSnapshot()');
-assert.equal(c.snapshot.difficultyFilter, 'easy');
+assert.equal(Object.hasOwn(c.snapshot, 'difficultyFilter'), false);
+c.snapshot.difficultyFilter = 'hard';
 app.pure('applySchoolWorkflowSnapshot(snapshot)');
-assert.equal(c.state.schoolWorkflow.difficultyFilter, 'easy');
+assert.equal(Object.hasOwn(c.state.schoolWorkflow, 'difficultyFilter'), false);
+assert.equal(app.pure('getSchoolProblemRecordsOnly().length'), 21);
+assert.equal(c.state.examBuilder.slots[0].id, 'edited');
+assert.equal(c.state.examBuilder.checkSetDifficulties[0].difficulty, 'easy');
 app.pure('applySchoolWorkflowSnapshot({})');
-assert.equal(c.state.schoolWorkflow.difficultyFilter, '');
-assert(app.html.includes('for="schoolDifficultySelect"'));
-assert(app.html.includes('setSchoolDifficulty(elements.schoolDifficultySelect.value)'));
-console.log('PASS: round difficulty in both draft modes, general compatibility, source scoping, retry chain, cancellation, retry locking and saved selection');
+assert.equal(Object.hasOwn(c.state.schoolWorkflow, 'difficultyFilter'), false);
+assert(!app.html.includes('id="schoolDifficultySelect"'));
+assert(!app.html.includes('function setSchoolDifficulty('));
+console.log('PASS: difficulty only in CHECK, all first-round draft candidates, general/source compatibility, retry chains and legacy filter removal without losing saved edits');

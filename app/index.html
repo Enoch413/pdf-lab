@@ -365,14 +365,7 @@
                   </label>
                 </div>
               </div>
-              <div class="field-row">
-                <label class="field-label" for="schoolDifficultySelect">기준 문항 난이도</label>
-                <select class="select-input" id="schoolDifficultySelect" aria-describedby="schoolDifficultyHelp schoolDifficultyRetryNote">
-                  <option value="">전체 난이도</option>
-                </select>
-                <span class="small-note" id="schoolDifficultyHelp">여기서는 기준 문항을 만듭니다. 학생별 난이도는 CHECK 연동에서 지정하며, 오답은 해당 난이도의 2·3차로 이어집니다.</span>
-                <span class="small-note" id="schoolDifficultyRetryNote" hidden>오답 차수는 1차 문항의 난이도를 유지합니다.</span>
-              </div>
+              <p class="small-note">학생별 난이도는 문항 생성 후 CHECK 연동에서 지정합니다.</p>
               <div class="field-row">
                 <label class="field-label" for="schoolOutputOrderSelect">출제 순서</label>
                 <select class="select-input" id="schoolOutputOrderSelect" aria-describedby="schoolOutputOrderHelp schoolOutputOrderRetryNote">
@@ -1458,7 +1451,6 @@
         typeSelectionCustomized: false,
         draftMode: "distinct",
         outputOrder: "type",
-        difficultyFilter: "",
         passageTextbookName: "",
         passageQuery: "",
         excludeUsedProblems: true,
@@ -1672,8 +1664,6 @@
       schoolModeDistinct: document.getElementById("schoolModeDistinct"),
       schoolModeFull: document.getElementById("schoolModeFull"),
       schoolOutputOrderSelect: document.getElementById("schoolOutputOrderSelect"),
-      schoolDifficultySelect: document.getElementById("schoolDifficultySelect"),
-      schoolDifficultyRetryNote: document.getElementById("schoolDifficultyRetryNote"),
       schoolOutputOrderRetryNote: document.getElementById("schoolOutputOrderRetryNote"),
       schoolExcludeUsedProblems: document.getElementById("schoolExcludeUsedProblems"),
       schoolExcludeUsedPassageTypes: document.getElementById("schoolExcludeUsedPassageTypes"),
@@ -11357,8 +11347,7 @@
 
     function getSchoolProblemRecordsOnly() {
       return getProblemRecordsOnly().filter(recordMatchesSchoolSource)
-        .filter(record => record.retryMode !== "rounds" || (record.retryRound === 1 &&
-          (!state.schoolWorkflow.difficultyFilter || normalizeSchoolDifficulty(record.difficulty) === state.schoolWorkflow.difficultyFilter)));
+        .filter(record => record.retryMode !== "rounds" || record.retryRound === 1);
     }
 
     function normalizeSchoolDifficulty(value) {
@@ -11382,33 +11371,6 @@
         const rank = value => order.includes(value) ? order.indexOf(value) : order.length;
         return rank(a) - rank(b) || a.localeCompare(b, "ko");
       });
-    }
-
-    function renderSchoolDifficultySelect() {
-      if (!elements.schoolDifficultySelect) return;
-      const options = getSchoolDifficultyOptions();
-      const selected = state.schoolWorkflow.difficultyFilter || "";
-      if (selected && !options.includes(selected)) options.push(selected);
-      elements.schoolDifficultySelect.innerHTML = `<option value="">전체 난이도</option>` + options.map(value =>
-        `<option value="${escapeHtml(value)}">${escapeHtml(getSchoolDifficultyLabel(value))}</option>`).join("");
-      elements.schoolDifficultySelect.value = selected;
-      elements.schoolDifficultySelect.disabled = state.isBusy || isStudentRetryDraftActive() || !options.length;
-      if (elements.schoolDifficultyRetryNote) elements.schoolDifficultyRetryNote.hidden = !isStudentRetryDraftActive();
-    }
-
-    function setSchoolDifficulty(value) {
-      const current = state.schoolWorkflow.difficultyFilter || "";
-      const next = value ? normalizeSchoolDifficulty(value) : "";
-      if (next === current) return;
-      if (isStudentRetryDraftActive() || (state.examBuilder.slots.length && !confirmWorkspaceDiscard())) {
-        if (elements.schoolDifficultySelect) elements.schoolDifficultySelect.value = current;
-        return;
-      }
-      state.schoolWorkflow.difficultyFilter = next;
-      clearGeneratedSchoolDraft();
-      renderExamLibraryList();
-      updateExamBuilderSummary();
-      setStatus(`차수형 ${getSchoolDifficultyLabel(next)} 조건을 적용했습니다. 지문과 유형을 확인한 뒤 초안을 생성해주세요.`, "idle", "난이도 선택");
     }
 
     function getSchoolTailProblemRecordsOnly() {
@@ -13529,7 +13491,6 @@
     function setSchoolSourceFilter(sourceKey) {
       const normalized = normalizeSchoolSourceFilterKey(sourceKey);
       state.schoolWorkflow.sourceFilterKey = normalized;
-      state.schoolWorkflow.difficultyFilter = "";
       state.examBuilder.checkSetDifficulties = [];
       if (elements.schoolSourceFilterSelect) {
         elements.schoolSourceFilterSelect.value = normalized;
@@ -13831,7 +13792,6 @@
     function renderExamLibraryList() {
       ensureSchoolWorkflowSelection();
       renderSchoolList();
-      renderSchoolDifficultySelect();
 
       const selectedProfile = getSelectedSchoolProfile();
       if (!selectedProfile) {
@@ -14849,7 +14809,7 @@
       const sourceLabel = getLibrarySourceLabel(getSchoolSourceFilterKey());
       const questionRecords = getSchoolProblemRecordsOnly();
       if (!questionRecords.length) {
-        elements.examBuilderSummary.textContent = `${sourceLabel} 출처에서 현재 난이도 조건에 맞는 문제가 없습니다. 난이도를 바꾸거나 문제 라이브러리를 확인해주세요.`;
+        elements.examBuilderSummary.textContent = `${sourceLabel} 출처에 저장된 문제가 없습니다. 문제 라이브러리를 확인해주세요.`;
         return;
       }
       if (!schoolProfile) {
@@ -14867,11 +14827,10 @@
       }
       const modeLabel = state.schoolWorkflow.draftMode === "distinct" ? "각 지문별 유형당 1문제" : "선택 유형 전부";
       const orderLabel = state.schoolWorkflow.outputOrder === "passage" ? "지문별" : "유형별";
-      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 차수형 ${getSchoolDifficultyLabel(state.schoolWorkflow.difficultyFilter)} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · ${orderLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
+      elements.examBuilderSummary.textContent = `${schoolProfile.name} · 출처 ${sourceLabel} · 지문 ${state.schoolWorkflow.selectedPassageKeys.length}개 · 유형 ${state.schoolWorkflow.selectedTypeLabels.length}개 · ${modeLabel} · ${orderLabel} · draft ${assignedCount}개${warningCount ? ` · 경고 ${warningCount}개` : ""}`;
     }
 
     function updateExamActionButtons() {
-      renderSchoolDifficultySelect();
       [elements.resetSchoolUsedProblemsButton, elements.resetSchoolUsedPassageTypesButton].forEach(button => {
         if (button) button.disabled = state.isBusy || !getSelectedSchoolProfile();
       });
@@ -16316,7 +16275,6 @@
         typeSelectionCustomized: Boolean(state.schoolWorkflow.typeSelectionCustomized),
         draftMode: state.schoolWorkflow.draftMode,
         outputOrder: state.schoolWorkflow.outputOrder === "passage" ? "passage" : "type",
-        difficultyFilter: state.schoolWorkflow.difficultyFilter || "",
         passageTextbookName: state.schoolWorkflow.passageTextbookName || "",
         passageQuery: state.schoolWorkflow.passageQuery || "",
         excludeUsedProblems: Boolean(state.schoolWorkflow.excludeUsedProblems),
@@ -16333,7 +16291,7 @@
       state.schoolWorkflow.typeSelectionCustomized = Boolean(snapshot.typeSelectionCustomized);
       state.schoolWorkflow.draftMode = snapshot.draftMode === "full" ? "full" : "distinct";
       state.schoolWorkflow.outputOrder = snapshot.outputOrder === "passage" ? "passage" : "type";
-      state.schoolWorkflow.difficultyFilter = snapshot.difficultyFilter ? normalizeSchoolDifficulty(snapshot.difficultyFilter) : "";
+      delete state.schoolWorkflow.difficultyFilter;
       state.schoolWorkflow.passageTextbookName = normalizeTextbookName(snapshot.passageTextbookName || "");
       state.schoolWorkflow.passageQuery = snapshot.passageQuery || "";
       state.schoolWorkflow.excludeUsedProblems = snapshot.excludeUsedProblems !== false;
@@ -16349,9 +16307,6 @@
       }
       if (elements.schoolOutputOrderSelect) {
         elements.schoolOutputOrderSelect.value = state.schoolWorkflow.outputOrder;
-      }
-      if (elements.schoolDifficultySelect) {
-        elements.schoolDifficultySelect.value = state.schoolWorkflow.difficultyFilter;
       }
       if (elements.schoolExcludeUsedProblems) {
         elements.schoolExcludeUsedProblems.checked = state.schoolWorkflow.excludeUsedProblems;
@@ -16759,8 +16714,7 @@
           : Array.from(new Set(examItems.map((item) => item.passageKey).filter(Boolean))),
         selectedTypeLabels: Array.isArray(examSet.selectedTypeLabels) ? examSet.selectedTypeLabels : Array.from(new Set(examItems.map((item) => item.typeLabel).filter(Boolean))),
         draftMode: examSet.workflowMode || "distinct",
-        outputOrder: examSet.outputOrder,
-        difficultyFilter: examSet.difficultyFilter
+        outputOrder: examSet.outputOrder
       });
       elements.examKickerInput.value = examSet.kicker || "FINAL TEST WORKSHEET";
       elements.examTitleInput.value = examSet.title || "파이널 테스트";
@@ -17440,7 +17394,6 @@
         historyScope,
         workflowMode: state.schoolWorkflow.draftMode,
         outputOrder: state.schoolWorkflow.outputOrder === "passage" ? "passage" : "type",
-        difficultyFilter: state.schoolWorkflow.difficultyFilter || "",
         selectedPassageKeys: retryContext
           ? Array.from(new Set(entries.map((entry) => entry.record.passageKey).filter(Boolean)))
           : [...state.schoolWorkflow.selectedPassageKeys],
@@ -20096,7 +20049,6 @@
         }) : "",
         exam: state.examBuilder.slots.length ? JSON.stringify({ slots: state.examBuilder.slots, outputOrder: state.schoolWorkflow.outputOrder || "type",
           checkSetDifficulties: state.examBuilder.checkSetDifficulties || [],
-          difficultyFilter: state.schoolWorkflow.difficultyFilter || "",
           titles: titles(["examTitleInput", "examSubtitleInput", "examKickerInput"]) }) : ""
       };
     }
@@ -21254,11 +21206,6 @@
       if (elements.schoolOutputOrderSelect) {
         elements.schoolOutputOrderSelect.addEventListener("change", () => {
           setSchoolOutputOrder(elements.schoolOutputOrderSelect.value);
-        });
-      }
-      if (elements.schoolDifficultySelect) {
-        elements.schoolDifficultySelect.addEventListener("change", () => {
-          setSchoolDifficulty(elements.schoolDifficultySelect.value);
         });
       }
       if (elements.schoolSourceFilterSelect) {
