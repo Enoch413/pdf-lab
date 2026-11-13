@@ -38,7 +38,7 @@ fs.mkdirSync(out, { recursive: true });
       applySchoolWorkflowSnapshot(captureSchoolWorkflowSnapshot());
       renderExamLibraryList(); renderExamSlots();
     });
-    const select = page.getByLabel('차수형 난이도', { exact: true });
+    const select = page.getByLabel('기준 문항 난이도', { exact: true });
     assert.equal(await select.isEnabled(), true, JSON.stringify(await page.evaluate(() => ({ busy: state.isBusy,
       source: getSchoolSourceFilterKey(), options: getSchoolDifficultyOptions(),
       records: state.libraryCache.problemRecords.slice(0, 1) }))));
@@ -94,18 +94,58 @@ fs.mkdirSync(out, { recursive: true });
     assert.equal(preview.count, 4);
     assert(preview.markup.includes('hard') && !preview.markup.includes('easy') && !preview.markup.includes('medium'),
       'actual export contains only the selected difficulty');
-    // Two different first-round difficulties inside one session, through real UI.
-    await page.evaluate(() => {
-      state.studentRetry.students = ['One', 'Two'].map((name, index) => ({ studentId: 'qa-' + index, name, schoolKey: 'qa' }));
+    // One action creates all students' difficulty-specific CHECKs and the retry session.
+    await page.evaluate(async () => {
+      state.studentRetry.students = ['One', 'Two'].map((name, index) => ({ studentId: 'qa-' + index, name, schoolKey: 'qa', firebaseUid: 'qa-uid-' + index, classIds: ['qa-class'] }));
+      state.schoolWorkflow.schools[0].classIds = ['qa-class'];
+      applySelectedSchoolClassIdsToCheckSetInput(true);
+      const db = await openLibraryDb();
+      const tx = db.transaction(LIBRARY_PROBLEM_STORE, 'readwrite');
+      for (const record of state.libraryCache.problemRecords) tx.objectStore(LIBRARY_PROBLEM_STORE).put(splitProblemRecordStorage(record).metadataRecord);
+      await idbTransactionDone(tx);
       renderStudentRetryPanel();
+      updateExamCheckSetSummary();
     });
     page.on('dialog', dialog => dialog.accept());
-    await page.locator('#startStudentRetryButton').click();
-    await page.locator('#studentFirstRoundDifficultySelect').selectOption('easy');
-    await page.locator('[data-student-first-difficulty]').click();
-    await page.locator('#studentRetryStudentSelect').selectOption('qa-1');
-    await page.locator('#studentFirstRoundDifficultySelect').selectOption('medium');
-    await page.locator('[data-student-first-difficulty]').click();
+    assert.equal(await page.locator('#startStudentRetryButton').isVisible(), false);
+    assert.equal(await page.locator('#examCheckSetSection').isVisible(), true);
+    await page.locator('#checkSetBulkDifficultySelect').selectOption('easy');
+    await page.locator('[data-check-difficulty-all]').click();
+    assert.deepEqual(await page.locator('[data-check-student-difficulty]').evaluateAll(selects => selects.map(select => select.value)), ['easy', 'easy']);
+    await page.locator('[data-check-student-difficulty="qa-1"]').selectOption('medium');
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.evaluate(() => document.getElementById('examCheckSetSection').scrollIntoView({ block: 'start' }));
+    await page.screenshot({ path: path.join(out, 'check-batch-desktop.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => document.getElementById('examCheckSetSection').scrollIntoView({ block: 'start' }));
+    await page.screenshot({ path: path.join(out, 'check-batch-mobile.png') });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    // Failed local transaction must roll back the entire batch and not create a session.
+    const failed = await page.evaluate(async () => {
+      const original = idbTransactionDone;
+      idbTransactionDone = async tx => { tx.abort(); throw new Error('Synthetic save failure'); };
+      try { await persistExamCheckSet(); return false; }
+      catch (error) { return error.message === 'Synthetic save failure' && state.studentRetry.sessions.length === 0; }
+      finally { idbTransactionDone = original; }
+    });
+    assert.equal(failed, true);
+    await page.locator('#saveExamCheckSetButton').click();
+    await page.waitForFunction(() => !state.isBusy && state.libraryCache.checkSetRecords.length === 2);
+    const savedBatch = await page.evaluate(() => state.libraryCache.checkSetRecords.map(record => ({ id: record.checkSetId,
+      student: record.targetStudentLocalId, target: record.exportPayload.targetUserIds,
+      questions: record.questionMappings.map(item => getRetryRecordById(item.problemRecordId).difficulty) })).sort((a,b) => a.student.localeCompare(b.student)));
+    assert.deepEqual(savedBatch.map(row => row.questions), [Array(4).fill('easy'), Array(4).fill('medium')]);
+    assert.deepEqual(savedBatch.map(row => row.target), [['qa-uid-0'], ['qa-uid-1']]);
+    await page.locator('#saveExamCheckSetButton').click();
+    await page.waitForFunction(() => !state.isBusy);
+    assert.equal(await page.evaluate(() => state.studentRetry.sessions.length), 1);
+    assert.equal(await page.evaluate(() => state.libraryCache.checkSetRecords.length), 2, JSON.stringify(await page.evaluate(() => ({
+      baseId: elements.examCheckSetIdInput.value,
+      sessions: state.studentRetry.sessions.map(session => ({ id: session.sessionId, baseId: session.checkSetBaseId, school: session.schoolKey,
+        source: session.sourceKey, base: buildRetryProblemRecordSignature(session.baseItems),
+        first: Object.entries(session.studentStates).map(([id, value]) => [id, value.rounds.map(round => [round.roundIndex, buildRetryProblemRecordSignature(round.items)])]) })),
+      choices: state.examBuilder.checkSetDifficulties
+    }))));
     const firstRounds = await page.evaluate(() => {
       const session = getSelectedRetrySession();
       return { count: state.studentRetry.sessions.length, base: session.baseItems.map(item => item.difficulty),
@@ -129,7 +169,7 @@ fs.mkdirSync(out, { recursive: true });
       const first = getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds[0];
       updateStudentRetryResult('qa-0', 1, first.items[0].itemId, true);
     });
-    assert.equal(await page.locator('#studentFirstRoundDifficultySelect').isDisabled(), true);
+    assert.equal(await page.locator('#studentFirstRoundDifficultySelect').count(), 0);
     await page.locator('#generateStudentRetryButton').click();
     await page.waitForFunction(() => getStudentRetryState(getSelectedRetrySession(), 'qa-0').rounds.length === 2);
     assert((await assigned()).length === 1 && (await assigned())[0].difficulty === 'easy' && (await assigned())[0].retryRound === 2);
@@ -155,6 +195,6 @@ fs.mkdirSync(out, { recursive: true });
     await page.locator('#studentRetryRoot').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, 'student-difficulty-mobile.png') });
     assert.deepEqual(errors, []); assert.deepEqual(missing, []);
-    console.log('PASS: real imported rounds, scoped non-destructive resets, collapsed review/keyboard, per-student first-round output/CHECK targets, wrong-only rounds 2/3, cancellation and desktop/mobile; no production access');
+    console.log('PASS: one-click mixed-difficulty CHECK batch, local transaction rollback/idempotence, personal targets/first-round output, wrong-only rounds 2/3, scoped resets, collapsed review and desktop/mobile; no production access');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

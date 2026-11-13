@@ -344,6 +344,19 @@
     .pdflab-workspace :is(a, button, input, select, textarea) { transition: none; animation: none; }
   }
 }
+@media screen {
+.pdflab-workspace #examCheckSetSection > .field-grid { grid-template-columns: minmax(0, 1fr); }
+.pdflab-workspace .check-batch-assignments,
+.pdflab-workspace .check-batch-students { display: grid; gap: 16px; }
+.pdflab-workspace .check-batch-toolbar { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.pdflab-workspace .check-batch-toolbar .field-row { flex: 1; min-width: 180px; }
+.pdflab-workspace .check-batch-student { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 1fr); align-items: center; gap: 16px; }
+.pdflab-workspace .check-batch-student > span { overflow-wrap: anywhere; color: var(--ui-ink); font-weight: 600; }
+@media (max-width: 600px) {
+  .pdflab-workspace .check-batch-student { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pdflab-workspace #examCheckSetSection .action-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
+}
 @media print {
   .workspace-heading, .workspace-skip-link, .workspace-output { display: none !important; }
 }
