@@ -179,7 +179,25 @@ fs.mkdirSync(out, { recursive: true });
     assert.equal(await page.evaluate(() => state.libraryCache.examSets.length), 1);
     await page.locator('#studentRetryRoot').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, 'student-difficulty-mobile.png') });
+    // A fresh CODE LAB roster hides a cached departed student without deleting old rounds.
+    await page.evaluate(() => {
+      clearGeneratedSchoolDraft();
+      state.studentRetryOwnerUid = 'qa-teacher';
+      const bridge = state.firebaseSchoolBridge;
+      bridge.currentUser = { uid: 'qa-teacher' };
+      bridge.currentProfile = { uid: 'qa-teacher', role: 'admin', adminScope: 'all', loginDisabled: false, classIds: [] };
+      bridge.firebaseUsers = [
+        { uid: 'qa-uid-0', name: 'One', role: 'student', loginDisabled: false, classIds: ['qa-class'] },
+        { uid: 'qa-uid-1', name: 'Two', role: 'student', loginDisabled: true, classIds: ['qa-class'] }
+      ];
+      bridge.studentRosterScope = createFirebaseProfileScopeSignature(bridge.currentProfile);
+      renderExamLibraryList(); renderExamSlots();
+    });
+    assert.deepEqual(await page.locator('[data-check-student-difficulty]').evaluateAll(selects => selects.map(select => select.dataset.checkStudentDifficulty)), ['qa-0']);
+    assert.deepEqual(await page.locator('#studentRetryStudentSelect option').evaluateAll(options => options.map(option => option.value)), ['qa-0']);
+    assert.equal(await page.evaluate(() => state.studentRetry.students.some(student => student.firebaseUid === 'qa-uid-1')), true);
+    assert.equal(await page.evaluate(() => getSelectedRetrySession().studentStates['qa-1'].rounds[0].items.length), 4);
     assert.deepEqual(errors, []); assert.deepEqual(missing, []);
-    console.log('PASS: one-click mixed-difficulty CHECK batch, local transaction rollback/idempotence, personal targets/first-round output, wrong-only rounds 2/3, scoped resets, collapsed review and desktop/mobile; no production access');
+    console.log('PASS: CHECK batch/rollback, personal targets, wrong-only rounds 2/3, scoped resets, collapsed review, departed roster hiding with preserved history and desktop/mobile; no production access');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

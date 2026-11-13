@@ -2,11 +2,11 @@
   "use strict";
   async function loadUserCatalog(db, profile, classIds = []) {
     const users = db.collection("users");
-    if (profile.adminScope === "all") return (await users.get()).docs;
+    if (profile.adminScope === "all") return (await users.get({ source: "server" })).docs;
     const docs = new Map([[profile.uid, { id: profile.uid, data: () => profile }]]);
     const ids = [...new Set(classIds.filter(Boolean))];
     for (let start = 0; start < ids.length; start += 30) {
-      const snapshot = await users.where("classIds", "array-contains-any", ids.slice(start, start + 30)).get();
+      const snapshot = await users.where("classIds", "array-contains-any", ids.slice(start, start + 30)).get({ source: "server" });
       snapshot.docs.forEach(doc => docs.set(doc.id, doc));
     }
     return [...docs.values()];

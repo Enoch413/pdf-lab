@@ -23,14 +23,15 @@ function fakeDb(failAt = 0) {
   assert.equal(db.commits,0,'All documents must pass size validation before the first write');
   db=fakeDb(2);await assert.rejects(helper.commitOperations(db,operations),/injected/);
   assert.equal(db.commits,2,'Stop after the failed batch');
-  const queries=[];
-  const users={where:(field,operator,ids)=>({get:async()=>{queries.push({field,operator,ids});return {docs:[{id:'student',data:()=>({})}]};}}),get:async()=>{queries.push('all');return {docs:[]};}};
+  const queries=[], readOptions=[];
+  const users={where:(field,operator,ids)=>({get:async options=>{readOptions.push(options);queries.push({field,operator,ids});return {docs:[{id:'student',data:()=>({})}]};}}),get:async options=>{readOptions.push(options);queries.push('all');return {docs:[]};}};
   const ids=Array.from({length:31},(_,i)=>'c'+i);
   const docs=await helper.loadUserCatalog({collection:()=>users},{uid:'teacher',adminScope:'classes'},ids);
   assert.deepEqual(queries.map(q=>q.ids.length),[30,1]);
   assert.equal(docs.length,2,'Preserve own profile, deduplicate overlapping class queries');
   queries.length=0;await helper.loadUserCatalog({collection:()=>users},{uid:'teacher',adminScope:'classes'},[]);assert.equal(queries.length,0);
   await helper.loadUserCatalog({collection:()=>users},{uid:'admin',adminScope:'all'},[]);assert.deepEqual(queries,['all']);
+  assert.ok(readOptions.every(options=>options?.source==='server'),'student roster reads must not certify cached withdrawal status');
   for (const file of ['app/index.html','app/final_test.html']) {
     const app=load(file);
     const messageFunction=file.endsWith('index.html')?'getFriendlyFirebaseAuthMessage':'getFriendlyFirebaseMessage';
