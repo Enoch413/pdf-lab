@@ -197,7 +197,53 @@ fs.mkdirSync(out, { recursive: true });
     assert.deepEqual(await page.locator('#studentRetryStudentSelect option').evaluateAll(options => options.map(option => option.value)), ['qa-0']);
     assert.equal(await page.evaluate(() => state.studentRetry.students.some(student => student.firebaseUid === 'qa-uid-1')), true);
     assert.equal(await page.evaluate(() => getSelectedRetrySession().studentStates['qa-1'].rounds[0].items.length), 4);
+    // Real common-only JSON type alongside a levelled type, with different CHECK sizes.
+    await page.evaluate(async () => {
+      const rows = ['easy','medium','hard'].flatMap(difficulty => [1,2,3].map(n => ({type:'topic',difficulty,stem:'Choose.',body:`Level topic ${n}`,answer:'①',choices:['A','B','C','D','E']})))
+        .concat([1,2,3].map(n => ({type:'grammar_box',difficulty:null,stem:'Choose.',body:`Common grammar ${n}`,answer:'②',choices:['A','B','C','D','E']})));
+      const problems = prepareAiProblemJsonBatch([{name:'common.json',payload:rows}], 'Common QA Book','neoreunteo','rounds');
+      const source = {sourceId:'common-qa',librarySourceKey:'neoreunteo',textbookName:'Common QA Book',fileName:'common.json',importedAt:2};
+      const records = await Promise.all(problems.map(problem => serializeProblemForLibrary(problem,source)));
+      const db = await openLibraryDb(); const tx = db.transaction(LIBRARY_PROBLEM_STORE,'readwrite');
+      records.forEach(record => tx.objectStore(LIBRARY_PROBLEM_STORE).put(splitProblemRecordStorage(record).metadataRecord));
+      await idbTransactionDone(tx);
+      state.libraryCache.problemRecords.push(...records);
+      state.firebaseSchoolBridge.firebaseUsers[1].loginDisabled = false;
+      state.schoolWorkflow.selectedPassageKeys = [records[0].passageKey];
+      state.schoolWorkflow.passageTextbookName = 'Common QA Book';
+      state.schoolWorkflow.selectedTypeLabels = []; state.schoolWorkflow.typeSelectionCustomized = false;
+      elements.examCheckSetIdInput.value = 'common-qa-check'; elements.examCheckSetTitleInput.value = 'Common QA';
+      renderExamLibraryList(); renderExamSlots();
+    });
+    await page.locator('#generateSchoolDraftButton').click();
+    await page.locator('#checkSetBulkDifficultySelect').selectOption('none');
+    assert.equal(await page.locator('#checkSetBulkDifficultySelect option[value="none"]').textContent(),'공통');
+    await page.locator('[data-check-difficulty-all]').click();
+    await page.locator('[data-check-student-difficulty="qa-1"]').selectOption('medium');
+    await page.locator('#saveExamCheckSetButton').click();
+    await page.waitForFunction(() => !state.isBusy && state.libraryCache.checkSetRecords.length === 4);
+    const commonBatch = await page.evaluate(() => {
+      const session = getSelectedRetrySession();
+      return state.libraryCache.checkSetRecords.filter(record => record.studentRetrySessionId === session.sessionId)
+        .map(record => ({student:record.targetStudentLocalId,count:record.questionCount,
+          numbers:session.studentStates[record.targetStudentLocalId].rounds[0].items.map(item=>item.displayNumber)})).sort((a,b)=>a.student.localeCompare(b.student));
+    });
+    assert.deepEqual(commonBatch,[{student:'qa-0',count:1,numbers:[1]},{student:'qa-1',count:2,numbers:[1,2]}]);
+    await page.locator('#studentRetryStudentSelect').selectOption('qa-0');
+    await page.locator('[data-student-first-load]').click();
+    const commonPreview = await page.evaluate(async () => (await buildExamPreviewDocument('previewUrls')));
+    assert.equal(commonPreview.totalQuestionCount,1);
+    assert(commonPreview.markup.includes('Common grammar') && !commonPreview.markup.includes('Level topic'));
+    for (const roundIndex of [1,2]) {
+      await page.evaluate(index => {
+        const round=getStudentRetryState(getSelectedRetrySession(),'qa-0').rounds.find(round=>round.roundIndex===index);
+        updateStudentRetryResult('qa-0',index,round.items[0].itemId,true);
+      },roundIndex);
+      await page.locator('#generateStudentRetryButton').click();
+      await page.waitForFunction(index => getStudentRetryState(getSelectedRetrySession(),'qa-0').rounds.some(round=>round.roundIndex===index),roundIndex+1);
+      assert((await assigned()).length===1 && (await assigned())[0].retryRound===roundIndex+1 && !(await assigned())[0].difficulty);
+    }
     assert.deepEqual(errors, []); assert.deepEqual(missing, []);
-    console.log('PASS: CHECK batch/rollback, personal targets, wrong-only rounds 2/3, scoped resets, collapsed review, departed roster hiding with preserved history and desktop/mobile; no production access');
+    console.log('PASS: CHECK batch/rollback, common-only and level+common output, common wrong-only rounds 2/3, preserved departed history and desktop/mobile; no production access');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
