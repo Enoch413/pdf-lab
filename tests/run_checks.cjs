@@ -10,12 +10,12 @@ for (const file of ['app/index.html', 'app/final_test.html', 'app/general_exam.h
     if (!/\bsrc=/.test(match[1]) && match[2].trim()) new vm.Script(match[2], { filename: file });
   }
 }
-for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/workspace_ui.js','app/workspace_shell.js','app/hanbujang_canonical.js','app/solbook_text_renderer.js','app/problem_page_layout.js']) {
+for (const file of ['app/firebase_helpers.js','app/answer_editor.js','app/workspace_ui.js','app/workspace_shell.js','app/hanbujang_canonical.js','app/solbook_text_renderer.js','app/problem_page_layout.js','app/difficulty_pdf_export.js']) {
   new vm.Script(fs.readFileSync(file,'utf8'), {filename:file});
 }
 console.log('PASS: authored JavaScript syntax');
 for (const file of ['dependency_integrity', 'firebase_helpers', 'firebase_retry_keys', 'check_contract', 'check_response_retry', 'exam_reset_access', 'student_identity', 'student_sync', 'local_replacement', 'answer_edit', 'workspace_ui', 'workspace_shell', 'startup', 'history_render',
-  'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'standalone_print_styles', 'school_type_order', 'school_difficulty', 'school_workflow_controls', 'check_difficulty_batch', 'check_common_difficulty', 'student_roster', 'jspdf_output']) {
+  'json_retry_series', 'solbook_text_renderer', 'hanbujang_contract', 'standalone_print_styles', 'school_type_order', 'school_difficulty', 'school_workflow_controls', 'check_difficulty_batch', 'check_common_difficulty', 'student_roster', 'difficulty_pdf', 'library_refresh', 'jspdf_output']) {
   const result = spawnSync(process.execPath, [`tests/${file}.test.cjs`], { stdio: 'inherit' });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status || 1);

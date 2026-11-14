@@ -509,9 +509,12 @@
               <div class="action-row">
                 <button class="solid-button" type="button" id="saveExamCheckSetButton">난이도별 CHECK 자동 출제</button>
                 <button class="ghost-button" type="button" id="downloadExamCheckSetButton">자동 출제 + CHECK JSON 다운로드</button>
+                <button class="ghost-button" type="button" id="downloadDifficultyPdfsButton">공통·하·중·상 PDF 한 번에 다운로드</button>
               </div>
               <p class="small-note" id="examCheckSetSummary" role="status" aria-live="polite">문항을 생성하면 학생별 CHECK를 준비할 수 있습니다.</p>
               <p class="small-note" id="checkSetBatchFeedback" role="status" aria-live="polite" hidden></p>
+              <p class="small-note">현재 1차 초안의 지문·유형으로 난이도별 문제지와 답지를 ZIP에 담습니다. 학생 선택이나 CHECK 저장 없이 출력할 수 있으며, 하·중·상에는 공통 문항도 포함합니다.</p>
+              <p class="small-note" id="difficultyPdfFeedback" role="status" aria-live="polite" hidden></p>
             </div>
           </section>
 
@@ -650,6 +653,7 @@
   <script src="./answer_editor.js"></script>
   <script src="./problem_page_layout.js"></script>
   <script src="./solbook_text_renderer.js?v=20260914-1"></script>
+  <script src="./difficulty_pdf_export.js?v=20261114-1"></script>
   <script src="./firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9" crossorigin="anonymous"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" integrity="sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1" crossorigin="anonymous"></script>
@@ -1624,6 +1628,8 @@
       examCheckSetClassIdsInput: document.getElementById("examCheckSetClassIdsInput"),
       saveExamCheckSetButton: document.getElementById("saveExamCheckSetButton"),
       downloadExamCheckSetButton: document.getElementById("downloadExamCheckSetButton"),
+      downloadDifficultyPdfsButton: document.getElementById("downloadDifficultyPdfsButton"),
+      difficultyPdfFeedback: document.getElementById("difficultyPdfFeedback"),
       examCheckSetSummary: document.getElementById("examCheckSetSummary"),
       checkSetBatchFeedback: document.getElementById("checkSetBatchFeedback"),
       checkSetDifficultyAssignments: document.getElementById("checkSetDifficultyAssignments"),
@@ -11354,12 +11360,40 @@
       }
     }
 
+    function getLibraryRecordIndex() {
+      const records = state.libraryCache.problemRecords || [];
+      const previous = getLibraryRecordIndex.cache;
+      // Imports, edits, deletes and refreshes replace the array. A length check also
+      // covers append/remove callers. The index stays local; it is never persisted.
+      if (previous?.records === records && previous.length === records.length) return previous;
+      const index = { records, length: records.length, problems: [], shared: [], byId: new Map(), firstRounds: new Map(), retryGroups: new Map() };
+      for (const record of records) {
+        if (record.kind === "shared") index.shared.push(record);
+        if (record.kind !== "problem") continue;
+        index.problems.push(record);
+        if (!index.byId.has(record.recordId)) index.byId.set(record.recordId, record);
+        if (record.retryMode !== "rounds") continue;
+        const groupKey = JSON.stringify([record.sourceId, record.retryGroupId, record.retryRound, record.difficulty]);
+        if (!index.retryGroups.has(groupKey)) index.retryGroups.set(groupKey, []);
+        index.retryGroups.get(groupKey).push(record);
+        if (record.retryRound !== 1) continue;
+        const family = getRetryDifficultyFamilyKey(record);
+        if (!family) continue;
+        if (!index.firstRounds.has(family)) index.firstRounds.set(family, new Map());
+        const levels = index.firstRounds.get(family), level = normalizeSchoolDifficulty(record.difficulty);
+        if (!levels.has(level)) levels.set(level, []);
+        levels.get(level).push(record);
+      }
+      getLibraryRecordIndex.cache = index;
+      return index;
+    }
+
     function getProblemRecordsOnly() {
-      return (state.libraryCache.problemRecords || []).filter((record) => record.kind === "problem");
+      return getLibraryRecordIndex().problems;
     }
 
     function getSharedRecordsOnly() {
-      return (state.libraryCache.problemRecords || []).filter((record) => record.kind === "shared");
+      return getLibraryRecordIndex().shared;
     }
 
     function getRecordTypeLabel(record) {
@@ -11688,7 +11722,7 @@
     }
 
     function getRetryRecordById(recordId) {
-      return getProblemRecordsOnly().find((record) => record.recordId === recordId) || null;
+      return getLibraryRecordIndex().byId.get(recordId) || null;
     }
 
     function createRetryItemFromRecord(record, displayNumber, sourceProblemId = "") {
@@ -11767,22 +11801,21 @@
       return "";
     }
 
-    function buildStudentDifficultyFirstRoundItems(baseItems, difficulty) {
+    function buildStudentDifficultyFirstRoundItems(baseItems, difficulty, options = {}) {
       const key = difficulty ? normalizeSchoolDifficulty(difficulty) : "";
       const items = baseItems.map((item, index) => {
         const record = getRetryRecordById(item.problemRecordId);
         if (!record) throw new Error(`${item.displayNumber || index + 1}번 원본 문항을 찾을 수 없습니다.`);
         if (!key || record.retryMode !== "rounds") return { ...item, result: "correct" };
         const family = getRetryDifficultyFamilyKey(record);
-        const familyCandidates = family ? getProblemRecordsOnly().filter(candidate => candidate.retryMode === "rounds" && candidate.retryRound === 1 &&
-          [key, "none"].includes(normalizeSchoolDifficulty(candidate.difficulty)) && getRetryDifficultyFamilyKey(candidate) === family) : [];
-        let candidates = familyCandidates.filter(candidate => normalizeSchoolDifficulty(candidate.difficulty) === key);
+        const levels = getLibraryRecordIndex().firstRounds.get(family);
+        let candidates = levels?.get(key) || [];
         if (!candidates.length && key === "none") return null;
-        if (!candidates.length) candidates = familyCandidates.filter(candidate => normalizeSchoolDifficulty(candidate.difficulty) === "none");
+        if (!candidates.length) candidates = levels?.get("none") || [];
         if (candidates.length !== 1) throw new Error(`${item.displayNumber || index + 1}번 · ${getSchoolDifficultyLabel(key)} 대응 1차 문항이 ${candidates.length}개입니다. 같은 출처·지문·원래 유형의 대응 문항을 확인해주세요.`);
         return createRetryItemFromRecord(candidates[0], item.displayNumber || index + 1);
       }).filter(Boolean).map((item, index) => ({ ...item, displayNumber: index + 1 }));
-      if (key === "none" && !items.length) throw new Error("선택한 지문·유형에 공통 1차 문항이 없습니다. 공통 유형을 포함해 다시 생성해주세요.");
+      if (key === "none" && !items.length && !options.allowEmpty) throw new Error("선택한 지문·유형에 공통 1차 문항이 없습니다. 공통 유형을 포함해 다시 생성해주세요.");
       if (new Set(items.map(item => item.problemRecordId)).size !== items.length) {
         throw new Error("대응 문항이 중복됩니다. 난이도 한 가지로 기준 초안을 만든 뒤 학생별 난이도를 배정해주세요.");
       }
@@ -12828,10 +12861,11 @@
       if (!current && item.retryMode === "rounds") return null;
       if (current?.retryMode === "rounds") {
         if (current.retryRound >= 3) return null;
-        return getProblemRecordsOnly().find(record =>
-          record.retryMode === "rounds" && record.sourceId === current.sourceId &&
-          record.retryGroupId === current.retryGroupId && record.retryRound === current.retryRound + 1 &&
-          record.difficulty === current.difficulty && doesRetryCandidateMatchItemSource(record, item) &&
+        const key = JSON.stringify([current.sourceId, current.retryGroupId, current.retryRound + 1, current.difficulty]);
+        return (getLibraryRecordIndex().retryGroups.get(key) || []).find(record =>
+          record.sourceId === current.sourceId && record.retryGroupId === current.retryGroupId &&
+          record.retryRound === current.retryRound + 1 && record.difficulty === current.difficulty &&
+          doesRetryCandidateMatchItemSource(record, item) &&
           !usedProblemIds.has(record.recordId)) || null;
       }
       const candidates = getProblemRecordsOnly()
@@ -12925,7 +12959,7 @@
             updatedAt: Date.now()
           })
         );
-        await refreshLibrarySummary();
+        await refreshLibrarySummary({ retainLibrary: true });
         renderStudentRetryPanel();
         renderExamHistoryList();
         await syncLibraryFolderFromStateIfConnected();
@@ -12989,7 +13023,7 @@
         if (state.examBuilder.slots.some((slot) => String(slot.studentRetryStudentId || "") === student.studentId)) {
           clearGeneratedSchoolDraft();
         }
-        await refreshLibrarySummary();
+        await refreshLibrarySummary({ retainLibrary: true });
         renderStudentRetryPanel();
         renderExamHistoryList();
         await syncLibraryFolderFromStateIfConnected();
@@ -13031,7 +13065,7 @@
             updatedAt: Date.now()
           })
         );
-        await refreshLibrarySummary();
+        await refreshLibrarySummary({ retainLibrary: true });
         renderStudentRetryPanel();
         renderExamHistoryList();
         await syncLibraryFolderFromStateIfConnected();
@@ -13079,7 +13113,7 @@
         if (state.examBuilder.slots.some((slot) => String(slot.studentRetrySessionId || "") === session.sessionId)) {
           clearGeneratedSchoolDraft();
         }
-        await refreshLibrarySummary();
+        await refreshLibrarySummary({ retainLibrary: true });
         renderStudentRetryPanel();
         renderExamHistoryList();
         await syncLibraryFolderFromStateIfConnected();
@@ -14239,7 +14273,7 @@
     }
 
     function getExamSlotAssignedRecord(slot) {
-      return getProblemRecordsOnly().find((record) => record.recordId === slot.assignedProblemId) || null;
+      return getLibraryRecordIndex().byId.get(slot.assignedProblemId) || null;
     }
 
     function getExamSlotAssignedRecordsForSlot(slot) {
@@ -14894,6 +14928,7 @@
       if (elements.downloadExamCheckSetButton) {
         elements.downloadExamCheckSetButton.disabled = state.isBusy || !isReady;
       }
+      if (elements.downloadDifficultyPdfsButton) elements.downloadDifficultyPdfsButton.disabled = state.isBusy || !isReady;
       updateExamCheckSetSummary();
     }
 
@@ -15086,25 +15121,29 @@
     }
 
     async function refreshLibrarySummary(options = {}) {
+      // CHECK/history/work saves do not alter the question library. Keep the
+      // current snapshot instead of downloading every shared question again.
+      const retainedLibrary = options.retainLibrary && Array.isArray(state.libraryCache.problemRecords)
+        ? state.libraryCache : null;
       const [localImports, localProblemRecords, examSets, examItems, checkSetRecords, savedWorks] = await Promise.all([
-        loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
-        loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
+        retainedLibrary ? Promise.resolve(retainedLibrary.localImports || []) : loadAllRecordsFromStore(LIBRARY_IMPORT_STORE),
+        retainedLibrary ? Promise.resolve(retainedLibrary.localProblemRecords || []) : loadAllRecordsFromStore(LIBRARY_PROBLEM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_STORE),
         loadAllRecordsFromStore(LIBRARY_EXAM_ITEM_STORE),
         loadAllRecordsFromStore(LIBRARY_CHECK_SET_STORE),
         loadAllRecordsFromStore(LIBRARY_WORK_STORE)
       ]);
-      const shouldLoadSharedSnapshot = options.loadShared !== false;
+      const shouldLoadSharedSnapshot = !retainedLibrary && options.loadShared !== false;
       const [sharedSnapshot, firebaseRetrySnapshot] = await Promise.all([
         shouldLoadSharedSnapshot
           ? loadSharedLibrarySnapshotFromFirebase()
           : Promise.resolve(null),
         loadFirebaseStudentRetryOperationalSnapshot()
       ]);
-      const imports = Array.isArray(sharedSnapshot?.imports)
+      const imports = retainedLibrary ? [...(retainedLibrary.imports || [])] : Array.isArray(sharedSnapshot?.imports)
         ? sharedSnapshot.imports
         : localImports;
-      const problemRecords = Array.isArray(sharedSnapshot?.problemRecords)
+      const problemRecords = retainedLibrary ? retainedLibrary.problemRecords : Array.isArray(sharedSnapshot?.problemRecords)
         ? sharedSnapshot.problemRecords
         : localProblemRecords;
       const useFirebaseRetryPrimary = shouldUseFirebaseStudentRetryAsPrimaryStore();
@@ -15126,7 +15165,7 @@
       const mergedSavedWorks = useFirebaseRetryPrimary
         ? [...localSavedWorksForView, ...firebaseRetrySnapshot.savedWorks]
         : mergeRecordsByKey(localSavedWorksForView, firebaseRetrySnapshot.savedWorks, "workId", "updatedAt");
-      const repairedProblemRecords = problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
+      const repairedProblemRecords = retainedLibrary ? problemRecords : problemRecords.map((record) => cloneProblemRecordWithRepairedOcrAnswer(record));
       state.libraryCache = {
         imports: imports.sort((left, right) => (Number(right.importedAt) || 0) - (Number(left.importedAt) || 0)),
         localImports,
@@ -15658,6 +15697,68 @@
       });
     }
 
+    function buildDifficultyPdfPlans() {
+      validateExamBuilderForExport();
+      const entries = getCheckDifficultyBaseEntries(getExamSlotAssignedRecords());
+      const questions = entries.filter(entry => entry.record.kind !== "shared");
+      if (questions.some(entry => entry.record.retryMode === "rounds" && entry.record.retryRound !== 1)) {
+        throw new Error("난이도별 일괄 PDF는 1차 문제 초안에서 출력해주세요. 학생별 오답 2·3차는 개별 출력으로 유지됩니다.");
+      }
+      const hasRounds = questions.some(entry => entry.record.retryMode === "rounds");
+      const baseItems = questions.map((entry, index) => createRetryItemFromRecord(entry.record, index + 1));
+      const plans = [], skipped = [];
+      for (const difficulty of hasRounds ? ["none", "easy", "medium", "hard"] : ["none"]) {
+        const items = buildStudentDifficultyFirstRoundItems(baseItems, difficulty, { allowEmpty: true });
+        const label = getSchoolDifficultyLabel(difficulty);
+        if (!items.length) { skipped.push(label); continue; }
+        let questionIndex = 0;
+        const selected = new Map(items.map(item => [getRetryDifficultyFamilyKey(getRetryRecordById(item.problemRecordId)) || item.problemRecordId, item]));
+        const outputEntries = entries.flatMap(entry => {
+          if (entry.record.kind === "shared") return [entry];
+          const item = selected.get(getRetryDifficultyFamilyKey(entry.record) || entry.record.recordId);
+          if (!item) return [];
+          questionIndex++;
+          return [{ ...entry, record: getRetryRecordById(item.problemRecordId) }];
+        });
+        plans.push({ difficulty, label, entries: outputEntries, questionCount: questionIndex });
+      }
+      if (!plans.length) throw new Error("출력할 1차 문항이 없습니다.");
+      return { plans, skipped };
+    }
+
+    async function downloadDifficultyPdfs() {
+      if (state.isBusy) return;
+      const { plans, skipped } = buildDifficultyPdfPlans();
+      const baseSettings = readExamExportSettings();
+      const feedback = elements.difficultyPdfFeedback;
+      const report = message => { if (feedback) { feedback.hidden = false; feedback.textContent = message; } };
+      setBusy(true);
+      report("난이도별 PDF 출력을 준비하고 있습니다...");
+      try {
+        const blob = await window.PDFLabDifficultyPdf.createZip({ plans,
+          report,
+          build: async plan => {
+            const settings = { ...baseSettings, title: `${baseSettings.title} · ${plan.label}`, includeAnswerKey: false };
+            const output = await buildExamPreviewDocument("batchPdfUrls", { settings, entries: plan.entries });
+            return { questionsHtml: output.html,
+              answersHtml: buildStandaloneHtmlDocument(createAnswerKeyMarkup(output.problems), `${settings.title} · 답지`) };
+          }
+        });
+        const url = URL.createObjectURL(blob), anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `${slugifyFileName(baseSettings.title) || "exam"}_난이도별_PDF.zip`;
+        document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        report(`${plans.map(plan => `${plan.label} ${plan.questionCount}문항`).join(" · ")} — 문제지·답지 ${plans.length * 2}개 PDF를 ZIP으로 저장했습니다.${skipped.length ? ` ${skipped.join("·")} 문항이 없어 해당 난이도는 제외했습니다.` : ""}`);
+      } catch (error) {
+        report(`PDF 저장에 실패했습니다. ${error.message || "다시 시도해주세요."}`);
+        throw error;
+      } finally {
+        cleanupExamUrls("batchPdfUrls");
+        setBusy(false);
+      }
+    }
+
     function normalizeCheckSetDifficulties(rows) {
       return Array.isArray(rows) ? [...new Map(rows.filter(row => row && typeof row.studentId === "string" && row.studentId && typeof row.difficulty === "string")
         .map(row => [row.studentId, { studentId: row.studentId, difficulty: row.difficulty ? normalizeSchoolDifficulty(row.difficulty) : "" }])).values()] : [];
@@ -15883,7 +15984,7 @@
         state.studentRetry.selectedSessionId = session.sessionId;
         writeStudentRetryState();
       }
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       return {
         records: recordResults.map((entry) => entry.record),
@@ -16118,7 +16219,7 @@
         return;
       }
       await deleteRecordFromStore(LIBRARY_CHECK_SET_STORE, checkSetRecordId);
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       setStatus(`${target.title || "CHECK 세트"}를 삭제했습니다.`, "idle", "CHECK");
     }
@@ -16418,7 +16519,7 @@
         await idbTransactionDone(transaction);
         state.loadedRepackWorkId = workId;
         elements.repackWorkNameInput.value = workName;
-        await refreshLibrarySummary();
+        await refreshLibrarySummary({ retainLibrary: true });
         await syncLibraryFolderFromStateIfConnected();
         if (elements.repackWorkSummary) {
           elements.repackWorkSummary.textContent = `${workName} 작업을 저장했습니다. 나중에 다시 불러와 필터와 레이아웃을 이어서 수정할 수 있습니다.`;
@@ -16521,7 +16622,7 @@
       if (elements.examWorkNameInput) {
         elements.examWorkNameInput.value = workName;
       }
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       setOptionalText(elements.examWorkSummary, `${workName} 작업을 저장했습니다. 나중에 다시 불러와 제목 수정이나 문항 교체를 이어갈 수 있습니다.`);
       return workRecord;
@@ -16701,7 +16802,7 @@
       if (state.examBuilder.loadedWorkId === workId) {
         state.examBuilder.loadedWorkId = "";
       }
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       const label = target?.name || "저장 작업";
       if (target?.kind === "repack") {
@@ -16981,7 +17082,7 @@
     async function buildExamProblemPayloadFromSlots(urlBucket = "previewUrls", options = {}) {
       cleanupExamUrls(urlBucket);
       const renderContentMode = normalizeExamContentMode(options.renderContentMode || getSelectedExamContentMode());
-      const entries = getExamSlotAssignedRecords();
+      const entries = options.entries || getExamSlotAssignedRecords();
       const totalQuestionCount = countQuestionEntries(entries);
       const limitedEntries = limitExamEntriesByQuestionCount(entries, options.maxQuestionCount);
       const selectedEntries = renderContentMode === EXAM_CONTENT_MODE_TEXT ? PDFLabCanonical.prepareEntries(limitedEntries) : limitedEntries;
@@ -17071,7 +17172,7 @@
     }
 
     async function buildExamPreviewDocument(urlBucket = "exportUrls", options = {}) {
-      const settings = readExamExportSettings();
+      const settings = options.settings || readExamExportSettings();
       const {
         problems,
         totalQuestionCount,
@@ -17097,6 +17198,7 @@
         totalQuestionCount,
         renderedQuestionCount,
         isLimited,
+        problems,
         markup,
         html: buildStandaloneHtmlDocument(markup, settings.title)
       };
@@ -17518,7 +17620,7 @@
           throw error;
         }
       }
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       state.examBuilder.loadedExamId = examId;
       setOptionalText(
@@ -17546,7 +17648,7 @@
           throw error;
         }
       }
-      await refreshLibrarySummary();
+      await refreshLibrarySummary({ retainLibrary: true });
       await syncLibraryFolderFromStateIfConnected();
       setOptionalText(
         elements.examHistorySummary,
@@ -20557,6 +20659,9 @@
           state.examBuilder.checkSetDifficulties = getCheckSetTargetStudentsForSummary(null).map(student => ({ studentId: student.studentId, difficulty: value }));
           updateExamCheckSetSummary();
         });
+      }
+      if (elements.downloadDifficultyPdfsButton) {
+        elements.downloadDifficultyPdfsButton.addEventListener("click", () => downloadDifficultyPdfs().catch(handleError));
       }
       if (elements.saveExamCheckSetButton) {
         elements.saveExamCheckSetButton.addEventListener("click", () => {

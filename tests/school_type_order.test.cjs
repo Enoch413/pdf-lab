@@ -16,6 +16,7 @@ app.pure('PROBLEM_TYPE_OPTIONS');
 // Match the real selection UI, which merges factual/unfactual into one content filter.
 c.state.schoolWorkflow.selectedTypeLabels = [...new Set(c.state.schoolWorkflow.selectedTypeLabels.map(t => app.pure('normalizeEffectiveProblemType(' + JSON.stringify(t) + ')')))];
 c.summaries = ['B', 'A'].map(passageKey => ({ passageKey, availableTypes: c.state.schoolWorkflow.selectedTypeLabels }));
+Object.defineProperty(c.state, 'libraryCache', { get: () => ({ problemRecords: c.records || [] }) });
 app.run(`getSchoolPassageSummaries = () => summaries;
   getSchoolProblemRecordsOnly = () => records;
   getProblemRecordsOnly = () => records;
