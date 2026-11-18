@@ -26,9 +26,9 @@ fs.mkdirSync(out, { recursive: true });
     await page.waitForFunction(() => document.body.dataset.dataReady === 'true');
     const plans = await page.evaluate(async () => {
       const entries = ['A', 'B'].map(passage => ({ name: passage + '.json', payload:
-        ['topic', 'factual', 'unfactual', 'grammar_underline'].flatMap(type => (type === 'grammar_underline' ? [null] : ['easy', 'medium', 'hard']).flatMap(difficulty =>
-          [1, 2, 3].map(round => ({ type, difficulty, stem: 'Choose the correct answer.', body: `${passage} ${difficulty || 'COMMON'} ${type} ROUND ${round}. The printed paper must preserve its original two-column layout.`,
-            answer: '①', explanation: type === 'grammar_underline' && passage === 'A' ? '긴 해설 줄바꿈과 페이지 넘김 확인입니다. '.repeat(650) + 'END_OF_LONG_EXPLANATION' : '정답 1번의 합성 해설입니다.', choices: ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'] })))) }));
+        ['topic', 'factual', 'unfactual', 'insertion'].flatMap(type => (type === 'insertion' ? [null] : ['easy', 'medium', 'hard']).flatMap(difficulty =>
+          [1, 2, 3].map(round => ({ type, difficulty, stem: 'Choose the correct answer.', body: type === 'insertion' ? `[주어진 문장] ${passage} This sentence belongs here. [본문] Opening. [[s]] Next. [[slot]] Last.` : `${passage} ${difficulty || 'COMMON'} ${type} ROUND ${round}. The printed paper must preserve its original two-column layout.`,
+            answer: '①', explanation: type === 'insertion' && passage === 'A' ? '긴 해설 줄바꿈과 페이지 넘김 확인입니다. '.repeat(650) + 'END_OF_LONG_EXPLANATION' : '정답 1번의 합성 해설입니다.', choices: ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'] })))) }));
       const problems = prepareAiProblemJsonBatch(entries, 'QA Book', 'neoreunteo', 'rounds');
       const source = { sourceId: 'qa', librarySourceKey: 'neoreunteo', textbookName: 'QA Book', fileName: 'qa.json', importedAt: 1 };
       state.libraryCache.problemRecords = await Promise.all(problems.map(p => serializeProblemForLibrary(p, source)));
@@ -47,6 +47,7 @@ fs.mkdirSync(out, { recursive: true });
       const capture = window.html2canvas;
       window.answerTextCaptured = [];
       window.html2canvas = async (element, options) => {
+        if (/\[(?:주어진 문장|본문)\]/.test(element.textContent)) throw new Error('Authoring labels leaked into batch PDF');
         if (element.classList.contains('pdf-batch-answer-page')) {
           const columns = Array.from(element.querySelectorAll('.pdf-batch-answer-column'));
           if (columns.some(column => column.scrollHeight > column.clientHeight + 1)) throw new Error('Clipped answer column');

@@ -129,6 +129,7 @@
       const normalizedType = normalizeQuestionType(type);
       let text = String(value || "").replace(/\r\n?/g, "\n");
       const hadInsertionHeader = normalizedType === "insertion" && /\[\s*삽입문\s*\]/.test(text);
+      const hadBodyHeader = normalizedType === "insertion" && /\[\s*본\s*문\s*\]/.test(text);
       const headerLabelsByType = {
         summary: ["본문", "요약문"],
         order: ["주어진 글", "보기"],
@@ -136,12 +137,13 @@
       };
       const labels = headerLabelsByType[normalizedType] || [];
       if (normalizedType === "insertion") {
-        text = text.replace(/\[\s*삽입문\s*\]\s*/g, "\n\n");
+        // Authoring section labels may share a line with the sentence/passage.
+        text = text.replace(/(?<!\[)[ \t]*\[\s*(?:삽입문|주어진\s*(?:글|문장)|보기|본\s*문)\s*\](?!\])\s*/g, "\n\n");
       }
       labels.forEach((label) => {
         text = text.replace(new RegExp(`(^|\\n)\\s*\\[${escapeRegExp(label)}\\]\\s*(?=\\n|$)`, "g"), "\n\n");
       });
-      if (hadInsertionHeader) {
+      if (hadInsertionHeader && !hadBodyHeader) {
         const lines = text
           .replace(/\n{3,}/g, "\n\n")
           .trim()
@@ -547,6 +549,7 @@
     '.problem-continuation-badge { font-family:"PDF Lab Solbook",sans-serif; font-size:8pt; font-weight:600; color:#555; }',
     '.is-canonical .solbook-stem,.is-canonical .solbook-choice-text,.answer-key-answer,.answer-key-explanation{white-space:pre-wrap;overflow-wrap:anywhere}',
     '.is-canonical .solbook-body + .solbook-body{margin-top:2mm}',
+    '.is-canonical.is-insertion .canonical-given + .solbook-body{margin-top:1.5em}',
     '.is-canonical .choice-box{white-space:pre-wrap;display:inline}',
     '.canonical-token-warning{font-size:7pt;color:#8b3516;white-space:pre-wrap;overflow-wrap:anywhere}',
     '.canonical-given{border:1px solid #999;padding:1mm}.canonical-summary{border-top:1px solid #bbb;padding-top:1mm}'

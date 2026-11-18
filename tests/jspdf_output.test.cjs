@@ -19,7 +19,7 @@ const cases=[
  ['밑줄어법','We [[u:① learn]] together and [[u:② grow]] steadily.'],
  ['어휘박스','Choose [[box:A:work|play]] and [[box:B:learn|teach]].'],
  ['빈칸','Learning requires [[blank]] and [[blank:A]].'],
- ['삽입','[삽입문]\nThis sentence belongs here.\n[본문]\nFirst. [[s]] Next. [[slot]] Last.'],
+ ['삽입','[주어진 문장] This sentence belongs here. [본문] First. [[s]] Next. [[slot]] Last.'],
  ['순서','[주어진 글]\nOpening.\n(A)\nFirst.\n(B) Second.\n(C) Third.'],
  ['요약','[본문]\nOriginal passage.\n[요약문]\nIt is [[blank:A]] and [[blank:B]].'],
  ['내용일치','Safe <script>text</script> & Unicode 한글 문항.']

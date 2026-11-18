@@ -24,6 +24,21 @@ const samples = [
   ['함축의미', 'The phrase [[u:a bridge to tomorrow]] means hope.'],
   ['주제', '<img src=x onerror=alert(1)> & ordinary text']
 ];
+const insertionSections = [
+  ['[주어진 문장] So her father moved the family. [본문] But her hometown had a segregated education system. ① After graduating.',
+    'So her father moved the family.\n\nBut her hometown had a segregated education system. ① After graduating.'],
+  ['[주어진 문장]\r\nGiven first line.\r\nGiven second line.\r\n[본 문]\r\nBody. [[s]] Next.',
+    'Given first line.\nGiven second line.\n\nBody. ① Next.'],
+  ['[삽입문] Given. [본문] Body. [[slot]] End.', 'Given.\n\nBody. ① End.'],
+  ['[주어진 글] Given.\n[보기] Body. [[s]] End.', 'Given.\n\nBody. ① End.'],
+  ['Given [an important detail]. [본문] Body [is / was] unchanged.',
+    'Given [an important detail].\n\nBody [is / was] unchanged.']
+];
+for (const [input, expected] of insertionSections) {
+  assert.equal(renderer.normalizeSolbookMarkers(input, '삽입'), expected);
+  assert.equal(reference.reference.normalizeSolbookMarkers(input, '삽입'), expected, 'portable maker must use the same insertion layout');
+}
+assert.equal(renderer.normalizeSolbookMarkers('[본문] A label quoted in a topic question.', '주제'), '[본문] A label quoted in a topic question.');
 for (const [type, body] of samples) {
   assert.equal(renderer.normalizeQuestionType(type), reference.reference.normalizeQuestionType(type));
   assert.equal(renderer.normalizeSolbookMarkers(body, type), reference.reference.normalizeSolbookMarkers(body, type));
@@ -65,6 +80,23 @@ assert.equal(sequence.body, '(A) First.\n\n(B) Second.\n\n(C) Third.');
 const insertion = renderer.toQuestion({problemType:'삽입',textStructure:{givenText:'Insert this.',bodyText:'Opening.',choices:[{text:'First slot.'}]}});
 assert.equal(insertion.choices.length, 0);
 assert.ok(insertion.body.includes('① First slot.'));
+const labelledInsertion = {problemType:'삽입',textStructure:{givenText:'[주어진 문장] Insert this.',bodyText:'[본문] Opening. [[s]] Next.'}};
+const labelledBefore = JSON.stringify(labelledInsertion);
+assert.ok(renderer.render(labelledInsertion).includes('Insert this.\n\nOpening. ① Next.'));
+assert.equal(JSON.stringify(labelledInsertion),labelledBefore);
+vm.runInContext(fs.readFileSync(path.join(root,'app/hanbujang_canonical.js'),'utf8'),context);
+const canonicalInsertion = JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/hanbujang/HANBUJANG_SYNTHETIC_7.json'),'utf8')).problems.find(p=>p.problemType==='삽입');
+canonicalInsertion.givenText = '[주어진 문장] '+canonicalInsertion.givenText;
+canonicalInsertion.bodyText = '[본문] '+canonicalInsertion.bodyText;
+const canonicalBefore = JSON.stringify(canonicalInsertion);
+const canonicalHtml = context.PDFLabCanonical.render({canonical:canonicalInsertion});
+assert.ok(!canonicalHtml.includes('[주어진 문장]') && !canonicalHtml.includes('[본문]'));
+assert.ok(canonicalHtml.includes('is-insertion'));
+assert.equal(context.PDFLabCanonical.inlineProblem(canonicalInsertion).positions.length,3,'insertion positions and answer validation stay intact');
+assert.equal(JSON.stringify(canonicalInsertion),canonicalBefore);
+canonicalInsertion.bodyText = canonicalInsertion.givenText+' '+canonicalInsertion.bodyText;
+canonicalInsertion.givenText = '';
+assert.ok(context.PDFLabCanonical.render({canonical:canonicalInsertion}).includes('\n\nThe street was quiet.'));
 assert.throws(() => renderer.assertFits([{columns:[{items:[{isOverflow:true,problem:{renderContentMode:'text',number:7}}]}]}]), /7번/);
 renderer.assertFits([{columns:[{items:[{isOverflow:true,problem:{renderContentMode:'image'}}]}]}]);
 for (const file of ['app/index.html','app/final_test.html']) {

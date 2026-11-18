@@ -255,7 +255,13 @@
       warningList.push(...result.warnings);
       return result.html;
     };
-    const renderedFields = Object.fromEntries(textFields.map(key => [key, renderText(p[key], key === "bodyText")]));
+    const renderedFields = Object.fromEntries(textFields.map(key => {
+      // Strip authoring labels only in insertion content, keeping tokens and saved text intact.
+      const text = insertion && ["givenText", "bodyText"].includes(key)
+        ? p[key].replace(/\r\n?/g, "\n").replace(/(?<!\[)[ \t]*\[\s*(?:삽입문|주어진\s*(?:글|문장)|보기|본\s*문)\s*\](?!\])\s*/g, "\n\n").replace(/\n{3,}/g, "\n\n").trim()
+        : p[key];
+      return [key, renderText(text, key === "bodyText")];
+    }));
     const choices = p.choices.map(c => renderText(c.text));
     if (insertion) {
       const labels = positions.map(e => e.marker);
@@ -286,7 +292,7 @@
     const choiceMarkup = !shared && p.choices.length ? '<ol class="solbook-choices">' + p.choices.map((c, i) =>
       `<li><span class="solbook-choice-marker">${escape(c.marker)}</span><span class="solbook-choice-text">${rendered.choices[i]}</span></li>`).join("") + '</ol>' : "";
     const warningList = rendered.warnings.map(message => `${p.number}번: ${message}`);
-    return `<div class="solbook-text-question is-canonical" data-canonical-number="${p.number}" data-canonical-display="${record.canonicalDisplay || "full"}">${heading}${shared ? field("bodyText", "solbook-body") :
+    return `<div class="solbook-text-question is-canonical${effectiveType(record) === "삽입" ? " is-insertion" : ""}" data-canonical-number="${p.number}" data-canonical-display="${record.canonicalDisplay || "full"}">${heading}${shared ? field("bodyText", "solbook-body") :
       field("questionText", "solbook-stem") + field("givenText", "solbook-body canonical-given") + (child ? "" : field("bodyText", "solbook-body")) + field("summaryText", "solbook-body canonical-summary") + choiceMarkup}${warningList.length ? `<p class="canonical-token-warning">표기 확인: ${escape([...new Set(warningList)].join("; "))}</p>` : ""}</div>`;
   }
   root.PDFLabCanonical = { fields, types, textFields, clone, has, candidate, validate, validateProblem, validateGroups,
