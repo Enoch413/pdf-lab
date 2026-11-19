@@ -202,13 +202,14 @@
       if (text.includes("]]")) warnings.push("대응하는 여는 괄호가 없는 닫는 토큰");
       if (!positions || !options.position) return boxed(text);
       let markup = "", last = 0;
-      for (const match of text.matchAll(/\(\s*([①-⑳])\s*\)|([①-⑳])/g)) {
+      for (const match of text.matchAll(/\(\s*([①-⑳])\s*\)|([①-⑳])|\(\s*([A-Z])\s*\)/g)) {
         const at = offset + match.index, literal = match[0];
+        if (match[3] && !options.letterPositions?.has(match[3])) continue;
         if (quotes.some(q => at > q.index && at < q.index + q[0].length)) continue;
         markup += boxed(text.slice(last, match.index));
         // Bare labels must be at a sentence/line boundary, not an in-sentence reference.
-        if (!match[1] && !/(?:^\s*|[.!?]["”'’]?\s*|[\r\n]\s*)$/.test(value.slice(0, at))) options.ambiguousPosition();
-        markup += options.position(literal, match[1] || match[2]);
+        if (!match[1] && !match[3] && !/(?:^\s*|[.!?]["”'’]?\s*|[\r\n]\s*)$/.test(value.slice(0, at))) options.ambiguousPosition();
+        markup += options.position(literal, match[1] || match[2] || match[3]);
         last = match.index + literal.length;
       }
       return markup + boxed(text.slice(last));
@@ -241,6 +242,8 @@
     const insertion = (p.problemType === "꼬리" ? p.tailSubType : p.problemType) === "삽입";
     const positions = [], warningList = [];
     const markers = Array.from("①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳");
+    const letterReference = text => /^\(\s*([A-Z])\s*\)$/.exec(text.trim())?.[1] || "";
+    const letterChoices = insertion ? p.choices.map(choice => letterReference(choice.text)).filter(Boolean) : [];
     const position = (literal, marker, anonymous = false) => {
       if (!marker) fail(p.number, "삽입 위치", "20개를 넘는 위치는 출력 전에 확인해주세요.");
       positions.push({ marker, anonymous });
@@ -250,7 +253,7 @@
       const result = inline(text, insertion ? {
         slot: () => position(markers[positions.length], markers[positions.length], true),
         // Only passage labels are positions. Question/choice labels remain references.
-        ...(body ? { position, ambiguousPosition: () => fail(p.number, "삽입 위치", "괄호 없는 번호가 문장/줄 경계의 위치인지 불명확합니다. 원문을 확인해주세요.") } : {})
+        ...(body ? { position, letterPositions: new Set(letterChoices), ambiguousPosition: () => fail(p.number, "삽입 위치", "괄호 없는 번호가 문장/줄 경계의 위치인지 불명확합니다. 원문을 확인해주세요.") } : {})
       } : {});
       warningList.push(...result.warnings);
       return result.html;
@@ -269,10 +272,20 @@
       if (positions.some(e => e.anonymous) && positions.some((e, i) => !e.anonymous && e.marker !== markers[i])) {
         fail(p.number, "삽입 위치", "명시적 위치와 익명 토큰의 순서 대응이 불명확합니다. 자동 재번호하지 않습니다.");
       }
+      if (letterChoices.length && (letterChoices.length !== p.choices.length || new Set(letterChoices).size !== letterChoices.length || letterChoices.some(letter => !labels.includes(letter)))) {
+        fail(p.number, "선택지/삽입 위치", "선택지의 (A) 등 위치 표시는 본문에 한 번씩 존재해야 하며 중복되면 안 됩니다.");
+      }
       const answer = p.answerText.trim();
       if (answer) {
         const parts = answer.split(/[\s,，/;]+/).filter(Boolean);
-        const answers = parts.map(a => markers.includes(a) ? a : /^\d+$/.test(a) ? markers[Number(a) - 1] : null);
+        const normalizeMarker = text => markers.includes(text) ? text : /^\d+$/.test(text) ? markers[Number(text) - 1] : null;
+        const answers = parts.map(a => {
+          const marker = normalizeMarker(a);
+          if (!marker || !letterChoices.length) return marker;
+          // Resolve the source's explicit ③ → (C) mapping without renumbering the passage.
+          const matches = p.choices.filter(choice => normalizeMarker(choice.marker.trim()) === marker);
+          return matches.length === 1 ? letterReference(matches[0].text) : null;
+        });
         if (answers.some(a => !a || !labels.includes(a))) fail(p.number, "answerText/삽입 위치", "정답이 가리키는 유일한 삽입 위치를 확인할 수 없습니다.");
       }
     }

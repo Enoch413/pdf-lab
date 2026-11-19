@@ -1,0 +1,40 @@
+const assert=require('node:assert/strict');
+require('../app/hanbujang_canonical.js');
+const C=globalThis.PDFLabCanonical;
+const base=require('./fixtures/hanbujang/HANBUJANG_SYNTHETIC_7.json').problems.find(p=>p.problemType==='삽입');
+const markers=Array.from('①②③④⑤');
+const p={...structuredClone(base),number:32,problemType:'꼬리',tailSubType:'삽입',questionGroupId:'32-33',groupOrder:1,groupSize:2,
+ questionText:'[32-33] 윗글의 흐름으로 보아, 주어진 문장이 들어가기에 가장 적절한 곳은?',
+ givenText:'Contacts can spread viruses.',bodyText:'It appears ⓐ [[u:what]] viruses cause suffering. (A) Earlier pandemics affected many people. (B) Such contacts allow viruses to enter human bodies. (C) Natural barriers used to prevent contact. (D) Those barriers have changed. (E) The future remains uncertain ⓕ [[u:which]].',
+ choices:markers.map((marker,index)=>({marker,text:`(${String.fromCharCode(65+index)})`})),answerText:'③'};
+const before=JSON.stringify(p);
+const result=C.inlineProblem(p);
+assert.deepEqual(result.positions.map(position=>position.marker),['A','B','C','D','E']);
+assert(result.fields.bodyText.includes('data-insertion-position="C">(C)</span>'));
+assert(result.fields.bodyText.includes('ⓐ <u>what</u>')&&result.fields.bodyText.includes('ⓕ <u>which</u>'));
+assert.equal(JSON.stringify(p),before,'source passage, choices, answer and raw evidence remain unchanged');
+const remapped={...p,bodyText:p.bodyText.replace('(C)','(Z)'),choices:p.choices.map(choice=>({...choice,text:choice.text==='(C)'?'(Z)':choice.text})).reverse()};
+assert.doesNotThrow(()=>C.inlineProblem(remapped),'use actual choice markers/text, not alphabetical or array order');
+assert.doesNotThrow(()=>C.inlineProblem({...p,choices:p.choices.map((choice,index)=>({...choice,marker:String(index+1)})),answerText:'3'}));
+assert.doesNotThrow(()=>C.inlineProblem({...p,answerText:'①, ③'}));
+assert.throws(()=>C.inlineProblem({...p,bodyText:p.bodyText.replace('(C)','')}),/삽입 위치/);
+assert.throws(()=>C.inlineProblem({...p,bodyText:p.bodyText+' (C) Duplicate.'}),/중복/);
+assert.throws(()=>C.inlineProblem({...p,choices:p.choices.map((choice,index)=>({...choice,text:index===0?'(C)':choice.text}))}),/삽입 위치/);
+assert.throws(()=>C.inlineProblem({...p,choices:p.choices.map((choice,index)=>({...choice,text:index===2?'The location (C).':choice.text}))}),/삽입 위치/);
+assert.throws(()=>C.inlineProblem({...p,choices:[]}),/삽입 위치/,'do not guess A→① without explicit choices');
+assert.throws(()=>C.inlineProblem({...p,choices:[...p.choices,{marker:'3',text:'(C)'}]}),/삽입 위치/,'normalized answer markers must identify exactly one choice');
+assert.doesNotThrow(()=>C.inlineProblem({...p,bodyText:p.bodyText+' A quoted "(C)" and [[u:(C)]] are references.'}));
+assert.throws(()=>C.inlineProblem({...p,bodyText:p.bodyText.replace('(C)','"(C)"')}),/삽입 위치/,'quoted references are not insertion positions');
+assert.equal(C.inlineProblem({...p,problemType:'밑줄어법',tailSubType:'',questionGroupId:'',groupOrder:0,groupSize:1}).positions.length,0);
+const existing=C.inlineProblem(base);
+assert.deepEqual(existing.positions.map(position=>position.marker),['①','②','③'],'numbered/token insertion behavior stays unchanged');
+const sharedBody=p.bodyText;
+const grammar={...structuredClone(p),number:33,tailSubType:'밑줄어법',groupOrder:2,givenText:'',choices:[],answerText:'ⓑ'};
+const records=[p,grammar].map(q=>C.create(q,{sourceName:'test',textbookName:'QA'},'qa','qa.json',{kind:'problem',recordId:'q'+q.number,sourceId:'qa',textOnly:true}));
+const original=JSON.stringify(records);
+const prepared=C.prepareEntries(records.map(record=>({record})));
+assert.equal(prepared.filter(entry=>entry.record.canonicalDisplay==='shared').length,1);
+assert(C.render(prepared[0].record).includes('data-insertion-position="C"'));
+assert.equal(JSON.stringify(records),original);
+assert.equal(grammar.bodyText,sharedBody);
+console.log('PASS: lettered insertion choices resolve numeric answers, preserve letters/underlines/groups/raw data, reject missing/duplicate/ambiguous mappings, and retain numbered insertion behavior');
