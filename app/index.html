@@ -18620,6 +18620,8 @@
       }
       if (!isBusy) {
         updateExamActionButtons();
+        // Busy dashboards omit review sections; restore them when the read/import finishes.
+        requestLibraryWorkspaceDashboardRender();
       }
       renderStudentRetryPanel();
       updateDeleteTextbookUi();
