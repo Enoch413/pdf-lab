@@ -1,0 +1,73 @@
+// Synthetic records and isolated browser only; no production Firebase access.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(path.join(process.env.PDFLAB_NODE_MODULES||'../node_modules','playwright'));
+const root=path.resolve(__dirname,'..'),origin='http://canonical-editor.test',out=path.join(root,'tmp/canonical-editor-20261120');
+const fixture=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/hanbujang/HANBUJANG_SYNTHETIC_7.json'),'utf8'));
+fixture.problems[0].bodyText='Understanding the role of algorithms helps readers evaluate what content is recommended. '.repeat(65);
+fixture.problems[0].choices=fixture.problems[0].choices.slice(0,4).reverse();fixture.problems[0].answerText='①';
+fixture.problems[2].choices=Array.from({length:6},(_,index)=>({marker:String(6-index),text:'Choice '+index}));
+fs.mkdirSync(out,{recursive:true});
+(async()=>{
+ const browser=await chromium.launch({headless:true,channel:'msedge'});
+ try{
+  const context=await browser.newContext({viewport:{width:1440,height:1080}});
+  await context.route('**/*',route=>{
+   const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();
+   if(/firebase.*config/i.test(url.pathname))return route.fulfill({body:'/* isolated */',contentType:'text/javascript'});
+   const file=path.resolve(root,decodeURIComponent(url.pathname).slice(1));
+   if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
+   return route.fulfill({body:fs.readFileSync(file),contentType:({'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.ttf':'font/ttf'})[path.extname(file)]||'application/octet-stream'});
+  });
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(origin+'/app/index.html?workspace=library');await page.waitForFunction(()=>document.body.dataset.dataReady==='true');
+  await page.evaluate(fixture=>{elements.newTextbookInput.value='QA';applyAiProblemJsonPayload(fixture,'qa.json');openLibraryTextEditor('current',state.problems[0].id);},fixture);
+  const body=page.locator('[data-canonical-edit="bodyText"]');
+  assert.equal(await page.getByLabel('본문',{exact:true}).count(),1,'visible Korean label identifies the passage');
+  assert.equal(await page.locator('#libraryTextEditorImagePanel').isVisible(),false,'JSON-only editor uses the full width');
+  const geometry=await body.evaluate(input=>({width:input.clientWidth,height:input.clientHeight,font:parseFloat(getComputedStyle(input).fontSize),lineHeight:parseFloat(getComputedStyle(input).lineHeight),workspace:input.closest('.library-text-editor-workspace').clientWidth}));
+  assert(geometry.width>geometry.workspace*.85,JSON.stringify(geometry));assert(geometry.height>=280);assert(geometry.font>=14);assert(geometry.lineHeight>=geometry.font*1.4);
+  assert.equal(await page.locator('[data-canonical-edit="choices"]').count(),0,'users edit options, not JSON');
+  assert.equal(await page.locator('[data-canonical-choice]').count(),fixture.problems[0].choices.length);
+  await page.screenshot({path:path.join(out,'desktop.png')});
+  // Fields survive an asynchronous image-status rerender without losing focus or text.
+  await body.fill('Edited body.\n  Keep exact spacing.');
+  await page.locator('[data-canonical-choice="0"]').fill('Edited choice.');
+  await page.evaluate(()=>renderLibraryTextEditor());
+  assert.equal(await body.inputValue(),'Edited body.\n  Keep exact spacing.');
+  await page.locator('#libraryTextEditorSaveButton').click();
+  await page.waitForFunction(()=>!state.isBusy);
+  let saved=await page.evaluate(()=>state.problems.map(p=>p.canonical));
+  const expected=structuredClone(fixture.problems);expected[0].bodyText='Edited body.\n  Keep exact spacing.';expected[0].choices[0].text='Edited choice.';
+  assert.deepEqual(saved,expected,'saving preserves raw evidence, question IDs, markers, order and untouched fields');
+  await page.evaluate(()=>openLibraryTextEditor('current',state.problems.find(p=>p.canonical.questionGroupId).id,{forceDiscard:true}));
+  assert.match(await body.getAttribute('aria-describedby'),/hint/);
+  await body.fill('Shared group passage.');await page.locator('#libraryTextEditorSaveButton').click();await page.waitForFunction(()=>!state.isBusy);
+  saved=await page.evaluate(()=>state.problems.map(p=>p.canonical));
+  expected.forEach(p=>{if(p.questionGroupId)p.bodyText='Shared group passage.'});assert.deepEqual(saved,expected,'group passage updates retain the existing all-member contract');
+  await page.evaluate(()=>openLibraryTextEditor('current',state.problems[2].id,{forceDiscard:true}));
+  assert.equal(await page.locator('[data-canonical-choice]').count(),6);
+  await page.locator('[data-canonical-choice="5"]').fill('Sixth option edited.');
+  await page.locator('#libraryTextEditorSaveButton').click();await page.waitForFunction(()=>!state.isBusy);
+  expected[2].choices[5].text='Sixth option edited.';
+  assert.deepEqual(await page.evaluate(()=>state.problems.map(p=>p.canonical)),expected,'all six original markers and their order survive a save');
+  await page.locator('#libraryTextEditorAnswerTextarea').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(out,'choices-and-answer.png')});
+  await page.evaluate(()=>openLibraryTextEditor('current',state.problems.find(p=>p.canonical.problemType==='삽입').id,{forceDiscard:true}));
+  assert.equal(await page.getByLabel('주어진 문장',{exact:true}).count(),1);
+  assert.match(await page.locator('#libraryTextEditorStructuredFields').innerText(),/별도 선택지/);
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  assert((await body.evaluate(input=>input.clientWidth))>280);
+  await page.screenshot({path:path.join(out,'mobile.png')});
+  await page.evaluate(()=>{const p=state.problems.find(p=>p.canonical.problemType==='삽입');p.textOnly=false;openLibraryTextEditor('current',p.id,{forceReload:true,forceDiscard:true});});
+  assert.equal(await page.locator('#libraryTextEditorImagePanel').isVisible(),true,'image-backed records keep the comparison panel');
+  await page.setViewportSize({width:1440,height:1080});
+  await page.evaluate(()=>{state.problems.push({id:'legacy',kind:'problem',number:20,problemType:'주제',textOnly:true,promptText:'Legacy passage.',textStructure:{templateKey:'objective-common',questionText:'Legacy question.',bodyText:'Legacy passage.',choices:[]}});openLibraryTextEditor('current','legacy',{forceDiscard:true});});
+  assert.equal(await page.locator('#libraryTextEditorProblemTypeSelect').isVisible(),true,'ordinary JSON retains its existing editor');
+  await page.evaluate(()=>{state.libraryCache.problemRecords=state.problems.filter(PDFLabCanonical.has).map((p,index)=>({...p,recordId:'stored-'+index}));openLibraryTextEditor('stored','stored-0',{forceDiscard:true});});
+  assert.equal(await page.getByLabel('본문',{exact:true}).inputValue(),expected[0].bodyText,'the stored-library path opens the same readable editor');
+  assert.equal(await page.locator('[data-canonical-choice]').count(),4);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: readable Korean Canonical editor, full-width JSON passage, individual choices, rerender stability, exact save/group/marker/raw-text preservation, mobile and image-panel compatibility');
+ }finally{await browser.close()}
+})().catch(error=>{console.error(error);process.exitCode=1});

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./pdf_problem_template_repacker.css?v=20261030-print-white-2">
+  <link rel="stylesheet" href="./pdf_problem_template_repacker.css?v=20261120-editor-1">
   <link rel="stylesheet" href="./workspace_shell.css?v=20261113-1">
 </head>
 <body data-lab-page="exam" data-lab-root="../">
@@ -3025,6 +3025,9 @@
       }
       const target = getActiveLibraryEditorTarget();
       const hasEditableTarget = Boolean(target || state.libraryReview.editorTailSetDraft);
+      const textOnly = isTextOnlyLibraryProblem(target) && !(state.libraryReview.editorImages || []).length;
+      elements.libraryTextEditorStructuredFields?.closest(".library-text-editor-workspace")?.classList.toggle("is-text-only", textOnly);
+      if (elements.libraryTextEditorImagePanel) elements.libraryTextEditorImagePanel.hidden = textOnly;
       if (elements.libraryTextEditorReloadButton) {
         elements.libraryTextEditorReloadButton.disabled = state.isBusy || !hasEditableTarget;
       }
@@ -4834,22 +4837,47 @@
       elements.libraryTextEditorTextarea.readOnly = canonical;
       elements.libraryTextEditorReparseButton.disabled = canonical;
       elements.libraryTextEditorInsertBlankButton.disabled = canonical;
-      if (!canonical) { elements.libraryTextEditorStructuredFields.oninput = null; return; }
+      const toolbar = elements.libraryTextEditorInsertBlankButton.closest(".library-text-editor-toolbar");
+      if (toolbar) toolbar.hidden = canonical;
+      const rawSummary = elements.libraryTextEditorTextarea.closest("details")?.querySelector("summary");
+      if (rawSummary) rawSummary.textContent = canonical ? "원문 전체 텍스트 보기 (읽기 전용)" : "원문 전체 텍스트 직접 수정";
+      const typeField = elements.libraryTextEditorProblemTypeSelect.closest(".field-row");
+      if (typeField) typeField.hidden = canonical;
+      if (!canonical) {
+        elements.libraryTextEditorStructuredFields.oninput = null;
+        delete elements.libraryTextEditorStructuredFields.dataset.canonicalEditorKey;
+        return;
+      }
       elements.libraryTextEditorProblemTypeSelect.disabled = true;
       const p = target.canonical;
       const fields = elements.libraryTextEditorStructuredFields;
+      elements.libraryTextEditorTextarea.value = p.rawText;
+      setOptionalText(elements.libraryTextEditorTemplateBadge, "구조화 문항");
+      setOptionalText(elements.libraryTextEditorTemplateSummary, "문제 문구·주어진 문장·본문·선택지를 각각 확인하고 수정하세요. 원문 전체 텍스트는 읽기 전용으로 보존됩니다.");
       const editorKey = `${state.libraryReview.editorScope}/${state.libraryReview.editorTargetId}`;
       if (fields.dataset.canonicalEditorKey === editorKey) return;
       fields.dataset.canonicalEditorKey = editorKey;
-      fields.innerHTML = ["passageLabel", ...C.textFields].map(key =>
-        `<label>${key}${key === "bodyText" && p.questionGroupId ? " (그룹 전체 공통 편집)" : ""}<textarea data-canonical-edit="${key}" rows="4">${escapeHtml(p[key])}</textarea></label>`).join("") +
-        `<label>choices (marker·순서를 보존하는 JSON)<textarea data-canonical-edit="choices" rows="8">${escapeHtml(JSON.stringify(p.choices, null, 2))}</textarea></label>` +
-        `<label>${p.questionGroupId ? "tailSubType" : "problemType"}<select data-canonical-edit="${p.questionGroupId ? "tailSubType" : "problemType"}">${C.types.filter(t => t !== "꼬리").map(t => `<option ${t === C.effectiveType(target) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` +
-        `<label><input type="checkbox" data-canonical-edit="isSubjective" ${p.isSubjective ? "checked" : ""}>주관식</label>`;
+      const labels = { passageLabel: "지문 표시", questionText: "문제 문구", givenText: "주어진 문장", bodyText: "본문", summaryText: "요약문" };
+      const type = C.effectiveType(target);
+      const extraFields = ["givenText", "summaryText"].filter(key => !p[key] &&
+        (key === "givenText" ? !["삽입", "순서"].includes(type) : type !== "요약"));
+      const renderField = key => {
+        const hint = key === "bodyText" && p.questionGroupId
+          ? `<p class="small-note" id="canonical-body-hint">이 본문을 수정하면 같은 꼬리문제 그룹의 모든 문항에 반영됩니다.</p>` : "";
+        return `<label class="library-text-editor-input-group ${key === "passageLabel" ? "" : "is-span-2"}" for="canonical-field-${key}">
+          <span class="field-label" id="canonical-label-${key}">${labels[key]}</span>${hint}
+          <textarea id="canonical-field-${key}" aria-labelledby="canonical-label-${key}" class="library-text-editor-textarea ${key === "bodyText" ? "" : "library-text-editor-secondary-textarea"}" data-canonical-edit="${key}" rows="${key === "bodyText" ? 16 : 3}"${hint ? ' aria-describedby="canonical-body-hint"' : ""}>${escapeHtml(p[key])}</textarea></label>`;
+      };
+      fields.innerHTML = `<div class="library-text-editor-structured-grid">
+        ${renderField("passageLabel")}
+        <label class="library-text-editor-input-group" for="canonical-field-type"><span class="field-label" id="canonical-label-type">문제 유형</span><select id="canonical-field-type" aria-labelledby="canonical-label-type" class="select-input" data-canonical-edit="${p.questionGroupId ? "tailSubType" : "problemType"}">${C.types.filter(t => t !== "꼬리").map(t => `<option ${t === C.effectiveType(target) ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label class="check-row is-span-2"><input type="checkbox" data-canonical-edit="isSubjective" ${p.isSubjective ? "checked" : ""}>주관식 문항</label>
+        ${C.textFields.filter(key => !extraFields.includes(key)).map(renderField).join("")}
+        ${extraFields.length ? `<details class="library-text-editor-input-group is-span-2"><summary>추가 텍스트 항목</summary>${extraFields.map(renderField).join("")}</details>` : ""}
+        <div class="library-text-editor-input-group is-span-2"><span class="field-label">선택지</span>
+          ${p.choices.length ? `<div class="library-text-editor-choice-list">${p.choices.map((choice, index) => `<label class="library-text-editor-choice-row"><span class="library-text-editor-choice-marker">${escapeHtml(choice.marker)}</span><textarea class="library-text-editor-textarea library-text-editor-choice-textarea" data-canonical-choice="${index}" aria-label="선택지 ${escapeHtml(choice.marker)}" rows="2">${escapeHtml(choice.text)}</textarea></label>`).join("")}</div>` : '<p class="small-note">별도 선택지가 없는 문항입니다. 삽입 위치 등은 본문에서 확인하세요.</p>'}
+        </div></div>`;
       fields.oninput = () => { state.libraryReview.editorRawChanged = true; };
-      elements.libraryTextEditorTextarea.value = p.rawText;
-      setOptionalText(elements.libraryTextEditorTemplateBadge, "canonical-16");
-      setOptionalText(elements.libraryTextEditorTemplateSummary, "각 필드는 독립 저장됩니다. 아래 원문(rawText)은 읽기 전용 증거이며 편집 내용으로 재작성하지 않습니다.");
     }
 
     async function saveCanonicalEditorChanges() {
@@ -4859,11 +4887,11 @@
       const updates = {};
       elements.libraryTextEditorStructuredFields.querySelectorAll("[data-canonical-edit]").forEach(input => {
         const field = input.dataset.canonicalEdit;
-        if (field === "choices") {
-          try { updates.choices = JSON.parse(input.value); }
-          catch { throw new Error(`${target.number}번 choices: 올바른 JSON 배열을 입력해주세요.`); }
-        } else updates[field] = field === "isSubjective" ? input.checked : input.value;
+        updates[field] = field === "isSubjective" ? input.checked : input.value;
       });
+      // Keep source option markers and order while editing only their text.
+      updates.choices = target.canonical.choices.map((choice, index) => ({ ...choice,
+        text: elements.libraryTextEditorStructuredFields.querySelector(`[data-canonical-choice="${index}"]`).value }));
       updates.answerText = elements.libraryTextEditorAnswerTextarea.value;
       updates.explanationText = elements.libraryTextEditorExplanationTextarea.value;
       const records = scope === "current" ? state.problems : state.libraryCache.problemRecords;
